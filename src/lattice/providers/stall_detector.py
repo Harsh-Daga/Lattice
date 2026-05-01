@@ -97,7 +97,7 @@ class StreamStallDetector:
             if not stream_id:
                 # Legacy compatibility: look up the most recent stream for
                 # this provider. This path is deprecated and will be removed.
-                stream_id = self._last_stream_id_for_provider.get(provider)
+                stream_id = self._last_stream_id_for_provider.get(provider) or ""
                 if not stream_id:
                     return
 

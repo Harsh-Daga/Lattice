@@ -43,6 +43,7 @@ import os
 import pathlib
 import tempfile
 import time
+import typing
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
@@ -121,7 +122,7 @@ class LocalSocketServer:
         self._server: asyncio.Server | None = None
         self._agent_reader: asyncio.StreamReader | None = None
         self._agent_writer: asyncio.StreamWriter | None = None
-        self._on_frame: callable | None = None
+        self._on_frame: typing.Callable[..., Any] | None = None
 
     async def start(self) -> None:
         """Start listening for agent connections."""
@@ -216,7 +217,7 @@ class LocalSocketServer:
             self._agent_reader = None
             self._agent_writer = None
 
-    def set_frame_handler(self, handler: callable) -> None:
+    def set_frame_handler(self, handler: typing.Callable[..., Any]) -> None:
         self._on_frame = handler
 
 
@@ -513,7 +514,7 @@ class WebSocketTunnel:
         self.framer = framer or BinaryFramer()
         self._ws_reader: asyncio.StreamReader | None = None
         self._ws_writer: asyncio.StreamWriter | None = None
-        self._on_frame: callable | None = None
+        self._on_frame: typing.Callable[..., Any] | None = None
         self._state = TunnelState.DISCONNECTED
 
     @property
@@ -548,7 +549,7 @@ class WebSocketTunnel:
             # Read response (simplified — assumes success)
             response = await self._ws_reader.readline()
             if b"101" not in response:
-                raise ConnectionError(f"WebSocket handshake failed: {response}")
+                raise ConnectionError(f"WebSocket handshake failed: {response!r}")
             # Drain remaining headers
             while True:
                 line = await self._ws_reader.readline()
@@ -592,10 +593,12 @@ class WebSocketTunnel:
             while self._state == TunnelState.CONNECTED:
                 # Simplified WebSocket frame parsing
                 # Read first byte (FIN + opcode)
+                assert self._ws_reader is not None
                 first = await self._ws_reader.readexactly(1)
                 if not first:
                     break
                 masked = False
+                assert self._ws_reader is not None
                 length_byte = await self._ws_reader.readexactly(1)
                 length = length_byte[0] & 0x7F
                 if length == 126:
@@ -616,7 +619,7 @@ class WebSocketTunnel:
         finally:
             self._state = TunnelState.DISCONNECTED
 
-    def set_frame_handler(self, handler: callable) -> None:
+    def set_frame_handler(self, handler: typing.Callable[..., Any]) -> None:
         self._on_frame = handler
 
     @staticmethod
@@ -664,7 +667,11 @@ class TunnelSidecar:
                 pathlib.Path(tempfile.gettempdir()) / f"lattice-{self.session_id}.sock"
             )
         else:
-            self.unix_socket_path = unix_socket_path
+            self.unix_socket_path = (
+                pathlib.Path(str(unix_socket_path))
+                if not isinstance(unix_socket_path, pathlib.Path)
+                else unix_socket_path
+            )
         self.tcp_port = tcp_port
         self._proxy = HTTPProxyServer(
             proxy_url=config.proxy_url(),

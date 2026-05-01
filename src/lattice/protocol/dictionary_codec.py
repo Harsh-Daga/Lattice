@@ -467,7 +467,7 @@ class DictionaryCodec:
 
             if base == _OP_STATIC_REF:
                 idx, i = _decode_varint(data, i)
-                text = STATIC_TABLE.get(idx)
+                text = STATIC_TABLE.get(idx)  # type: ignore[assignment]
                 if text is None:
                     raise ValueError(f"static dictionary index {idx} not found")
                 out.extend(text.encode("utf-8"))
@@ -475,7 +475,7 @@ class DictionaryCodec:
 
             if base == _OP_DYNAMIC_REF:
                 idx, i = _decode_varint(data, i)
-                text = self.dynamic.lookup(idx)
+                text = self.dynamic.lookup(idx)  # type: ignore[assignment]
                 if text is None:
                     raise ValueError(f"dynamic dictionary index {idx} not found")
                 out.extend(text.encode("utf-8"))

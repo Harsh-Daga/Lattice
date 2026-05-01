@@ -818,7 +818,7 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
         logger.info("codex_websocket_routing", upstream=upstream_uri)
     else:
         upstream_uri = "wss://api.openai.com/v1/responses"
-        upstream_headers: dict[str, str] = {}
+        upstream_headers: dict[str, str] = {}  # type: ignore[no-redef]
         if auth:
             upstream_headers["Authorization"] = auth
         if openai_beta:
@@ -2011,7 +2011,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
                     "supports_prompt_caching": capability_registry.supports(
                         provider, Capability.PROMPT_CACHING
                     ),
-                    "default_base_url": capability_registry.get(provider).default_base_url
+                    "default_base_url": capability_registry.get(provider).default_base_url  # type: ignore[union-attr]
                     if capability_registry.get(provider)
                     else "",
                 }

@@ -305,7 +305,11 @@ def _canonical_request(request: Any) -> dict[str, Any]:
     elif hasattr(request, "to_dict"):
         raw = request.to_dict()
     elif dataclasses.is_dataclass(request):
-        raw = dataclasses.asdict(request)
+        raw = (
+            dataclasses.asdict(request)
+            if dataclasses.is_dataclass(request) and not isinstance(request, type)
+            else {}
+        )
     elif isinstance(request, dict):
         raw = request
     elif hasattr(request, "__dict__"):

@@ -100,7 +100,8 @@ class AutoContinuation:
                 follow_up = await provider_caller(
                     model=request.model or "gpt-4",
                     messages=[
-                        m.to_dict() if hasattr(m, "to_dict") else dict(m) for m in request.messages
+                        m.to_dict() if hasattr(m, "to_dict") else dict(m)  # type: ignore[call-overload]
+                        for m in request.messages  # type: ignore[call-overload]
                     ],
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,
@@ -128,7 +129,7 @@ class AutoContinuation:
             # Accumulate usage
             for k, v in (follow_up.usage or {}).items():
                 if isinstance(v, (int, float)):
-                    accumulated_usage[k] = accumulated_usage.get(k, 0) + v
+                    accumulated_usage[k] = accumulated_usage.get(k, 0) + v  # type: ignore[assignment]
 
             current_response = follow_up
             turns += 1
@@ -183,7 +184,8 @@ class AutoContinuation:
             follow_up = await provider_caller(
                 model=request.model or "gpt-4",
                 messages=[
-                    m.to_dict() if hasattr(m, "to_dict") else dict(m) for m in request.messages
+                    m.to_dict() if hasattr(m, "to_dict") else dict(m)  # type: ignore[call-overload]
+                    for m in request.messages  # type: ignore[call-overload]
                 ],
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,

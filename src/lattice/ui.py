@@ -131,7 +131,7 @@ class ProxyLiveDisplay:
         provider_table.add_column("Avg ms", justify="right")
         provider_table.add_column("P99 ms", justify="right")
 
-        provider_names = getattr(self.metrics, "provider_names", lambda: [])()
+        provider_names: list[str] = getattr(self.metrics, "provider_names", lambda: [])()
         for provider in provider_names:
             avg = getattr(self.metrics, "get_histogram_avg", lambda k, d=0.0: d)(
                 f"lattice_provider_latency_ms{{provider={provider}}}"

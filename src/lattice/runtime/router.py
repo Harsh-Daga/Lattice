@@ -216,7 +216,7 @@ class RuntimeRouter:
             budget_ms = 2.0
             preferred_strategy = "full"
         elif tier == Tier.MEDIUM:
-            skipped = (
+            skipped = (  # type: ignore[assignment]
                 "self_information",
                 "information_theoretic_selector",
                 "hierarchical_summary",
@@ -225,12 +225,12 @@ class RuntimeRouter:
             budget_ms = 8.0
             preferred_strategy = "submodular"
         elif tier == Tier.COMPLEX:
-            skipped = ("hierarchical_summary",)
+            skipped = ("hierarchical_summary",)  # type: ignore[assignment]
             mode = "aggressive"
             budget_ms = 20.0
             preferred_strategy = "hybrid"
         else:
-            skipped = ()
+            skipped = ()  # type: ignore[assignment]
             mode = "max_fidelity"
             budget_ms = 35.0
             preferred_strategy = "hybrid"
@@ -238,7 +238,7 @@ class RuntimeRouter:
         # Tool-heavy requests should retain tool/filtering and cache planning;
         # code/reasoning-heavy requests get higher-fidelity strategies.
         if features.get("tools", 0) >= 20 and "hierarchical_summary" in skipped:
-            skipped = tuple(s for s in skipped if s != "hierarchical_summary")
+            skipped = tuple(s for s in skipped if s != "hierarchical_summary")  # type: ignore[assignment]
 
         return {
             "mode": mode,

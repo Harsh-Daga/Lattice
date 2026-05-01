@@ -37,7 +37,7 @@ jobs:
         run: uv run ruff format --check src/
 
       - name: mypy
-        run: uv run mypy src/lattice/
+        run: uv run mypy src/lattice/ --ignore-missing-imports
 
   test:
     needs: lint

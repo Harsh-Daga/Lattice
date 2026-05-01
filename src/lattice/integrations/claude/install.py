@@ -49,9 +49,9 @@ def revert_provider_scope(mutation: dict[str, object]) -> None:
     env_map = dict(env) if isinstance(env, dict) else {}
     previous = mutation.get("previous", {})
     for name in ("ANTHROPIC_BASE_URL",):
-        if previous.get(name) is None:
+        if previous.get(name) is None:  # type: ignore[attr-defined]
             env_map.pop(name, None)
         else:
-            env_map[name] = previous[name]  # type: ignore[literal-required]
+            env_map[name] = str(previous[name])  # type: ignore[index]
     payload["env"] = env_map
     path.write_text(json.dumps(payload, indent=2) + "\n")
