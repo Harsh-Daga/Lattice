@@ -1,0 +1,321 @@
+"""Content Profiler / Adaptive Strategy Selector.
+
+Profiles the content of a request and assigns a compression strategy.
+This is a **meta-transform** that runs first and configures the behavior
+of downstream transforms by setting metadata in the TransformContext.
+
+It does not modify the Request content directly.
+
+**Research basis:**
+- Different content types benefit from different compression strategies:
+  - Code-heavy → reference substitution + whitespace optimization
+  - Table-heavy → format conversion (CSV/TSV)
+  - Narrative-long → semantic compression
+  - Tool-output-heavy → tool filtering + summarization
+  - Mixed → balanced approach
+- Adaptive strategy selection can improve compression by 15-25%
+  compared to fixed pipelines (informed by LLMLingua-2's segment-based
+  compression approach).
+
+**Reversible:** No-op on forward and reverse.
+
+**Performance:** Single-pass content scanning. Target: <0.1ms.
+
+Priority: 1 (runs before all other transforms)
+"""
+
+from __future__ import annotations
+
+import enum
+import re
+from typing import Any
+
+from lattice.core.context import TransformContext
+from lattice.core.errors import TransformError
+from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.result import Ok, Result
+from lattice.core.transport import Request, Response
+from lattice.utils.validation import SemanticRiskScore, compute_risk_score
+
+# =============================================================================
+# Content profiles
+# =============================================================================
+
+class ContentProfile(enum.Enum):
+    """Classification of request content type."""
+
+    CODE_HEAVY = "code_heavy"           # Lots of code blocks, identifiers
+    TABLE_HEAVY = "table_heavy"         # JSON arrays, markdown tables
+    NARRATIVE_LONG = "narrative_long"   # Long natural language text
+    TOOL_OUTPUT = "tool_output"         # Tool/API response JSON
+    LOG_OUTPUT = "log_output"           # Timestamped log lines
+    DIFF_OUTPUT = "diff_output"         # Unified diff / patch
+    STACK_TRACE = "stack_trace"         # Exception stack traces
+    GREP_OUTPUT = "grep_output"         # Grep / search results
+    FILE_TREE = "file_tree"             # Directory tree listings
+    MCP_OUTPUT = "mcp_output"           # MCP tool result structures
+    MIXED = "mixed"                     # Balanced mix
+    SHORT = "short"                     # Too short to benefit from compression
+
+
+# =============================================================================
+# ContentProfiler
+# =============================================================================
+
+class ContentProfiler(ReversibleSyncTransform):
+    """Profile request content and recommend compression strategy.
+
+    Algorithm:
+    1. Analyze all messages for content type signals
+    2. Compute profile scores for each category
+    3. Select dominant profile
+    4. Write strategy metadata to TransformContext
+
+    Downstream transforms can read `context.session_state["content_profile"]`
+    to adjust their behavior.
+
+    Configuration
+    -------------
+    - enable_adaptive: Enable profiling. Default: True.
+    - short_threshold_tokens: Requests below this are "short" profile.
+      Default: 50.
+    - code_block_weight: Score weight for code blocks. Default: 3.
+    - table_row_weight: Score weight per table-like row. Default: 2.
+    - narrative_length_weight: Score weight per 100 tokens of narrative.
+      Default: 1.
+    """
+
+    name = "content_profiler"
+    priority = 1  # Run FIRST, before all other transforms
+
+    def __init__(
+        self,
+        enable_adaptive: bool = True,
+        short_threshold_tokens: int = 50,
+        code_block_weight: float = 3.0,
+        table_row_weight: float = 2.0,
+        narrative_length_weight: float = 1.0,
+    ) -> None:
+        self.enable_adaptive = enable_adaptive
+        self.short_threshold_tokens = short_threshold_tokens
+        self.code_block_weight = code_block_weight
+        self.table_row_weight = table_row_weight
+        self.narrative_length_weight = narrative_length_weight
+
+    def process(
+        self, request: Request, context: TransformContext
+    ) -> Result[Request, TransformError]:
+        """Profile request content, compute risk, and set strategy metadata."""
+        if not self.enable_adaptive:
+            return Ok(request)
+
+        profile = self._classify(request)
+        strategy = self._select_strategy(profile, request)
+        risk_score = self._compute_risk(request)
+
+        # Store in context for downstream transforms
+        state = context.get_transform_state(self.name)
+        state["profile"] = profile.value
+        state["strategy"] = strategy
+        state["risk_score"] = risk_score.to_dict()
+
+        context.record_metric(self.name, "profile", profile.value)
+        context.record_metric(self.name, "total_tokens", request.token_estimate)
+        context.record_metric(self.name, "risk_score", risk_score.total)
+        context.record_metric(self.name, "risk_level", risk_score.level)
+
+        # Set per-transform hints in request metadata
+        request.metadata["_lattice_profile"] = profile.value
+        request.metadata["_lattice_strategy"] = strategy
+        request.metadata["_lattice_risk_score"] = risk_score.to_dict()
+
+        return Ok(request)
+
+    def reverse(self, response: Response, _context: TransformContext) -> Response:
+        """No-op."""
+        return response
+
+    # ------------------------------------------------------------------
+    # Classification
+    # ------------------------------------------------------------------
+
+    def _classify(self, request: Request) -> ContentProfile:
+        """Classify the request content type."""
+        total_tokens = request.token_estimate
+
+        if total_tokens < self.short_threshold_tokens:
+            return ContentProfile.SHORT
+
+        scores: dict[ContentProfile, float] = {
+            ContentProfile.CODE_HEAVY: 0.0,
+            ContentProfile.TABLE_HEAVY: 0.0,
+            ContentProfile.NARRATIVE_LONG: 0.0,
+            ContentProfile.TOOL_OUTPUT: 0.0,
+            ContentProfile.LOG_OUTPUT: 0.0,
+            ContentProfile.DIFF_OUTPUT: 0.0,
+            ContentProfile.STACK_TRACE: 0.0,
+            ContentProfile.GREP_OUTPUT: 0.0,
+            ContentProfile.FILE_TREE: 0.0,
+            ContentProfile.MCP_OUTPUT: 0.0,
+        }
+
+        all_text = "\n".join(m.content for m in request.messages)
+
+        # Code signals
+        code_blocks = len(re.findall(r"```[\w]*\n", all_text))
+        inline_code = len(re.findall(r"`[^`]+`", all_text))
+        scores[ContentProfile.CODE_HEAVY] += (
+            code_blocks * self.code_block_weight + inline_code * 0.5
+        )
+
+        # Table signals
+        json_arrays = len(re.findall(r"\[\s*\{", all_text))
+        md_tables = len(re.findall(r"^\s*\|.*\|\s*$", all_text, re.MULTILINE))
+        scores[ContentProfile.TABLE_HEAVY] += (
+            json_arrays * self.table_row_weight + md_tables * self.table_row_weight
+        )
+
+        # Narrative signals
+        non_code_text = re.sub(r"```.*?```", "", all_text, flags=re.DOTALL)
+        sentences = len(re.split(r"[.!?]+", non_code_text))
+        scores[ContentProfile.NARRATIVE_LONG] += (
+            sentences * self.narrative_length_weight
+        )
+
+        # Tool output signals
+        tool_msgs = sum(1 for m in request.messages if m.role in ("tool", "function"))
+        scores[ContentProfile.TOOL_OUTPUT] += tool_msgs * 5.0
+
+        # Log output signals: timestamped lines, severity levels
+        log_timestamps = len(re.findall(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}", all_text))
+        log_levels = len(re.findall(r"\b(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL)\b", all_text))
+        scores[ContentProfile.LOG_OUTPUT] += (log_timestamps * 2.0 + log_levels * 1.5)
+
+        # Diff output signals: unified diff headers, +/- lines, @@ hunks, diff --git
+        diff_headers = len(re.findall(r"^(---|\+\+\+) ", all_text, re.MULTILINE))
+        diff_lines = len(re.findall(r"^[\+\-]", all_text, re.MULTILINE))
+        diff_hunks = len(re.findall(r"^@@ [-+\d,\s]+ @@", all_text, re.MULTILINE))
+        diff_git = len(re.findall(r"^diff --git ", all_text, re.MULTILINE))
+        scores[ContentProfile.DIFF_OUTPUT] += (
+            diff_headers * 3.0 + diff_lines * 0.5 + diff_hunks * 2.0 + diff_git * 3.0
+        )
+
+        # Stack trace signals: exception patterns, file:line references, Java-style traces
+        trace_exceptions = len(re.findall(r"\b(Exception|Error|Traceback)\b", all_text))
+        trace_file_lines = len(re.findall(r"File \".+?\", line \d+", all_text))
+        trace_java_style = len(re.findall(r"\bat\s+\S+\s*\([^)]+:\d+\)", all_text))
+        scores[ContentProfile.STACK_TRACE] += (
+            trace_exceptions * 2.0 + trace_file_lines * 1.5 + trace_java_style * 1.5
+        )
+
+        # Grep output signals: filename:line:match or filename:line-column:match pattern
+        grep_matches = len(re.findall(r"^.+?:\d+?:.+$", all_text, re.MULTILINE))
+        grep_with_column = len(re.findall(r"^.+?:\d+:\d+:.+$", all_text, re.MULTILINE))
+        scores[ContentProfile.GREP_OUTPUT] += grep_matches * 1.0 + grep_with_column * 0.5
+
+        # File tree signals: directory indentation, tree branch characters, tree command output
+        tree_lines = len(re.findall(r"^[\s│├└├──]*[├└]── ", all_text, re.MULTILINE))
+        tree_cmd = len(re.findall(r"^[\s│]*\d+\s+directories,\s+\d+\s+files", all_text, re.MULTILINE))
+        tree_indent = len(re.findall(r"^\s+[^\s/]+(?:\.\w+)?/?$", all_text, re.MULTILINE))
+        scores[ContentProfile.FILE_TREE] += tree_lines * 1.5 + tree_cmd * 2.0 + tree_indent * 0.5
+
+        # MCP output signals: tool result structures with is_error, content, type, tool fields
+        mcp_results = len(re.findall(r'"is_error"\s*:\s*(true|false)', all_text))
+        mcp_fields = len(re.findall(r'"(content|type|tool)"\s*:\s*"', all_text))
+        scores[ContentProfile.MCP_OUTPUT] += mcp_results * 2.0 + mcp_fields * 0.5
+
+        # Normalize by total tokens to avoid bias toward long requests
+        if total_tokens > 0:
+            for profile in scores:
+                scores[profile] /= total_tokens / 100.0
+
+        # Determine dominant profile. If no profile clearly dominates,
+        # treat the request as mixed so downstream transforms stay conservative.
+        ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+        max_score = ranked[0][1]
+        second_score = ranked[1][1] if len(ranked) > 1 else 0.0
+        if max_score < 0.5 or (second_score > 0 and max_score < second_score * 1.35):
+            return ContentProfile.MIXED
+
+        dominant = ranked[0][0]
+        return dominant
+
+    # ------------------------------------------------------------------
+    # Risk scoring
+    # ------------------------------------------------------------------
+
+    def _compute_risk(self, request: Request) -> SemanticRiskScore:
+        """Compute semantic risk score for the request."""
+        return compute_risk_score(request)
+
+    # ------------------------------------------------------------------
+    # Strategy selection
+    # ------------------------------------------------------------------
+
+    def _select_strategy(self, profile: ContentProfile, _request: Request) -> dict[str, Any]:
+        """Select compression parameters based on profile."""
+        base: dict[str, Any] = {
+            "reference_sub": True,
+            "tool_filter": True,
+            "prefix_opt": True,
+            "output_cleanup": True,
+            "format_conversion": True,
+            "message_dedup": True,
+            "semantic_compress": False,
+            "structure_type": profile.value,
+        }
+
+        if profile == ContentProfile.SHORT:
+            return {**base, "reference_sub": False, "tool_filter": False,
+                    "format_conversion": False, "message_dedup": False}
+
+        if profile == ContentProfile.CODE_HEAVY:
+            return {**base, "semantic_compress": False,
+                    "format_conversion": False, "reference_sub": True}
+
+        if profile == ContentProfile.TABLE_HEAVY:
+            return {**base, "format_conversion": True, "semantic_compress": False}
+
+        if profile == ContentProfile.NARRATIVE_LONG:
+            return {**base, "semantic_compress": True, "compression_ratio": 0.6,
+                    "format_conversion": False}
+
+        if profile == ContentProfile.TOOL_OUTPUT:
+            return {**base, "tool_filter": True, "semantic_compress": False,
+                    "format_conversion": True}
+
+        if profile == ContentProfile.LOG_OUTPUT:
+            # Logs: dedup repeated lines, keep recent, no semantic compress
+            return {**base, "tool_filter": True, "semantic_compress": False,
+                    "format_conversion": False, "message_dedup": True,
+                    "reference_sub": True}
+
+        if profile == ContentProfile.DIFF_OUTPUT:
+            # Diffs: reference substitution for repeated paths, no cleanup
+            return {**base, "reference_sub": True, "output_cleanup": False,
+                    "semantic_compress": False, "format_conversion": False}
+
+        if profile == ContentProfile.STACK_TRACE:
+            # Stack traces: reference substitution for paths, keep structure
+            return {**base, "reference_sub": True, "output_cleanup": False,
+                    "semantic_compress": False, "format_conversion": False,
+                    "tool_filter": False}
+
+        if profile == ContentProfile.GREP_OUTPUT:
+            # Grep: format conversion if tabular, reference sub for paths
+            return {**base, "format_conversion": True, "reference_sub": True,
+                    "semantic_compress": False, "output_cleanup": False}
+
+        if profile == ContentProfile.FILE_TREE:
+            # File trees: heavy reference substitution, no cleanup
+            return {**base, "reference_sub": True, "output_cleanup": False,
+                    "semantic_compress": False, "format_conversion": False,
+                    "tool_filter": False}
+
+        if profile == ContentProfile.MCP_OUTPUT:
+            # MCP: schema-aware tool filter, preserve structure
+            return {**base, "tool_filter": True, "semantic_compress": False,
+                    "format_conversion": True, "output_cleanup": False}
+
+        # MIXED
+        return base

@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "lattice-proxy"
+    static_configs:
+      - targets: ["lattice-proxy:9090"]
