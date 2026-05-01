@@ -224,6 +224,35 @@ def _render_special_details(lines: list[str], details: dict[str, Any]) -> bool:
                 + " |"
             )
 
+        # PSG explainability — rollback reasons and safety decisions
+        lines.extend(
+            [
+                "",
+                "### PSG Safety Decisions",
+                "",
+                "| Scenario | Judge Verdict | Safety Rollbacks | Expansion Aborts | Scheduler Blocks |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for r in validation_results:
+            rollbacks = [f"{k}:{v}" for k, v in r.get("rollback_reasons", {}).items()]
+            expansions = [f"{k}:{v:.2f}x" for k, v in r.get("expansion_ratios", {}).items()]
+            schedule = r.get("schedule", {})
+            blocks = schedule.get("blocked", []) if isinstance(schedule, dict) else []
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        str(r.get("scenario", "")),
+                        r.get("judge_verdict", ""),
+                        "; ".join(rollbacks) if rollbacks else "none",
+                        "; ".join(expansions) if expansions else "none",
+                        ", ".join(blocks) if blocks else "none",
+                    ]
+                )
+                + " |"
+            )
+
         # Task equivalence breakdowns
         lines.extend(
             [

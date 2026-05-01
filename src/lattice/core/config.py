@@ -368,46 +368,43 @@ class LatticeConfig(BaseSettings):
         """
         mode = self.compression_mode
 
-        # Base flags — all modes get these
+        # Base flags — all modes get SAFE transforms
+        self.transform_content_profiler = True  # SIG metadata source — ALWAYS ON
+        self.transform_runtime_contract = True
         self.transform_reference_sub = True
         self.transform_tool_filter = True
         self.transform_prefix_opt = True
         self.transform_output_cleanup = True
         self.transform_format_conversion = True
         self.transform_message_dedup = True
+        self.transform_cache_arbitrage = True
 
         if mode == "safe":
-            self.transform_content_profiler = False
             self.transform_structural_fingerprint = False
             self.transform_self_information = False
             self.transform_hierarchical_summary = False
             self.transform_strategy_selector = False
             self.transform_context_selector = False
-            self.transform_cache_arbitrage = False
             self.transform_dictionary_compress = False
             self.transform_grammar_compress = False
             self.transform_semantic_compress = False
             self.rate_distortion_budget = 0.0
         elif mode == "balanced":
-            self.transform_content_profiler = True
             self.transform_structural_fingerprint = True
             self.transform_self_information = True
             self.transform_hierarchical_summary = False
             self.transform_strategy_selector = True
             self.transform_context_selector = False
-            self.transform_cache_arbitrage = True
-            self.transform_dictionary_compress = False
-            self.transform_grammar_compress = False
+            self.transform_dictionary_compress = True
+            self.transform_grammar_compress = True
             self.transform_semantic_compress = False
             self.rate_distortion_budget = 0.02
         elif mode == "aggressive":
-            self.transform_content_profiler = True
             self.transform_structural_fingerprint = True
             self.transform_self_information = True
             self.transform_hierarchical_summary = True
             self.transform_strategy_selector = True
             self.transform_context_selector = True
-            self.transform_cache_arbitrage = True
             self.transform_dictionary_compress = True
             self.transform_grammar_compress = True
             self.transform_semantic_compress = True

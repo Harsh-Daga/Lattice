@@ -9,6 +9,7 @@ and returns the modified Request or an error. It handles:
 """
 
 from __future__ import annotations
+from typing import Any
 
 import inspect
 import time
@@ -309,12 +310,27 @@ class CompressorPipeline:
                     )
                     context.record_metric(transform.name, "risk_blocked", True)
                     context.record_metric(transform.name, "risk_block_reason", reason)
-                    # Track in metrics for observability
                     blocked = context.metrics.setdefault("risk_blocked_transforms", [])
                     if isinstance(blocked, list):
                         blocked.append(transform.name)
                     continue
             # ---- End risk gate ----
+
+            # ---- Span-aware gating (SIG) ----
+            # Only gate when scheduler has explicitly built a schedule with
+            # allowed/blocked transforms. Empty/missing schedule = no gating.
+            schedule = working.metadata.get("_lattice_schedule")
+            if schedule and isinstance(schedule, dict):
+                blocked_names = schedule.get("blocked", [])
+                if blocked_names and transform.name in blocked_names:
+                    self._log.info(
+                        "transform_blocked_by_scheduler",
+                        request_id=context.request_id,
+                        transform=transform.name,
+                    )
+                    context.record_metric(transform.name, "scheduler_blocked", True)
+                    continue
+            # ---- End span-aware gating ----
 
             # Execute
             start = time.perf_counter()
@@ -445,7 +461,34 @@ class CompressorPipeline:
         final_tokens = working.token_estimate
         budget_skipped = context.metrics.get("runtime_budget_skipped", [])
         budget_skipped_count = len(budget_skipped) if isinstance(budget_skipped, list) else 0
+        risk_blocked = context.metrics.get("risk_blocked_transforms", [])
         runtime_budget_ms = self._runtime_budget_ms(working)
+
+        # ---- PSG explainability ----
+        safety_reasons: dict[str, Any] = {}
+        for t_name in dir(context.metrics.get("transforms", {})):
+            pass  # collected below
+        transforms_metrics = context.metrics.get("transforms", {})
+        if isinstance(transforms_metrics, dict):
+            for t_name, t_metrics in transforms_metrics.items():
+                if isinstance(t_metrics, dict):
+                    if t_metrics.get("safety_rollback"):
+                        safety_reasons[t_name] = t_metrics.get("rollback_reason", "unknown")
+                    if t_metrics.get("expansion_aborted"):
+                        safety_reasons[t_name] = f"expansion_{t_metrics.get('expansion_ratio', '?')}x"
+                    if t_metrics.get("risk_blocked"):
+                        safety_reasons[t_name] = t_metrics.get("risk_block_reason", "risk_gate")
+                    if t_metrics.get("scheduler_blocked"):
+                        safety_reasons[t_name] = "scheduler_blocked"
+
+        # Record PSG outcomes in metadata for reports
+        working.metadata["_lattice_safety_decision"] = {
+            "applied": list(context.transforms_applied),
+            "skipped": list(budget_skipped) if isinstance(budget_skipped, list) else [],
+            "risk_blocked": list(risk_blocked) if isinstance(risk_blocked, list) else [],
+            "rollback_reasons": safety_reasons,
+        }
+        # ---- End PSG explainability ----
         budget_exhausted = budget_skipped_count > 0
         working.metadata["_lattice_runtime_budget"] = {
             "exhausted": budget_exhausted,
