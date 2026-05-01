@@ -28,7 +28,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync
 
       - name: ruff check
         run: uv run ruff check src/
@@ -60,7 +60,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync
 
       - name: Run tests
         run: uv run pytest tests/ -q --tb=short

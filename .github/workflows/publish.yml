@@ -26,7 +26,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install build dependencies
-        run: uv sync --frozen
+        run: uv sync
 
       - name: Run tests
         run: uv run pytest tests/ -q --tb=short
