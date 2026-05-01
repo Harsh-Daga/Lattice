@@ -9,10 +9,10 @@ and returns the modified Request or an error. It handles:
 """
 
 from __future__ import annotations
-from typing import Any
 
 import inspect
 import time
+from typing import Any
 
 import structlog
 
