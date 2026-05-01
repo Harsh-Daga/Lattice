@@ -40,45 +40,95 @@ class TaskEquivalenceScore:
     """Per-scenario rubric scoring for task-equivalence evaluation.
 
     Each field is 0.0–1.0 where 1.0 = perfect equivalence.
+    Composite is task-aware: reasoning/debugging tasks weight correctness
+    and key facts higher; structured tasks weight schema and numerics higher.
     """
 
+    correctness: float = 1.0
+    completeness: float = 1.0
+    reasoning_equivalence: float = 1.0
+    key_fact_preservation: float = 1.0
+    numeric_preservation: float = 1.0
+    refusal_correctness: float | None = None
+    schema_validity: float = 1.0
+    harmful_drift: float = 0.0
+    failure_reasons: list[str] = dataclasses.field(default_factory=list)
+
+    # Legacy fields kept for backward compatibility
     constraint_preservation: float = 1.0
     entity_preservation: float = 1.0
     format_preservation: float = 1.0
     reasoning_correctness: float = 1.0
-    refusal_correctness: float = 1.0
     answer_completeness: float = 1.0
-    harmful_drift: float = 0.0  # 0.0 = no drift (good), 1.0 = severe drift (bad)
 
     @property
     def composite(self) -> float:
-        """Overall task-equivalence score (0–1)."""
-        scores = [
-            self.constraint_preservation,
-            self.entity_preservation,
-            self.format_preservation,
-            self.reasoning_correctness,
-            self.refusal_correctness,
-            self.answer_completeness,
+        """Task-agnostic composite (unweighted average of all active dims)."""
+        dims = [
+            self.correctness,
+            self.completeness,
+            self.reasoning_equivalence,
+            self.key_fact_preservation,
+            self.numeric_preservation,
+            self.schema_validity,
             1.0 - self.harmful_drift,
         ]
-        return round(sum(scores) / len(scores), 4)
+        if self.refusal_correctness is not None:
+            dims.append(self.refusal_correctness)
+        return round(sum(dims) / len(dims), 4)
+
+    def composite_for(self, task_class: str) -> float:
+        """Task-aware composite score using appropriate weights.
+
+        Reasoning/debugging: correctness and key facts dominate.
+        Structured/JSON: schema and numerics dominate.
+        Default: balanced weighting.
+        """
+        if task_class in ("reasoning", "debugging", "analysis"):
+            return round(
+                0.35 * self.correctness
+                + 0.25 * self.key_fact_preservation
+                + 0.15 * self.numeric_preservation
+                + 0.20 * self.reasoning_equivalence
+                + 0.05 * self.completeness,
+                4,
+            )
+        if task_class in ("structured", "json", "table"):
+            return round(
+                0.35 * self.schema_validity
+                + 0.30 * self.key_fact_preservation
+                + 0.20 * self.numeric_preservation
+                + 0.15 * self.completeness,
+                4,
+            )
+        return round(
+            0.45 * self.correctness
+            + 0.25 * self.completeness
+            + 0.20 * self.key_fact_preservation
+            + 0.10 * self.reasoning_equivalence,
+            4,
+        )
 
     @property
     def passed(self) -> bool:
         """Task equivalent if composite >= 0.85."""
         return self.composite >= 0.85
 
+    def passed_for(self, task_class: str) -> bool:
+        return self.composite_for(task_class) >= 0.85
+
     def to_dict(self) -> dict[str, float]:
         return {
-            "constraint_preservation": self.constraint_preservation,
-            "entity_preservation": self.entity_preservation,
-            "format_preservation": self.format_preservation,
-            "reasoning_correctness": self.reasoning_correctness,
+            "correctness": self.correctness,
+            "completeness": self.completeness,
+            "reasoning_equivalence": self.reasoning_equivalence,
+            "key_fact_preservation": self.key_fact_preservation,
+            "numeric_preservation": self.numeric_preservation,
             "refusal_correctness": self.refusal_correctness,
-            "answer_completeness": self.answer_completeness,
+            "schema_validity": self.schema_validity,
             "harmful_drift": self.harmful_drift,
             "composite": self.composite,
+            "failure_reasons": "; ".join(self.failure_reasons),
         }
 
 
@@ -197,12 +247,12 @@ class ScenarioResult:
         avg_task = None
         if task_scores:
             avg_task = TaskEquivalenceScore(
-                constraint_preservation=self._mean([t.constraint_preservation for t in task_scores]),
-                entity_preservation=self._mean([t.entity_preservation for t in task_scores]),
-                format_preservation=self._mean([t.format_preservation for t in task_scores]),
-                reasoning_correctness=self._mean([t.reasoning_correctness for t in task_scores]),
-                refusal_correctness=self._mean([t.refusal_correctness for t in task_scores]),
-                answer_completeness=self._mean([t.answer_completeness for t in task_scores]),
+                correctness=self._mean([t.correctness for t in task_scores]),
+                completeness=self._mean([t.completeness for t in task_scores]),
+                reasoning_equivalence=self._mean([t.reasoning_equivalence for t in task_scores]),
+                key_fact_preservation=self._mean([t.key_fact_preservation for t in task_scores]),
+                numeric_preservation=self._mean([t.numeric_preservation for t in task_scores]),
+                schema_validity=self._mean([t.schema_validity for t in task_scores]),
                 harmful_drift=self._mean([t.harmful_drift for t in task_scores]),
             )
         return QualityMeasurement(

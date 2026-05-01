@@ -34,9 +34,10 @@ class TestTaskEquivalenceScoring:
         te = evaluate_task_equivalence_structural("", "some output", [])
         assert te.composite == 0.0
         assert te.passed is False
-        assert te.constraint_preservation == 0.0
-        assert te.entity_preservation == 0.0
+        assert te.correctness == 0.0
+        assert te.key_fact_preservation == 0.0
         assert te.harmful_drift == 1.0
+        assert "blank_output" in te.failure_reasons
 
     def test_both_blank_outputs_fail(self) -> None:
         from benchmarks.evals.runner import evaluate_task_equivalence_structural
@@ -47,22 +48,22 @@ class TestTaskEquivalenceScoring:
 
     def test_partial_entity_loss_fails(self) -> None:
         te = TaskEquivalenceScore(
-            entity_preservation=0.5,
-            constraint_preservation=0.5,
-            format_preservation=0.5,
+            correctness=0.5,
+            key_fact_preservation=0.5,
+            completeness=0.5,
         )
         assert te.passed is False  # composite < 0.85
 
     def test_constraint_failure_scores_low(self) -> None:
-        te = TaskEquivalenceScore(constraint_preservation=0.4)
+        te = TaskEquivalenceScore(correctness=0.4)
         assert te.composite < 1.0
 
     def test_harmful_drift_penalizes(self) -> None:
         te = TaskEquivalenceScore(
-            harmful_drift=0.5, entity_preservation=0.7, constraint_preservation=0.7
+            harmful_drift=0.5, correctness=0.7, key_fact_preservation=0.7
         )
         assert te.composite < 0.85
-        assert te.passed is False  # drift + entity loss pulls composite below 0.85
+        assert te.passed is False
 
     def test_quality_measurement_uses_task_equivalence(self) -> None:
         te = TaskEquivalenceScore()
@@ -75,8 +76,9 @@ class TestTaskEquivalenceScoring:
 
     def test_quality_fails_when_task_equivalence_fails(self) -> None:
         te = TaskEquivalenceScore(
-            harmful_drift=0.9,
-            constraint_preservation=0.3,
+            correctness=0.3,
+            key_fact_preservation=0.3,
+            completeness=0.3,
         )
         qm = QualityMeasurement(semantic_similarity=0.9, task_equivalence=te)
         assert qm.passed is False  # task_equivalence is source of truth
@@ -365,14 +367,14 @@ class TestReportAvgQualityScore:
 
         te_pass = TaskEquivalenceScore()  # composite = 1.0
         te_fail = TaskEquivalenceScore(
-            constraint_preservation=0.3,
-            entity_preservation=0.3,
-            format_preservation=0.3,
-            reasoning_correctness=0.3,
-            refusal_correctness=0.3,
-            answer_completeness=0.3,
+            correctness=0.3,
+            completeness=0.3,
+            key_fact_preservation=0.3,
+            reasoning_equivalence=0.3,
+            numeric_preservation=0.3,
+            schema_validity=0.3,
             harmful_drift=0.3,
-        )  # composite = (0.3*6 + 0.7)/7 ≈ 0.357
+        )  # composite < 0.85
 
         report = BenchmarkReport(
             runner_name="test",

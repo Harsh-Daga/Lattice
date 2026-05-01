@@ -1100,22 +1100,24 @@ def write_production_eval_outputs(
 # Task-equivalence evaluation (model-in-the-loop)
 # =============================================================================
 
-_JUDGE_SYSTEM_PROMPT = """You are an output quality judge for an LLM compression pipeline.
-Your job: compare two answers to the SAME task and decide if they are semantically equivalent.
+_JUDGE_SYSTEM_PROMPT = """You are evaluating whether two assistant outputs are task-equivalent.
 
-The BASELINE answer came from the model processing the original full prompt.
-The OPTIMIZED answer came from the same model processing a compressed version.
+Compare the BASELINE output and OPTIMIZED output.
 
-For each dimension, score from 0.0 (completely different) to 1.0 (identical):
-- constraint_preservation: Did the optimized answer follow the same constraints/rules?
-- entity_preservation: Were all named entities (names, IDs, URLs, UUIDs) preserved?
-- format_preservation: Did formatting (JSON, tables, code blocks) stay equivalent?
-- reasoning_correctness: Did the reasoning/steps/facts match between answers?
-- refusal_correctness: If baseline refused, did optimized also refuse? If baseline didn't, did optimized NOT refuse?
-- answer_completeness: Is the optimized answer as complete as baseline?
-- harmful_drift: Does the optimized answer contain placeholder artifacts (<ref_N>, <crossref_N>) that the baseline doesn't? 0.0=none, 1.0=severe.
+Score each dimension from 0.0 (completely different) to 1.0 (identical):
 
-Return ONLY a JSON object with these 7 float fields. No explanation, no markdown, just JSON."""
+1. correctness: Does optimized reach the same correct answer?
+2. completeness: Does it include all essential information?
+3. key_fact_preservation: Are root causes, counts, IDs, dates, categories preserved?
+4. reasoning_equivalence: Does it use equivalent reasoning steps?
+5. numeric_preservation: Are numbers/counts/statistics preserved exactly?
+6. refusal_correctness: If either output refuses, is refusal behavior equivalent?
+   (Use -1 if neither output refuses — indicates N/A)
+7. schema_validity: If JSON/structured output, is schema preserved? (1.0 if N/A)
+8. harmful_drift: Placeholder artifacts (<ref_N>, <crossref_N>)? 0.0=none, 1.0=severe.
+
+Do not reward verbosity. Do not punish concise answers if all key facts are preserved.
+Return ONLY a JSON object with these float fields. No explanation, no markdown."""
 
 
 def _build_judge_prompt(
@@ -1142,22 +1144,35 @@ def _build_judge_prompt(
 def _parse_judge_response(raw: str) -> TaskEquivalenceScore | None:
     """Parse the judge LLM's JSON response into a TaskEquivalenceScore."""
     try:
-        # Find JSON in the response (may have surrounding text)
         import json as _json
         start = raw.find("{")
         end = raw.rfind("}") + 1
         if start == -1 or end <= start:
             return None
         data = _json.loads(raw[start:end])
-        return TaskEquivalenceScore(
-            constraint_preservation=float(data.get("constraint_preservation", 1.0)),
-            entity_preservation=float(data.get("entity_preservation", 1.0)),
-            format_preservation=float(data.get("format_preservation", 1.0)),
-            reasoning_correctness=float(data.get("reasoning_correctness", 1.0)),
-            refusal_correctness=float(data.get("refusal_correctness", 1.0)),
-            answer_completeness=float(data.get("answer_completeness", 1.0)),
+        te = TaskEquivalenceScore(
+            correctness=float(data.get("correctness", 0.0)),
+            completeness=float(data.get("completeness", 0.0)),
+            reasoning_equivalence=float(data.get("reasoning_equivalence", 0.0)),
+            key_fact_preservation=float(data.get("key_fact_preservation", 0.0)),
+            numeric_preservation=float(data.get("numeric_preservation", 1.0)),
+            schema_validity=float(data.get("schema_validity", 1.0)),
             harmful_drift=float(data.get("harmful_drift", 0.0)),
         )
+        refusal = data.get("refusal_correctness")
+        if refusal is not None and refusal >= 0:
+            te.refusal_correctness = float(refusal)
+        else:
+            te.refusal_correctness = None
+        # Legacy fields for backward compat
+        te.constraint_preservation = te.correctness
+        te.entity_preservation = te.key_fact_preservation
+        te.format_preservation = te.schema_validity
+        te.reasoning_correctness = te.reasoning_equivalence
+        te.answer_completeness = te.completeness
+        return te
+    except (ValueError, KeyError, _json.JSONDecodeError):
+        return None
     except (ValueError, KeyError, _json.JSONDecodeError):
         return None
 
@@ -1168,27 +1183,26 @@ def evaluate_task_equivalence_structural(
     required_properties: list[str],
 ) -> TaskEquivalenceScore:
     """Structural (regex-based) fallback for when a judge LLM is unavailable."""
-    score = TaskEquivalenceScore()
-
     if not baseline_output.strip() or not optimized_output.strip():
-        # Blank or failed outputs: automatic fail on all dimensions.
         return TaskEquivalenceScore(
-            constraint_preservation=0.0,
-            entity_preservation=0.0,
-            format_preservation=0.0,
-            reasoning_correctness=0.0,
-            refusal_correctness=0.0,
-            answer_completeness=0.0,
+            correctness=0.0,
+            completeness=0.0,
+            reasoning_equivalence=0.0,
+            key_fact_preservation=0.0,
+            numeric_preservation=0.0,
+            schema_validity=0.0,
             harmful_drift=1.0,
+            failure_reasons=["blank_output"],
         )
 
+    score = TaskEquivalenceScore()
     baseline_len = len(baseline_output.strip())
     optimized_len = len(optimized_output.strip())
     if baseline_len > 0:
         ratio = min(baseline_len, optimized_len) / max(baseline_len, optimized_len)
-        score.constraint_preservation = round(ratio, 4)
+        score.correctness = round(ratio, 4)
     else:
-        score.constraint_preservation = 0.5
+        score.correctness = 0.5
 
     ent_pattern = re.compile(
         r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|"
@@ -1200,39 +1214,45 @@ def evaluate_task_equivalence_structural(
     optimized_entities = set(ent_pattern.findall(optimized_output))
     if baseline_entities:
         overlap = len(baseline_entities & optimized_entities)
-        score.entity_preservation = round(overlap / len(baseline_entities), 4)
+        score.key_fact_preservation = round(overlap / len(baseline_entities), 4)
     else:
-        score.entity_preservation = 1.0
+        score.key_fact_preservation = 1.0
 
     baseline_has_json = baseline_output.strip().startswith("{") or baseline_output.strip().startswith("[")
     optimized_has_json = optimized_output.strip().startswith("{") or optimized_output.strip().startswith("[")
     if baseline_has_json != optimized_has_json:
-        score.format_preservation = 0.5
+        score.schema_validity = 0.5
     baseline_has_table = "|" in baseline_output
     optimized_has_table = "|" in optimized_output
     if baseline_has_table != optimized_has_table:
-        score.format_preservation = min(score.format_preservation, 0.7)
+        score.schema_validity = min(score.schema_validity, 0.7)
 
     if "?" in baseline_output and "?" in optimized_output:
-        score.reasoning_correctness = 0.9
+        score.reasoning_equivalence = 0.9
 
     refusal_patterns = [r"\bcan'?t\b", r"\bunable\b", r"\bnot available\b", r"\bdenied\b"]
     baseline_refuses = any(re.search(p, baseline_output, re.IGNORECASE) for p in refusal_patterns)
     optimized_refuses = any(re.search(p, optimized_output, re.IGNORECASE) for p in refusal_patterns)
-    if baseline_refuses == optimized_refuses:
-        score.refusal_correctness = 1.0
+    score.refusal_correctness = 1.0 if baseline_refuses == optimized_refuses else None
 
     if required_properties:
         found = sum(
             1 for prop in required_properties
             if any(word.lower() in optimized_output.lower() for word in prop.split())
         )
-        score.answer_completeness = round(found / len(required_properties), 4) if required_properties else 1.0
+        score.completeness = round(found / len(required_properties), 4) if required_properties else 1.0
 
     if re.search(r"<ref_\d+>", optimized_output):
         score.harmful_drift = max(score.harmful_drift, 0.3)
     if re.search(r"<crossref_\d+>", optimized_output):
         score.harmful_drift = max(score.harmful_drift, 0.2)
+
+    # Populate legacy fields for backward compat
+    score.constraint_preservation = score.correctness
+    score.entity_preservation = score.key_fact_preservation
+    score.format_preservation = score.schema_validity
+    score.reasoning_correctness = score.reasoning_equivalence
+    score.answer_completeness = score.completeness
 
     return score
 

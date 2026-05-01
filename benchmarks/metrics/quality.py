@@ -211,12 +211,12 @@ def evaluate_response(
         # Task-equivalence is the source of truth; compute a basic composite
         # from the available checks. Full rubric comes from provider validation.
         task_equivalence=TaskEquivalenceScore(
-            constraint_preservation=round(semantic, 4),
-            entity_preservation=1.0 if exact else round(semantic, 4),
-            format_preservation=1.0 if json_valid is not False else 0.5,
-            reasoning_correctness=round(semantic, 4),
-            refusal_correctness=1.0,
-            answer_completeness=round(semantic, 4),
+            correctness=round(semantic, 4),
+            completeness=round(semantic, 4),
+            reasoning_equivalence=round(semantic, 4),
+            key_fact_preservation=1.0 if exact else round(semantic, 4),
+            numeric_preservation=round(semantic, 4),
+            schema_validity=1.0 if json_valid is not False else 0.5,
             harmful_drift=0.0,
         ),
     )
