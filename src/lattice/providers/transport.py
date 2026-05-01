@@ -886,7 +886,7 @@ class DirectHTTPProvider:
             return [{"choices": [], "done": True}]
         try:
             data: dict[str, Any] = __import__("json").loads(payload)
-        except (json.JSONDecodeError, ValueError, TypeError):
+        except Exception:
             return []
         result = state.process(data)
         out: list[dict[str, Any]] = list(result.chunks)
@@ -1493,7 +1493,7 @@ class DirectHTTPProvider:
             return {"choices": [], "done": True}
         try:
             data: dict[str, Any] = __import__("json").loads(payload)
-        except (json.JSONDecodeError, ValueError, TypeError):
+        except Exception:
             return None
         return adapter.normalize_sse_chunk(data)
 

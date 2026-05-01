@@ -89,6 +89,8 @@ def _ensure_handlers() -> dict[str, tuple[_ProviderScopeApplier, _ProviderScopeR
     try:
         from lattice.integrations.claude.install import (
             apply_provider_scope as _apply_claude,
+        )
+        from lattice.integrations.claude.install import (
             revert_provider_scope as _revert_claude,
         )
 
@@ -99,6 +101,8 @@ def _ensure_handlers() -> dict[str, tuple[_ProviderScopeApplier, _ProviderScopeR
     try:
         from lattice.integrations.codex.install import (
             apply_provider_scope as _apply_codex,
+        )
+        from lattice.integrations.codex.install import (
             revert_provider_scope as _revert_codex,
         )
 
@@ -109,6 +113,8 @@ def _ensure_handlers() -> dict[str, tuple[_ProviderScopeApplier, _ProviderScopeR
     try:
         from lattice.integrations.opencode.install import (
             apply_provider_scope as _apply_opencode,
+        )
+        from lattice.integrations.opencode.install import (
             revert_provider_scope as _revert_opencode,
         )
 
@@ -119,6 +125,8 @@ def _ensure_handlers() -> dict[str, tuple[_ProviderScopeApplier, _ProviderScopeR
     try:
         from lattice.integrations.cursor.install import (
             apply_provider_scope as _apply_cursor,
+        )
+        from lattice.integrations.cursor.install import (
             revert_provider_scope as _revert_cursor,
         )
 
@@ -129,6 +137,8 @@ def _ensure_handlers() -> dict[str, tuple[_ProviderScopeApplier, _ProviderScopeR
     try:
         from lattice.integrations.copilot.install import (
             apply_provider_scope as _apply_copilot,
+        )
+        from lattice.integrations.copilot.install import (
             revert_provider_scope as _revert_copilot,
         )
 

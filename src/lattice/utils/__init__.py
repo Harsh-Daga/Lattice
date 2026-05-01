@@ -5,6 +5,7 @@ from lattice.utils.streaming_sketches import (
     CountMinSketch,
     HyperLogLog,
 )
+from lattice.utils.token_count import TokenCounter
 from lattice.utils.validation import (
     SafetyProfile,
     has_code_blocks,
@@ -13,7 +14,6 @@ from lattice.utils.validation import (
     request_safety_profile,
     structure_signature,
 )
-from lattice.utils.token_count import TokenCounter
 
 __all__ = [
     "TokenCounter",

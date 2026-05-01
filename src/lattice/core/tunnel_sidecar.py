@@ -41,8 +41,6 @@ import contextlib
 import json
 import os
 import pathlib
-import signal
-import socket
 import tempfile
 import time
 import uuid
@@ -54,7 +52,7 @@ import httpx
 import structlog
 
 from lattice.core.config import LatticeConfig
-from lattice.protocol.framing import BinaryFramer, Frame, FrameType
+from lattice.protocol.framing import BinaryFramer
 
 logger = structlog.get_logger()
 

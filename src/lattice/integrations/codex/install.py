@@ -10,8 +10,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from lattice.core.config import LatticeConfig
-
 _CODEX_MARKER_START = "# --- LATTICE persistent provider ---"
 _CODEX_MARKER_END = "# --- end LATTICE persistent provider ---"
 _CODEX_PATTERN = re.compile(

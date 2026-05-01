@@ -16,18 +16,14 @@ Usage::
 from __future__ import annotations
 
 import shutil
-import sys
-from pathlib import Path
 from typing import Any
 
 import structlog
 
-from lattice.core.config import LatticeConfig
 from lattice.integrations.mutation_store import get_mutation, remove_mutation, store_mutation
 from lattice.integrations.registry import (
     apply_provider_scope,
     build_install_target_envs,
-    list_supported_agents,
     revert_provider_scope,
 )
 
@@ -137,7 +133,7 @@ def run_init(
     results: dict[str, dict[str, Any]] = {}
     mutations: list[dict[str, Any]] = []
 
-    envs = build_install_target_envs(port=port, targets=targets)
+    _envs = build_install_target_envs(port=port, targets=targets)
     for target in targets:
         logger.debug("init_target", target=target, port=port)
         if target == "claude":

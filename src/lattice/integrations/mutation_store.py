@@ -23,7 +23,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 _MUTATIONS_PATH = Path.home() / ".lattice" / "mutations.json"
 
 

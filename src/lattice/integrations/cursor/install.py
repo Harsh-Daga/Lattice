@@ -5,8 +5,6 @@ Cursor is GUI-based — we print setup instructions rather than mutating files.
 
 from __future__ import annotations
 
-from lattice.integrations.cursor.runtime import render_setup_lines
-
 
 def build_install_env(*, port: int, backend: str) -> dict[str, str]:
     """Build the persistent install environment for Cursor."""

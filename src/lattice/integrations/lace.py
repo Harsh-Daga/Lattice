@@ -21,7 +21,6 @@ import os
 import shutil
 import socket
 import subprocess
-import sys
 import time
 from typing import Any
 
@@ -30,7 +29,7 @@ import structlog
 from lattice.core.config import LatticeConfig
 from lattice.core.tunnel_sidecar import SidecarThread, TunnelSidecar
 from lattice.integrations.mutation_store import get_mutation
-from lattice.integrations.registry import build_launch_env, list_supported_agents
+from lattice.integrations.registry import build_launch_env
 from lattice.proxy.lifecycle import PIDManager
 
 logger = structlog.get_logger()

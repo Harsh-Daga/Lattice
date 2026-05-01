@@ -333,7 +333,7 @@ class _DynamicTable:
         }
 
     @classmethod
-    def from_snapshot(cls, data: dict[str, Any]) -> "_DynamicTable":
+    def from_snapshot(cls, data: dict[str, Any]) -> _DynamicTable:
         """Restore a dynamic table from a snapshot."""
         inst = cls(max_entries=data.get("max_entries", 1024))
         inst.next_index = data.get("next_index", STATIC_COUNT)
@@ -500,7 +500,7 @@ class DictionaryCodec:
         }
 
     @classmethod
-    def from_snapshot(cls, data: dict[str, Any]) -> "DictionaryCodec":
+    def from_snapshot(cls, data: dict[str, Any]) -> DictionaryCodec:
         """Restore a codec from a snapshot.
 
         Args:

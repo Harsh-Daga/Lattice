@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from lattice.core.config import LatticeConfig
-
 _CLAUDE_MARKER_START = "# --- LATTICE init provider ---"
 _CLAUDE_MARKER_END = "# --- end LATTICE init provider ---"
 
