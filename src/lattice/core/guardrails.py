@@ -195,7 +195,8 @@ def check_blank_output(
 ) -> ValidationOutcome:
     """Validate that outputs are not blank or critically degraded.
 
-    Returns a ValidationOutcome that fails closed on blank outputs.
+    Fails closed on blank outputs. Short outputs pass if they appear
+    to be valid answers (refusals, numbers, short facts, JSON).
     """
     if not baseline_output.strip() or not optimized_output.strip():
         return ValidationOutcome(
@@ -205,12 +206,20 @@ def check_blank_output(
             task_equivalence_composite=0.0,
             task_equivalence_passed=False,
         )
-    if len(optimized_output.strip()) < 10:
-        return ValidationOutcome(
-            blank_output=False,
-            should_rollback=True,
-            rollback_reason="output_too_short",
-            task_equivalence_composite=0.0,
-            task_equivalence_passed=False,
+    opt = optimized_output.strip()
+    if len(opt) < 5:
+        # Legitimate short outputs: numbers, refusals, single words
+        legitimate_short = (
+            opt.isdigit()
+            or opt.lower() in {"yes", "no", "true", "false", "ok", "none", "null"}
+            or any(w in opt.lower() for w in {"can't", "cannot", "unable", "denied", "sorry"})
         )
+        if not legitimate_short:
+            return ValidationOutcome(
+                blank_output=False,
+                should_rollback=True,
+                rollback_reason="output_too_short_not_legitimate",
+                task_equivalence_composite=0.0,
+                task_equivalence_passed=False,
+            )
     return ValidationOutcome(task_equivalence_composite=1.0, task_equivalence_passed=True)

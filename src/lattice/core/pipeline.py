@@ -284,61 +284,74 @@ class CompressorPipeline:
                 continue
 
             # ---- Semantic risk gate ----
-            # Active only when SIG metadata exists (profiler ran successfully).
-            # When no risk metadata and no protected spans: bypass gating
-            # (profiler disabled or test mode — no safety decisions needed).
-            risk_data = working.metadata.get("_lattice_risk_score")
-            has_sig = bool(working.metadata.get("_lattice_protected_spans"))
+            # Only gate when content_profiler is registered in this pipeline.
+            # If registered but no risk data: conservative fallback (SAFE only).
+            # If not registered: no gating (user chose to run without it).
+            from lattice.utils.validation import (
+                SemanticRiskScore,
+                TransformSafetyBucket,
+                get_transform_safety_bucket,
+                transform_allowed_at_risk,
+            )
 
-            if risk_data and isinstance(risk_data, dict):
-                from lattice.utils.validation import (
-                    SemanticRiskScore,
-                    transform_allowed_at_risk,
-                )
+            profiler_present = any(t.name == "content_profiler" for t in self.transforms)
+            if profiler_present:
+                risk_data = working.metadata.get("_lattice_risk_score")
 
-                risk = SemanticRiskScore(
-                    strict_instructions=float(risk_data.get("strict_instructions", 0)),
-                    sensitive_domain=float(risk_data.get("sensitive_domain", 0)),
-                    structured_output=float(risk_data.get("structured_output", 0)),
-                    high_stakes_entities=float(risk_data.get("high_stakes_entities", 0)),
-                    reasoning_heavy=float(risk_data.get("reasoning_heavy", 0)),
-                    intentional_repetition=float(risk_data.get("intentional_repetition", 0)),
-                    tool_call_dependency=float(risk_data.get("tool_call_dependency", 0)),
-                    formatting_constraints=float(risk_data.get("formatting_constraints", 0)),
-                )
-                allowed, reason = transform_allowed_at_risk(transform.name, risk)
-            elif has_sig:
-                # SIG ran but risk metadata missing — conservative: only SAFE allowed
-                from lattice.utils.validation import (
-                    TransformSafetyBucket,
-                    get_transform_safety_bucket,
-                )
-
-                bucket = get_transform_safety_bucket(transform.name)
-                if bucket == TransformSafetyBucket.SAFE:
-                    allowed, reason = True, "safe_transform_no_risk_data"
+                if risk_data and isinstance(risk_data, dict):
+                    risk = SemanticRiskScore(
+                        strict_instructions=float(risk_data.get("strict_instructions", 0)),
+                        sensitive_domain=float(risk_data.get("sensitive_domain", 0)),
+                        structured_output=float(risk_data.get("structured_output", 0)),
+                        high_stakes_entities=float(risk_data.get("high_stakes_entities", 0)),
+                        reasoning_heavy=float(risk_data.get("reasoning_heavy", 0)),
+                        intentional_repetition=float(risk_data.get("intentional_repetition", 0)),
+                        tool_call_dependency=float(risk_data.get("tool_call_dependency", 0)),
+                        formatting_constraints=float(risk_data.get("formatting_constraints", 0)),
+                    )
+                    allowed, reason = transform_allowed_at_risk(transform.name, risk)
                 else:
-                    allowed, reason = False, "no_risk_data_conservative_fallback"
-            else:
-                # No SIG metadata — bypass gating entirely
-                allowed, reason = True, "no_sig_bypass"
+                    # Profiler registered but no risk data — only SAFE transforms
+                    bucket = get_transform_safety_bucket(transform.name)
+                    allowed = bucket == TransformSafetyBucket.SAFE
+                    reason = "safe_transform" if allowed else "profiler_failed_no_risk_data"
 
-            if not allowed:
-                risk_level = risk.level if risk_data and isinstance(risk_data, dict) else "unknown"
-                self._log.warning(
-                    "transform_blocked_by_risk_gate",
-                    request_id=context.request_id,
-                    transform=transform.name,
-                    risk_level=risk_level,
-                    reason=reason,
-                )
-                context.record_metric(transform.name, "risk_blocked", True)
-                context.record_metric(transform.name, "risk_block_reason", reason)
-                blocked = context.metrics.setdefault("risk_blocked_transforms", [])
-                if isinstance(blocked, list):
-                    blocked.append(transform.name)
-                continue
+                if not allowed:
+                    self._log.warning(
+                        "transform_blocked_by_risk_gate",
+                        request_id=context.request_id,
+                        transform=transform.name,
+                        risk_level=risk.level
+                        if risk_data and isinstance(risk_data, dict)
+                        else "unknown",
+                        reason=reason,
+                    )
+                    context.record_metric(transform.name, "risk_blocked", True)
+                    context.record_metric(transform.name, "risk_block_reason", reason)
+                    blocked = context.metrics.setdefault("risk_blocked_transforms", [])
+                    if isinstance(blocked, list):
+                        blocked.append(transform.name)
+                    continue
             # ---- End risk gate ----
+
+            # ---- Protected-span pre-execution veto ----
+            # DANGEROUS transforms must not touch protected spans at all.
+            # CONDITIONAL transforms are gated by the risk gate + scheduler;
+            # they do not need an additional blanket veto.
+            bucket_at_veto = get_transform_safety_bucket(transform.name)
+            if bucket_at_veto == TransformSafetyBucket.DANGEROUS:
+                protected = working.metadata.get("_lattice_protected_spans", [])
+                if protected:
+                    self._log.info(
+                        "transform_vetoed_by_protected_spans",
+                        request_id=context.request_id,
+                        transform=transform.name,
+                        bucket=bucket_at_veto.value,
+                        protected_count=len(protected),
+                    )
+                    context.record_metric(transform.name, "spans_vetoed", True)
+                    continue
+            # ---- End protected-span veto ----
 
             # ---- Span-aware gating (SIG) ----
             # Only gate when scheduler has explicitly built a schedule with

@@ -486,7 +486,9 @@ def _render_markdown(report: BenchmarkReport) -> str:
     ]
     for scenario in payload["scenarios"]:
         tokens = scenario["tokens"]["savings"]
-        quality = scenario["quality"]["semantic_similarity"]
+        # Task-equivalence is the source of truth; semantic similarity is legacy
+        te = scenario["quality"].get("task_equivalence", {})
+        quality = te.get("composite", scenario["quality"]["semantic_similarity"])
         lines.append(
             f"| {scenario['scenario']} | {scenario['category']} | "
             f"{tokens['before']} | {tokens['after']} | {tokens['saved']} | "
