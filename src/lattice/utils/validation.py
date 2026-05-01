@@ -310,9 +310,10 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "hierarchical_summarizer": TransformSafetyBucket.DANGEROUS,  # alias
 }
 
-# Unknown transforms default to CONDITIONAL — they must prove safety, not
-# assume it.  This prevents alias-based bypass of the classification.
-_UNKNOWN_DEFAULT = TransformSafetyBucket.CONDITIONAL
+# Unknown transforms default to UNKNOWN — they must be explicitly registered
+# to prove safety. This prevents alias-based bypass and ensures every
+# transform name appears in the safety map before it can run.
+_UNKNOWN_DEFAULT = TransformSafetyBucket.DANGEROUS
 
 
 def get_transform_safety_bucket(name: str) -> TransformSafetyBucket:

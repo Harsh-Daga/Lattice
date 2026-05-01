@@ -335,9 +335,10 @@ class CompressorPipeline:
             # ---- End risk gate ----
 
             # ---- Protected-span pre-execution veto ----
-            # DANGEROUS transforms must not touch protected spans at all.
-            # CONDITIONAL transforms are gated by the risk gate + scheduler;
-            # they do not need an additional blanket veto.
+            # DANGEROUS transforms are vetoed when protected spans exist.
+            # CONDITIONAL transforms are handled by the risk gate + scheduler;
+            # a universal veto on CONDITIONAL requires more precise SIG span
+            # protection (future: per-transform span-safety declarations).
             bucket_at_veto = get_transform_safety_bucket(transform.name)
             if bucket_at_veto == TransformSafetyBucket.DANGEROUS:
                 protected = working.metadata.get("_lattice_protected_spans", [])

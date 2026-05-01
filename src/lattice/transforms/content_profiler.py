@@ -681,7 +681,7 @@ def _derive_protected(spans: list[SemanticSpan], threshold: float = 40.0) -> Non
         # a higher bar to protect as boilerplate, not signal
         effective_threshold = threshold
         if span.structure_type in ("code", "json", "table") and span.entity_density > 0.5:
-            effective_threshold = max(threshold, 60.0)
+            effective_threshold = max(threshold, 80.0)
 
         span.protected = (
             span.importance >= effective_threshold

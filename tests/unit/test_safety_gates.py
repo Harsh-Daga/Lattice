@@ -166,10 +166,10 @@ class TestTransformSafetyBuckets:
         for name in ("structural_fingerprint", "hierarchical_summary"):
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.DANGEROUS, name
 
-    def test_unknown_transform_defaults_to_conditional(self) -> None:
+    def test_unknown_transform_defaults_to_dangerous(self) -> None:
         assert (
             get_transform_safety_bucket("nonexistent_transform")
-            == TransformSafetyBucket.CONDITIONAL
+            == TransformSafetyBucket.DANGEROUS
         )
 
     def test_alias_prefix_opt_maps_to_safe(self) -> None:
