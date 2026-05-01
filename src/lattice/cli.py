@@ -38,51 +38,51 @@ def _get_pid_mgr() -> Any:
     """Lazy-load PIDManager."""
     from lattice.proxy.lifecycle import PIDManager
 
-    return _get_pid_mgr()
+    return PIDManager()
 
 
 def _start_background(host: str, port: int, workers: Any) -> int:
     """Lazy-load start_background_server."""
     from lattice.proxy.lifecycle import start_background_server
 
-    return _start_background(host=host, port=port, workers=workers)
+    return start_background_server(host=host, port=port, workers=workers)
 
 
 def _list_agents() -> list[str]:
     """Lazy-load agent registry."""
     from lattice.integrations.registry import list_supported_agents
 
-    return _list_agents()
+    return list_supported_agents()
 
 
-def __detect_init_targets(global_scope: bool = True) -> list[str]:
-    from lattice.integrations.init import detect_init_targets
+def _detect_init_targets(global_scope: bool = True) -> list[str]:
+    from lattice.integrations.init import detect_init_targets as _fn
 
-    return _detect_init_targets(global_scope=global_scope)
-
-
-def __run_init(targets: list[str], port: int, global_scope: bool) -> dict[str, Any]:
-    from lattice.integrations.init import run_init
-
-    return _run_init(targets, port=port, global_scope=global_scope)
+    return _fn(global_scope=global_scope)
 
 
-def __lace_agent(**kwargs: Any) -> int:
-    from lattice.integrations.lace import lace_agent
+def _run_init(targets: list[str], port: int, global_scope: bool) -> dict[str, Any]:
+    from lattice.integrations.init import run_init as _fn
 
-    return _lace_agent(**kwargs)
-
-
-def _un_lace_agent(agent: str) -> dict[str, Any]:
-    from lattice.integrations.lace import unlace_agent
-
-    return un_lace_agent(agent)
+    return _fn(targets, port=port, global_scope=global_scope)
 
 
-def __list_mutated_agents() -> list[str]:
-    from lattice.integrations.mutation_store import list_mutated_agents
+def _lace_agent(**kwargs: Any) -> int:
+    from lattice.integrations.lace import lace_agent as _fn
 
-    return _list_mutated_agents()
+    return _fn(**kwargs)
+
+
+def _unlace_agent(agent: str) -> dict[str, Any]:
+    from lattice.integrations.lace import unlace_agent as _fn
+
+    return _fn(agent)
+
+
+def _list_mutated_agents() -> list[str]:
+    from lattice.integrations.mutation_store import list_mutated_agents as _fn
+
+    return _fn()
 
 
 def _print_banner() -> None:
@@ -709,7 +709,7 @@ def _cmd_unlace(args: list[str]) -> None:
         console.print(f"[dim]Supported agents: {', '.join(valid_agents)}[/dim]")
         sys.exit(1)
 
-    result = un_lace_agent(agent)
+    result = _unlace_agent(agent)
     if result.get("success"):
         console.print(f"[green]{result.get('message', f'{agent} unlaced successfully')}[/green]")
     else:
@@ -912,7 +912,7 @@ def _cmd_agent_status(args: list[str]) -> None:
     table.add_row("Mode", "[green]✓[/green]", config.compression_mode)
 
     # Mutated agents (durable init)
-    
+
 
     mutated = _list_mutated_agents()
     if mutated:
