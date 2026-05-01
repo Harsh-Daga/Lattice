@@ -10,7 +10,7 @@ LATTICE classifies every transform into a safety bucket and computes a 0-100 sem
 | **CONDITIONAL** | Lossy but recoverable. Runs at LOW or MEDIUM risk. Blocked at HIGH+. |
 | **DANGEROUS** | Can replace meaning-bearing content with placeholders. Only runs at LOW risk. |
 
-Unknown transforms default to CONDITIONAL — they must prove safety.
+Unknown transforms default to DANGEROUS — they must be explicitly registered in the safety map to prove safety.
 
 ## Semantic Risk Score
 

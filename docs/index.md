@@ -17,6 +17,7 @@
 | [SDK](concepts/sdk.md) | LatticeClient API |
 | [Observability](concepts/observability.md) | /stats, /metrics, headers, telemetry |
 | [Safety](concepts/safety.md) | Risk scoring, transform buckets, gating |
+| [SIG · RATS · PSG · MILV](concepts/sig-rats-psg-milv.md) | The safety architecture — four cooperating subsystems |
 
 ## Novel Transport Technology
 
