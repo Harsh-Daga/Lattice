@@ -420,7 +420,9 @@ class CompressorPipeline:
                         max_ratio=max_ratio,
                     )
                     context.record_metric(transform.name, "expansion_aborted", True)
-                    context.record_metric(transform.name, "expansion_ratio", round(expansion_ratio, 2))
+                    context.record_metric(
+                        transform.name, "expansion_ratio", round(expansion_ratio, 2)
+                    )
                     working = backup.copy()
                     continue
             # ---- End expansion guardrail ----
@@ -448,7 +450,9 @@ class CompressorPipeline:
                             reason=entity_decision.reason,
                         )
                         context.record_metric(transform.name, "safety_rollback", True)
-                        context.record_metric(transform.name, "rollback_reason", entity_decision.reason)
+                        context.record_metric(
+                            transform.name, "rollback_reason", entity_decision.reason
+                        )
                         working = backup.copy()
                         working.metadata["_lattice_rollback_reason"] = entity_decision.reason
                         if self.config.graceful_degradation:
@@ -469,7 +473,9 @@ class CompressorPipeline:
                             reason=fmt_decision.reason,
                         )
                         context.record_metric(transform.name, "safety_rollback", True)
-                        context.record_metric(transform.name, "rollback_reason", fmt_decision.reason)
+                        context.record_metric(
+                            transform.name, "rollback_reason", fmt_decision.reason
+                        )
                         working = backup.copy()
                         working.metadata["_lattice_rollback_reason"] = fmt_decision.reason
                         if self.config.graceful_degradation:
@@ -515,7 +521,9 @@ class CompressorPipeline:
                     if t_metrics.get("safety_rollback"):
                         safety_reasons[t_name] = t_metrics.get("rollback_reason", "unknown")
                     if t_metrics.get("expansion_aborted"):
-                        safety_reasons[t_name] = f"expansion_{t_metrics.get('expansion_ratio', '?')}x"
+                        safety_reasons[t_name] = (
+                            f"expansion_{t_metrics.get('expansion_ratio', '?')}x"
+                        )
                     if t_metrics.get("risk_blocked"):
                         safety_reasons[t_name] = t_metrics.get("risk_block_reason", "risk_gate")
                     if t_metrics.get("scheduler_blocked"):

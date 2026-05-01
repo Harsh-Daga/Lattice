@@ -1118,7 +1118,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         risk_data = request.metadata.get("_lattice_risk_score", {})
         risk_level = risk_data.get("level", "unknown") if isinstance(risk_data, dict) else "unknown"
         task_data = request.metadata.get("_lattice_task_classification", {})
-        task_class = task_data.get("task_class", "unknown") if isinstance(task_data, dict) else "unknown"
+        task_class = (
+            task_data.get("task_class", "unknown") if isinstance(task_data, dict) else "unknown"
+        )
 
         if risk_level in ("HIGH", "CRITICAL") or task_class in ("debugging", "reasoning"):
             deps.logger.info(
@@ -1131,7 +1133,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             # Record validation intent in metadata — production hook for MILV
             request.metadata["_lattice_validation"] = {
                 "flagged": True,
-                "reason": f"high_risk_{risk_level}" if risk_level in ("HIGH", "CRITICAL") else f"conservative_task_{task_class}",
+                "reason": f"high_risk_{risk_level}"
+                if risk_level in ("HIGH", "CRITICAL")
+                else f"conservative_task_{task_class}",
                 "timestamp": time.time(),
             }
         elif hasattr(__import__("random"), "random") and __import__("random").random() < 0.01:
