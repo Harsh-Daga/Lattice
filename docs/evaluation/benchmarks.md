@@ -35,39 +35,11 @@ uv run python benchmarks/evals/cli.py --suite all \
 
 ## Three Evaluation Layers
 
-### Layer A: Prompt Transform Correctness
-
-Evaluates whether compression preserves meaning without calling any LLM.
-
-```bash
-uv run python benchmarks/evals/cli.py --suite feature
-```
-
-Tests: token reduction, transform activation, safety profile, lossy transform gating.
-
-### Layer B: Provider-Aligned Task Success
-
-Runs scenarios through real providers with both baseline and compressed prompts, then compares outputs.
-
-```bash
-uv run python benchmarks/evals/cli.py --suite provider \
-  --providers ollama-cloud \
-  --provider-model ollama-cloud=kimi-k2.6:cloud
-```
-
-Tests: task equivalence (7 dimensions), answer correctness, reasoning preservation, format preservation.
-
-### Layer C: Transport and Execution
-
-Tests protocol features and infrastructure.
-
-```bash
-uv run python benchmarks/evals/cli.py --suite protocol
-uv run python benchmarks/evals/cli.py --suite transport
-uv run python benchmarks/evals/cli.py --suite tacc
-```
-
-Tests: connection pools, framing roundtrips, manifest generation, TACC congestion control.
+| Layer | Suite | Source of Truth |
+|-------|-------|-----------------|
+| **A — Prompt Correctness** | `feature` | Local pipeline eval (no provider). Measures token reduction and transform activation. |
+| **B — Provider Task Success** | `provider` | `runner.py`: `evaluate_task_equivalence_with_judge()` — structural evaluator + LLM judge. This is the **source of truth for meaning preservation**. |
+| **C — Transport Performance** | `transport`, `protocol`, `tacc` | Local deterministic checks of connection pools, framing, congestion control. |
 
 ## Scenario Categories
 

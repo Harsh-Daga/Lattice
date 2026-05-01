@@ -1,4 +1,8 @@
-"""Live-provider helpers for production evals."""
+"""Live-provider helpers for production evals.
+
+Orchestrates provider calls and local quality comparison.
+For the source-of-truth live task-equivalence validation, see
+benchmarks/evals/runner.py: evaluate_task_equivalence_with_judge()."""
 
 from __future__ import annotations
 

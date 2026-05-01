@@ -1,14 +1,9 @@
-"""Quality evaluation for benchmark responses.
+"""Quality evaluation helpers for local benchmark evals (no provider calls).
 
-Compares baseline (uncompressed) vs optimized (compressed) responses
-to verify that LATTICE compression does not degrade output quality.
-
-Metrics:
-- Semantic similarity (embedding-based cosine similarity)
-- Exact match (for deterministic prompts)
-- JSON validity and schema conformance
-- Tool call equivalence
-- Reasoning trace preservation
+These are compatibility bridges for dry-run / replay-only comparisons.
+For live provider validation — the source of truth — see
+benchmarks/evals/runner.py: evaluate_task_equivalence_structural()
+and evaluate_task_equivalence_with_judge().
 """
 
 from __future__ import annotations
