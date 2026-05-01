@@ -570,6 +570,102 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
             )},
         ],
     ),
+
+    # ---- Stress-test scenarios for SIG/RATS/PSG/MILV architecture ----
+
+    BenchmarkScenario(
+        name="debugging_log_analysis",
+        category="debugging",
+        description="Debugging workload: repeated error logs must preserve diagnostic signal",
+        complexity="reasoning",
+        expected_tier="REASONING",
+        target_features=["runtime_contract"],
+        proof="Debugging tasks must never get lossy transforms. Repeated error lines are diagnostic.",
+        safe_transforms=["content_profiler", "runtime_contract", "output_cleanup", "tool_filter"],
+        risky_transforms=[],
+        forbidden_transforms=[
+            "reference_sub", "semantic_compress", "structural_fingerprint",
+            "hierarchical_summary", "dictionary_compress", "grammar_compress",
+            "message_dedup", "rate_distortion",
+        ],
+        required_answer_properties=[
+            "identifies failure modes", "preserves error counts",
+            "mentions root cause", "lists mitigation steps",
+        ],
+        judge_rubric="Must identify failure modes from logs. Error counts must be preserved. Root cause and mitigation must be explicit.",
+        messages=[
+            {"role": "system", "content": "You are debugging a production outage."},
+            {"role": "user", "content": (
+                "Analyze these error logs and identify the root cause and mitigation steps.\n\n"
+                + "\n".join(
+                    f"[ERROR] {ts}: Connection refused to service_{i % 5} (attempt {i//5 + 1})"
+                    for i, ts in enumerate(range(100))
+                )
+            )},
+        ],
+    ),
+
+    BenchmarkScenario(
+        name="reasoning_root_cause",
+        category="reasoning",
+        description="Reasoning workload: deductive analysis must preserve chain of thought",
+        complexity="reasoning",
+        expected_tier="REASONING",
+        target_features=["runtime_contract"],
+        proof="Reasoning prompts must block all lossy transforms. Placeholders break deduction.",
+        safe_transforms=["content_profiler", "runtime_contract", "output_cleanup"],
+        risky_transforms=[],
+        forbidden_transforms=[
+            "reference_sub", "semantic_compress", "structural_fingerprint",
+            "hierarchical_summary", "dictionary_compress", "grammar_compress",
+            "message_dedup", "rate_distortion", "format_conversion",
+        ],
+        required_answer_properties=[
+            "explains why each step follows", "deduces the root cause",
+            "states assumptions", "gives a conclusion",
+        ],
+        judge_rubric="Must reason step by step. Deduction chain must be intact. Conclusions must follow from premises. Counts and comparisons must be preserved.",
+        messages=[
+            {"role": "system", "content": "You are reasoning about a complex system failure."},
+            {"role": "user", "content": (
+                "The system crashed at 14:32 with error code E0503. "
+                "Memory usage was at 94% at 14:30, 97% at 14:31, and 99% at 14:32. "
+                "Three services were restarted at 14:28. "
+                "Explain why the crash happened, what the root cause was, "
+                "and why the service restarts at 14:28 were insufficient."
+            )},
+        ],
+    ),
+
+    BenchmarkScenario(
+        name="repeated_identifier_investigation",
+        category="reference_substitution",
+        description="Repeated UUIDs with investigative context: compression must preserve referent identity",
+        complexity="medium",
+        expected_tier="MEDIUM",
+        target_features=["reference_sub"],
+        proof="UUID compression is safe when referent mapping is preserved. Must not break investigative reasoning.",
+        safe_transforms=["reference_sub", "output_cleanup", "prefix_optimizer"],
+        risky_transforms=["dictionary_compress"],
+        forbidden_transforms=["semantic_compress", "structural_fingerprint", "rate_distortion"],
+        required_answer_properties=[
+            "correctly identifies duplicate UUIDs",
+            "explains which transaction failed",
+            "preserves UUID context",
+        ],
+        judge_rubric="UUIDs may be compressed to references but must remain identifiable. The investigative chain must be intact. Must identify which UUID caused the failure.",
+        messages=[
+            {"role": "system", "content": "Investigate transaction failures."},
+            {"role": "user", "content": (
+                "Investigate these transactions:\n"
+                + "\n".join(
+                    f"TX-{i:04d}: UUID {hex(0x550e840000000000 + i)} [{'FAILED' if i % 7 == 3 else 'OK'}]"
+                    for i in range(50)
+                )
+                + "\n\nWhich transactions failed and what pattern do you see?"
+            )},
+        ],
+    ),
 ]
 
 

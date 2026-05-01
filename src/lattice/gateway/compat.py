@@ -1112,6 +1112,31 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             except Exception:
                 pass  # Never block the request path for maintenance
 
+        # ---- Sampled MILV production validation ----
+        # High-risk requests are flagged for model-in-the-loop validation.
+        # Low-risk requests are sampled at 1% for continuous quality monitoring.
+        risk_data = request.metadata.get("_lattice_risk_score", {})
+        risk_level = risk_data.get("level", "unknown") if isinstance(risk_data, dict) else "unknown"
+        task_data = request.metadata.get("_lattice_task_classification", {})
+        task_class = task_data.get("task_class", "unknown") if isinstance(task_data, dict) else "unknown"
+
+        if risk_level in ("HIGH", "CRITICAL") or task_class in ("debugging", "reasoning"):
+            deps.logger.info(
+                "milv_validation_candidate",
+                risk_level=risk_level,
+                task_class=task_class,
+                session_id=x_lattice_session_id or "",
+            )
+            deps.metrics.increment("lattice_milv_high_risk_flagged")
+        elif hasattr(__import__("random"), "random") and __import__("random").random() < 0.01:
+            deps.logger.debug(
+                "milv_sampled_low_risk",
+                risk_level=risk_level,
+                task_class=task_class,
+            )
+            deps.metrics.increment("lattice_milv_sampled")
+        # ---- End MILV production hook ----
+
         # Auto-generate session ID if absent
         if not x_lattice_session_id:
             import secrets

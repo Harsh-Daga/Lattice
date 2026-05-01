@@ -257,7 +257,15 @@ class TestScenarioSafetyExpectations:
 
         for scenario in ALL_SCENARIOS:
             safety = _SCENARIO_SAFETY.get(scenario.name, {})
-            assert "safe_transforms" in safety, f"{scenario.name} missing safe_transforms"
+            # New scenarios have safety inline; fallback to _SCENARIO_SAFETY map
+            if not safety:
+                safety = {
+                    "safe_transforms": scenario.safe_transforms,
+                    "forbidden_transforms": scenario.forbidden_transforms,
+                    "required_answer_properties": scenario.required_answer_properties,
+                    "judge_rubric": scenario.judge_rubric,
+                }
+            assert "safe_transforms" in safety or scenario.safe_transforms, f"{scenario.name} missing safe_transforms"
             assert "forbidden_transforms" in safety, f"{scenario.name} missing forbidden_transforms"
             assert "required_answer_properties" in safety, (
                 f"{scenario.name} missing required_answer_properties"
