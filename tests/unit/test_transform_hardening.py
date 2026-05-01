@@ -186,6 +186,7 @@ class TestPipelinePSGSafety:
         )
         req.metadata["_lattice_protected_spans"] = [0]
         req.metadata["_lattice_task_classification"] = {"task_class": "retrieval"}
+        req.metadata["_lattice_risk_score"] = {"strict_instructions": 0, "level": "LOW"}
         ctx = TransformContext()
         async def run():
             result = await pipeline.process(req, ctx)

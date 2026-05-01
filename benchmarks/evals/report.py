@@ -365,7 +365,7 @@ def render_markdown(report: ProductionEvalReport) -> str:
                     f"- Avg pipeline latency: `{summary['avg_pipeline_latency_ms']:.4f} ms`",
                     f"- Avg quality score: `{summary['avg_quality_score']:.4f}`",
                     "",
-                    "| Scenario | Category | Saved | Ratio | Quality |",
+                    "| Scenario | Category | Saved | Ratio | Task Eq. |",
                     "| --- | --- | ---: | ---: | ---: |",
                 ]
             )
@@ -384,7 +384,12 @@ def render_markdown(report: ProductionEvalReport) -> str:
             for scenario in benchmark["scenarios"]:
                 saved = scenario["tokens"]["savings"]["saved"]
                 ratio = scenario["tokens"]["savings"]["ratio"]
-                quality = scenario["quality"]["semantic_similarity"]
+                # Task-equivalence is the source of truth; semantic similarity is legacy
+                te = scenario["quality"].get("task_equivalence", {})
+                if te:
+                    quality = te.get("composite", scenario["quality"]["semantic_similarity"])
+                else:
+                    quality = scenario["quality"]["semantic_similarity"]
                 lines.append(
                     f"| {scenario['scenario']} | {scenario['category']} | {saved} | {ratio:.4f} | {quality:.4f} |"
                 )

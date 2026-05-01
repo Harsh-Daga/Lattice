@@ -284,9 +284,17 @@ class CompressorPipeline:
                 continue
 
             # ---- Semantic risk gate ----
+            # Active only when SIG metadata exists (profiler ran successfully).
+            # When no risk metadata and no protected spans: bypass gating
+            # (profiler disabled or test mode — no safety decisions needed).
             risk_data = working.metadata.get("_lattice_risk_score")
+            has_sig = bool(working.metadata.get("_lattice_protected_spans"))
+
             if risk_data and isinstance(risk_data, dict):
-                from lattice.utils.validation import SemanticRiskScore, transform_allowed_at_risk
+                from lattice.utils.validation import (
+                    SemanticRiskScore,
+                    transform_allowed_at_risk,
+                )
 
                 risk = SemanticRiskScore(
                     strict_instructions=float(risk_data.get("strict_instructions", 0)),
@@ -299,21 +307,37 @@ class CompressorPipeline:
                     formatting_constraints=float(risk_data.get("formatting_constraints", 0)),
                 )
                 allowed, reason = transform_allowed_at_risk(transform.name, risk)
-                if not allowed:
-                    self._log.warning(
-                        "transform_blocked_by_risk_gate",
-                        request_id=context.request_id,
-                        transform=transform.name,
-                        risk_level=risk.level,
-                        risk_total=risk.total,
-                        reason=reason,
-                    )
-                    context.record_metric(transform.name, "risk_blocked", True)
-                    context.record_metric(transform.name, "risk_block_reason", reason)
-                    blocked = context.metrics.setdefault("risk_blocked_transforms", [])
-                    if isinstance(blocked, list):
-                        blocked.append(transform.name)
-                    continue
+            elif has_sig:
+                # SIG ran but risk metadata missing — conservative: only SAFE allowed
+                from lattice.utils.validation import (
+                    TransformSafetyBucket,
+                    get_transform_safety_bucket,
+                )
+
+                bucket = get_transform_safety_bucket(transform.name)
+                if bucket == TransformSafetyBucket.SAFE:
+                    allowed, reason = True, "safe_transform_no_risk_data"
+                else:
+                    allowed, reason = False, "no_risk_data_conservative_fallback"
+            else:
+                # No SIG metadata — bypass gating entirely
+                allowed, reason = True, "no_sig_bypass"
+
+            if not allowed:
+                risk_level = risk.level if risk_data and isinstance(risk_data, dict) else "unknown"
+                self._log.warning(
+                    "transform_blocked_by_risk_gate",
+                    request_id=context.request_id,
+                    transform=transform.name,
+                    risk_level=risk_level,
+                    reason=reason,
+                )
+                context.record_metric(transform.name, "risk_blocked", True)
+                context.record_metric(transform.name, "risk_block_reason", reason)
+                blocked = context.metrics.setdefault("risk_blocked_transforms", [])
+                if isinstance(blocked, list):
+                    blocked.append(transform.name)
+                continue
             # ---- End risk gate ----
 
             # ---- Span-aware gating (SIG) ----
@@ -426,8 +450,16 @@ class CompressorPipeline:
                         context.record_metric(transform.name, "safety_rollback", True)
                         context.record_metric(transform.name, "rollback_reason", entity_decision.reason)
                         working = backup.copy()
+                        working.metadata["_lattice_rollback_reason"] = entity_decision.reason
                         if self.config.graceful_degradation:
                             continue
+                        return Err(
+                            TransformError(
+                                transform=transform.name,
+                                code="PSG_ENTITY_LOSS",
+                                message=f"Entity preservation failed: {entity_decision.reason}",
+                            )
+                        )
                     fmt_decision = check_format_preservation(text_before, text_after)
                     if fmt_decision.action.value == "rollback":
                         self._log.warning(
@@ -439,8 +471,16 @@ class CompressorPipeline:
                         context.record_metric(transform.name, "safety_rollback", True)
                         context.record_metric(transform.name, "rollback_reason", fmt_decision.reason)
                         working = backup.copy()
+                        working.metadata["_lattice_rollback_reason"] = fmt_decision.reason
                         if self.config.graceful_degradation:
                             continue
+                        return Err(
+                            TransformError(
+                                transform=transform.name,
+                                code="PSG_FORMAT_LOSS",
+                                message=f"Format preservation failed: {fmt_decision.reason}",
+                            )
+                        )
             # ---- End PSG safety check ----
 
             backup = working.copy()

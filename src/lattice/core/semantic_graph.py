@@ -104,8 +104,8 @@ class SemanticImportanceGraph:
             "total_spans": self.total_spans,
             "protected_count": self.protected_count,
             "average_importance": round(self.average_importance, 2),
-            "protected_span_ids": self.protected_span_ids,
-            "structure_types": list({s.structure_type for s in self.spans}),
+            "protected_span_ids": sorted(self.protected_span_ids),
+            "structure_types": sorted({s.structure_type for s in self.spans}),
         }
 
     def to_dict(self) -> dict[str, Any]:

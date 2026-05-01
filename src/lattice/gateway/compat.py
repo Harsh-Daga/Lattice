@@ -1128,13 +1128,18 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 session_id=x_lattice_session_id or "",
             )
             deps.metrics.increment("lattice_milv_high_risk_flagged")
+            # Record validation intent in metadata — production hook for MILV
+            request.metadata["_lattice_validation"] = {
+                "flagged": True,
+                "reason": f"high_risk_{risk_level}" if risk_level in ("HIGH", "CRITICAL") else f"conservative_task_{task_class}",
+                "timestamp": time.time(),
+            }
         elif hasattr(__import__("random"), "random") and __import__("random").random() < 0.01:
-            deps.logger.debug(
-                "milv_sampled_low_risk",
-                risk_level=risk_level,
-                task_class=task_class,
-            )
-            deps.metrics.increment("lattice_milv_sampled")
+            request.metadata["_lattice_validation"] = {
+                "flagged": True,
+                "reason": "sampled_1pct",
+                "timestamp": time.time(),
+            }
         # ---- End MILV production hook ----
 
         # Auto-generate session ID if absent

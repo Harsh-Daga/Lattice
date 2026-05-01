@@ -628,7 +628,9 @@ def _extract_features(
             "trend",
             "conclusion",
         ]
-        span.dependency_score += sum(0.1 for ti in task_indicators if ti in span_text.lower())
+        span.task_relevance = min(
+            sum(0.15 for ti in task_indicators if ti in span_text.lower()), 1.0
+        )
 
         # Reasoning signal: explicit reasoning markers
         reasoning_markers = [
@@ -670,9 +672,19 @@ def _compute_importance(spans: list[SemanticSpan]) -> None:
 def _derive_protected(spans: list[SemanticSpan], threshold: float = 40.0) -> None:
     """Mark spans above threshold as protected.
 
-    Also protect spans with reasoning signals or high entity density.
+    Also protect spans with reasoning signals or high entity density in
+    diagnostic content. Boilerplate with high entity density (code, tables)
+    gets a higher threshold to prevent over-protection.
     """
     for span in spans:
+        # Structure-aware threshold: code/tables with many entities need
+        # a higher bar to protect as boilerplate, not signal
+        effective_threshold = threshold
+        if span.structure_type in ("code", "json", "table") and span.entity_density > 0.5:
+            effective_threshold = max(threshold, 60.0)
+
         span.protected = (
-            span.importance >= threshold or span.reasoning_signal or span.entity_density >= 0.5
+            span.importance >= effective_threshold
+            or span.reasoning_signal
+            or (span.entity_density >= 0.5 and span.structure_type not in ("code", "table"))
         )

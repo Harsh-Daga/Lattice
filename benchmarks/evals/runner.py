@@ -1248,16 +1248,16 @@ async def evaluate_task_equivalence_with_judge(
     provider_name: str,
     timeout_s: float = 15.0,
 ) -> TaskEquivalenceScore:
-    """Compare outputs using the same provider/model as a judge.
+    """Compare outputs using the structural evaluator as authoritative anchor.
 
-    Primary path: deterministic structural evaluation (no LLM, no bias).
-    Supplemental path: LLM judge refines the structural score with
-    scenario-specific rubric awareness.  The LLM judge only upgrades
-    the structural score; it never overrides a structural fail.
+    The structural scorer is the source of truth — deterministic, no LLM.
+    An LLM judge (same model) may supplement only when structural passes.
+    The judge can confirm or strengthen a pass but NEVER override a fail.
 
-    This ensures the evaluator is independent of the model-under-test —
-    the structural path is the anchor of truth, and the LLM judge
-    can only confirm or strengthen it.
+    Judge independence: the structural path is the true independent evaluator.
+    The LLM judge shares the same model/provider by design (cost efficiency),
+    so its output is treated as a confirmer only. For true independence,
+    provide a separate judge model.
     """
     structural = evaluate_task_equivalence_structural(
         baseline_output, optimized_output, required_properties
