@@ -35,6 +35,7 @@ from lattice.providers.capabilities import (
 # CachePlanner protocol
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class CachePlan:
     """Result of cache planning for a manifest.
@@ -70,6 +71,7 @@ class CachePlanner:
 # =============================================================================
 # OpenAI cache planner
 # =============================================================================
+
 
 class OpenAICachePlanner(CachePlanner):
     """Optimizes manifest for OpenAI prompt caching.
@@ -127,6 +129,7 @@ class OpenAICachePlanner(CachePlanner):
 # =============================================================================
 # Anthropic cache planner
 # =============================================================================
+
 
 class AnthropicCachePlanner(CachePlanner):
     """Optimizes manifest for Anthropic prompt caching.
@@ -187,10 +190,7 @@ class AnthropicCachePlanner(CachePlanner):
 
         # Calculate expected cached tokens
         cached_tokens = (
-            sum(
-                seg.token_estimate
-                for seg in annotated[: breakpoints[-1] + 1]
-            )
+            sum(seg.token_estimate for seg in annotated[: breakpoints[-1] + 1])
             if breakpoints
             else 0
         )
@@ -211,6 +211,7 @@ class AnthropicCachePlanner(CachePlanner):
 # =============================================================================
 # Explicit context cache planner
 # =============================================================================
+
 
 class ContextCachePlanner(CachePlanner):
     """Planner for providers with explicit reusable context-cache resources.
@@ -235,7 +236,12 @@ class ContextCachePlanner(CachePlanner):
 
         for i, seg in enumerate(manifest.segments):
             meta = dict(seg.metadata)
-            if seg.type in (SegmentType.TOOLS, SegmentType.SYSTEM, SegmentType.DOCS, SegmentType.ARTIFACTS):
+            if seg.type in (
+                SegmentType.TOOLS,
+                SegmentType.SYSTEM,
+                SegmentType.DOCS,
+                SegmentType.ARTIFACTS,
+            ):
                 meta["cache_resource"] = {
                     "eligible": True,
                     "mode": self.cache.mode.value,
@@ -270,6 +276,7 @@ class ContextCachePlanner(CachePlanner):
 # Generic / fallback planner
 # =============================================================================
 
+
 class GenericCachePlanner(CachePlanner):
     """Fallback planner that preserves canonical order without annotations."""
 
@@ -288,6 +295,7 @@ class GenericCachePlanner(CachePlanner):
 # =============================================================================
 # Planner registry
 # =============================================================================
+
 
 def get_cache_planner(provider: str) -> CachePlanner:
     """Get the appropriate cache planner for a provider.

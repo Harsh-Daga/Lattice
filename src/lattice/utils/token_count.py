@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Counter Protocol
 # =============================================================================
 
+
 class TokenCounter(Protocol):
     """Protocol for token counting implementations.
 
@@ -41,6 +42,7 @@ class TokenCounter(Protocol):
 # =============================================================================
 # ApproximateCounter (pure Python, no dependencies)
 # =============================================================================
+
 
 @dataclasses.dataclass(slots=True)
 class ApproximateCounter:
@@ -69,6 +71,7 @@ class ApproximateCounter:
 # =============================================================================
 # TiktokenCounter (exact for OpenAI models)
 # =============================================================================
+
 
 class TiktokenCounter:
     """Exact token counter using tiktoken.
@@ -120,6 +123,7 @@ class TiktokenCounter:
 # =============================================================================
 # Model-aware counter
 # =============================================================================
+
 
 class ModelTokenCounter:
     """Route to the correct tokenizer based on model name.
@@ -201,9 +205,7 @@ class ModelTokenCounter:
         counter = self.get_counter(model)
         return counter.count(text)
 
-    def count_messages(
-        self, messages: list[dict[str, str]], model: str = "gpt-4"
-    ) -> int:
+    def count_messages(self, messages: list[dict[str, str]], model: str = "gpt-4") -> int:
         """Count tokens in a list of message dicts.
 
         This mirrors the OpenAI token counting logic:

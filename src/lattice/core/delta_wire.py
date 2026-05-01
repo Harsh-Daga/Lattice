@@ -72,6 +72,7 @@ _MIN_MESSAGE_LENGTH_FOR_DELTA = 3  # sentinel + session_id + base_seq
 # DeltaWireDecoder
 # =============================================================================
 
+
 class DeltaWireDecoder:
     """Detects and decodes delta wire format in incoming requests.
 
@@ -123,6 +124,7 @@ class DeltaWireDecoder:
             )
             if self._downgrade_telemetry is not None:
                 from lattice.core.telemetry import DowngradeCategory
+
                 self._downgrade_telemetry.record(
                     DowngradeCategory.DELTA_TO_FULL_PROMPT,
                     reason="no_session_id",
@@ -138,6 +140,7 @@ class DeltaWireDecoder:
             )
             if self._downgrade_telemetry is not None:
                 from lattice.core.telemetry import DowngradeCategory
+
                 self._downgrade_telemetry.record(
                     DowngradeCategory.DELTA_TO_FULL_PROMPT,
                     reason="session_not_found",
@@ -161,6 +164,7 @@ class DeltaWireDecoder:
                 )
                 if self._downgrade_telemetry is not None:
                     from lattice.core.telemetry import DowngradeCategory
+
                     self._downgrade_telemetry.record(
                         DowngradeCategory.DELTA_TO_FULL_PROMPT,
                         reason="version_mismatch",
@@ -184,6 +188,7 @@ class DeltaWireDecoder:
             )
             if self._downgrade_telemetry is not None:
                 from lattice.core.telemetry import DowngradeCategory
+
                 self._downgrade_telemetry.record(
                     DowngradeCategory.DELTA_TO_FULL_PROMPT,
                     reason="sequence_mismatch",
@@ -236,6 +241,7 @@ class DeltaWireDecoder:
 # =============================================================================
 # DeltaWireEncoder (client-side)
 # =============================================================================
+
 
 class DeltaWireEncoder:
     """Client-side encoder that produces delta wire format.
@@ -329,6 +335,7 @@ class DeltaWireEncoder:
 # Wire size measurement
 # =============================================================================
 
+
 def delta_wire_bytes(
     full_messages: list[dict[str, Any]],
     delta_messages: list[dict[str, Any]],
@@ -365,13 +372,9 @@ def compute_wire_savings(
         - savings_bytes: bytes saved by using delta
         - savings_pct: percentage saved (0-100)
     """
-    full_bytes, delta_bytes = delta_wire_bytes(
-        full_messages, delta_messages, session_id, base_seq
-    )
+    full_bytes, delta_bytes = delta_wire_bytes(full_messages, delta_messages, session_id, base_seq)
     savings_bytes = max(0, full_bytes - delta_bytes)
-    savings_pct = (
-        round(100 * savings_bytes / full_bytes, 2) if full_bytes > 0 else 0.0
-    )
+    savings_pct = round(100 * savings_bytes / full_bytes, 2) if full_bytes > 0 else 0.0
     return {
         "full_bytes": full_bytes,
         "delta_bytes": delta_bytes,

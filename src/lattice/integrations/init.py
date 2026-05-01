@@ -88,17 +88,29 @@ def _format_empty_detection_error(global_scope: bool) -> str:
 
 def _init_claude(*, port: int) -> dict[str, Any]:
     mutation = apply_provider_scope("claude", port=port)
-    return {"success": True, "message": f"Configured Claude Code (ANTHROPIC_BASE_URL=http://127.0.0.1:{port})", "mutation": mutation}
+    return {
+        "success": True,
+        "message": f"Configured Claude Code (ANTHROPIC_BASE_URL=http://127.0.0.1:{port})",
+        "mutation": mutation,
+    }
 
 
 def _init_codex(*, port: int) -> dict[str, Any]:
     mutation = apply_provider_scope("codex", port=port)
-    return {"success": True, "message": f"Configured Codex (OPENAI_BASE_URL=http://127.0.0.1:{port}/v1)", "mutation": mutation}
+    return {
+        "success": True,
+        "message": f"Configured Codex (OPENAI_BASE_URL=http://127.0.0.1:{port}/v1)",
+        "mutation": mutation,
+    }
 
 
 def _init_opencode(*, port: int) -> dict[str, Any]:
     mutation = apply_provider_scope("opencode", port=port)
-    return {"success": True, "message": f"Configured OpenCode (OPENAI_BASE_URL=http://127.0.0.1:{port}/v1)", "mutation": mutation}
+    return {
+        "success": True,
+        "message": f"Configured OpenCode (OPENAI_BASE_URL=http://127.0.0.1:{port}/v1)",
+        "mutation": mutation,
+    }
 
 
 def _init_cursor(*, port: int) -> dict[str, Any]:
@@ -110,7 +122,11 @@ def _init_cursor(*, port: int) -> dict[str, Any]:
 
 def _init_copilot(*, port: int) -> dict[str, Any]:
     mutation = apply_provider_scope("copilot", port=port)
-    return {"success": True, "message": f"Configured Copilot (COPILOT_PROVIDER_BASE_URL=http://127.0.0.1:{port}/v1)", "mutation": mutation}
+    return {
+        "success": True,
+        "message": f"Configured Copilot (COPILOT_PROVIDER_BASE_URL=http://127.0.0.1:{port}/v1)",
+        "mutation": mutation,
+    }
 
 
 # ---------------------------------------------------------------------------

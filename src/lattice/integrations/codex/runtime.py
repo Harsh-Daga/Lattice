@@ -13,9 +13,7 @@ def proxy_base_url(port: int) -> str:
     return f"http://127.0.0.1:{port}/v1"
 
 
-def build_launch_env(
-    port: int, environ: Mapping[str, str] | None = None
-) -> dict[str, str]:
+def build_launch_env(port: int, environ: Mapping[str, str] | None = None) -> dict[str, str]:
     """Build environment variables for Codex through the local proxy."""
     env = dict(environ or os.environ)
     base_url = proxy_base_url(port)

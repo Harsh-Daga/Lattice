@@ -86,10 +86,7 @@ class AutoContinuation:
         accumulated_tool_calls = list(current_response.tool_calls or [])
         accumulated_usage = dict(current_response.usage or {})
 
-        while (
-            current_response.finish_reason == "length"
-            and turns < self.max_turns
-        ):
+        while current_response.finish_reason == "length" and turns < self.max_turns:
             # Append the partial assistant message to the conversation
             partial_msg = message_cls(
                 role="assistant",
@@ -102,7 +99,9 @@ class AutoContinuation:
             try:
                 follow_up = await provider_caller(
                     model=request.model or "gpt-4",
-                    messages=[m.to_dict() if hasattr(m, "to_dict") else dict(m) for m in request.messages],
+                    messages=[
+                        m.to_dict() if hasattr(m, "to_dict") else dict(m) for m in request.messages
+                    ],
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,
                     top_p=request.top_p,
@@ -183,7 +182,9 @@ class AutoContinuation:
         try:
             follow_up = await provider_caller(
                 model=request.model or "gpt-4",
-                messages=[m.to_dict() if hasattr(m, "to_dict") else dict(m) for m in request.messages],
+                messages=[
+                    m.to_dict() if hasattr(m, "to_dict") else dict(m) for m in request.messages
+                ],
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 top_p=request.top_p,

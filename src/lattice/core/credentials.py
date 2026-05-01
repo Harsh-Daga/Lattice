@@ -123,6 +123,7 @@ _DEFAULT_BASE_URLS: dict[str, str] = {
 # Provider credentials dataclass
 # =============================================================================
 
+
 @dataclass
 class ProviderCredentials:
     """Resolved credentials for a single provider."""
@@ -149,6 +150,7 @@ class ProviderCredentials:
 # =============================================================================
 # CredentialResolver
 # =============================================================================
+
 
 class CredentialResolver:
     """Resolve provider credentials from config + env vars.
@@ -199,9 +201,7 @@ class CredentialResolver:
 
         providers = data.get("providers")
         if isinstance(providers, dict):
-            self._config = {
-                k.lower(): v for k, v in providers.items() if isinstance(v, dict)
-            }
+            self._config = {k.lower(): v for k, v in providers.items() if isinstance(v, dict)}
             self._log.info(
                 "config_loaded",
                 path=str(config_path),
@@ -240,9 +240,7 @@ class CredentialResolver:
         creds.base_url = self._resolve_field("base_url", cfg, env_map)
         creds.api_version = self._resolve_field("api_version", cfg, env_map)
         creds.aws_access_key_id = self._resolve_field("aws_access_key_id", cfg, env_map)
-        creds.aws_secret_access_key = self._resolve_field(
-            "aws_secret_access_key", cfg, env_map
-        )
+        creds.aws_secret_access_key = self._resolve_field("aws_secret_access_key", cfg, env_map)
         creds.aws_region = self._resolve_field("aws_region", cfg, env_map)
 
         # Default base URL
@@ -250,8 +248,14 @@ class CredentialResolver:
             creds.base_url = _DEFAULT_BASE_URLS.get(provider)
 
         # Extras (any config fields not in the standard schema)
-        known = {"api_key", "base_url", "api_version", "aws_access_key_id",
-                 "aws_secret_access_key", "aws_region"}
+        known = {
+            "api_key",
+            "base_url",
+            "api_version",
+            "aws_access_key_id",
+            "aws_secret_access_key",
+            "aws_region",
+        }
         creds.extras = {k: v for k, v in cfg.items() if k not in known}
 
         return creds

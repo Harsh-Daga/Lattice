@@ -67,6 +67,7 @@ def identify_agent(user_agent: str | None, client_profile: str | None) -> str:
 # Per-agent stats aggregate
 # ---------------------------------------------------------------------------
 
+
 @dataclasses.dataclass(slots=True)
 class AgentMetrics:
     """Aggregated metrics for a single agent."""
@@ -129,7 +130,6 @@ class AgentMetrics:
         }
 
 
-
 class AgentStatsCollector:
     """Collects per-agent metrics across the proxy.
 
@@ -158,9 +158,7 @@ class AgentStatsCollector:
     ) -> None:
         self._metrics = metrics
         self._cost_estimator = cost_estimator or CostEstimator()
-        self._agents: dict[str, AgentMetrics] = defaultdict(
-            lambda: AgentMetrics(agent="unknown")
-        )
+        self._agents: dict[str, AgentMetrics] = defaultdict(lambda: AgentMetrics(agent="unknown"))
         self._lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
@@ -248,9 +246,7 @@ class AgentStatsCollector:
         total_cached_tokens = sum(a.cached_tokens_total for a in self._agents.values())
         total_original = sum(a.original_tokens_total for a in self._agents.values())
         total_compressed = sum(a.compressed_tokens_total for a in self._agents.values())
-        savings_pct = (
-            1.0 - total_compressed / total_original if total_original > 0 else 0.0
-        )
+        savings_pct = 1.0 - total_compressed / total_original if total_original > 0 else 0.0
         cache_rate = (
             total_cache_hits / (total_cache_hits + total_cache_misses)
             if (total_cache_hits + total_cache_misses) > 0
@@ -264,7 +260,9 @@ class AgentStatsCollector:
             "total_cached_tokens": total_cached_tokens,
             "compression_savings_percent": round(savings_pct, 4),
             "total_estimated_cost_usd": round(total_cost, 6),
-            "avg_cost_per_request_usd": round(total_cost / total_requests, 6) if total_requests > 0 else 0.0,
+            "avg_cost_per_request_usd": round(total_cost / total_requests, 6)
+            if total_requests > 0
+            else 0.0,
             "cache_hit_rate": round(cache_rate, 4),
             "per_agent": {name: stats.to_dict() for name, stats in self._agents.items()},
         }
@@ -290,8 +288,7 @@ class AgentStatsCollector:
             reverse=True,
         )
         summary["top_agents_by_cost"] = [
-            {"agent": a, "cost_usd": round(s.estimated_cost_usd, 6)}
-            for a, s in agents_by_cost[:5]
+            {"agent": a, "cost_usd": round(s.estimated_cost_usd, 6)} for a, s in agents_by_cost[:5]
         ]
         return summary
 

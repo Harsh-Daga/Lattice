@@ -52,6 +52,7 @@ logger = structlog.get_logger()
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclasses.dataclass(slots=True)
 class AccumulatedRequest:
     """A request held in the accumulator."""
@@ -78,6 +79,7 @@ class BatchResult:
 # ---------------------------------------------------------------------------
 # BatchAccumulator
 # ---------------------------------------------------------------------------
+
 
 class BatchAccumulator:
     """Accumulates low-priority requests and dispatches via provider batch APIs.
@@ -145,9 +147,7 @@ class BatchAccumulator:
         future: asyncio.Future[dict[str, Any]] = asyncio.get_event_loop().create_future()
         if not self.enabled or provider.lower() not in self._SUPPORTED_PROVIDERS:
             # Immediately fail so caller falls back to sync path
-            future.set_exception(
-                RuntimeError(f"Batch API not supported for provider: {provider}")
-            )
+            future.set_exception(RuntimeError(f"Batch API not supported for provider: {provider}"))
             return future
 
         req = AccumulatedRequest(
@@ -190,9 +190,7 @@ class BatchAccumulator:
             "enabled": self.enabled,
             "max_hold_seconds": self.max_hold_seconds,
             "max_batch_size": self.max_batch_size,
-            "queue_sizes": {
-                p: len(q) for p, q in self._queues.items()
-            },
+            "queue_sizes": {p: len(q) for p, q in self._queues.items()},
             "total_pending": sum(len(q) for q in self._queues.values()),
         }
 

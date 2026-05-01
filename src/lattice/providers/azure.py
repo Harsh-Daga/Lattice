@@ -80,9 +80,8 @@ class AzureAdapter(OpenAIAdapter):
         # Azure ignores this key, but we keep it for compat with other layers
         body.pop("model", None)
         # Azure OpenAI supports reasoning_effort for o1/o3 deployments
-        reasoning_effort = (
-            request.metadata.get("reasoning_effort")
-            or request.extra_body.get("reasoning_effort")
+        reasoning_effort = request.metadata.get("reasoning_effort") or request.extra_body.get(
+            "reasoning_effort"
         )
         if reasoning_effort is not None:
             body["reasoning_effort"] = reasoning_effort

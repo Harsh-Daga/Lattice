@@ -20,9 +20,7 @@ def proxy_base_url(port: int) -> str:
     return f"http://127.0.0.1:{port}/v1"
 
 
-def build_launch_env(
-    port: int, environ: Mapping[str, str] | None = None
-) -> dict[str, str]:
+def build_launch_env(port: int, environ: Mapping[str, str] | None = None) -> dict[str, str]:
     """Build environment variables for OpenCode through the local proxy.
 
     In practice OpenCode reads per-provider ``baseURL`` from its JSON

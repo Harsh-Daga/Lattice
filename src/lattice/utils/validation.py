@@ -39,21 +39,40 @@ _STRUCTURED_PREFIXES = ("{", "[", "<")
 # =============================================================================
 
 _SENSITIVE_DOMAIN_PATTERNS = (
-    r"\blegal\b", r"\blawyer\b", r"\battorney\b",
-    r"\bmedical\b", r"\bdiagnos\b", r"\bpatient\b",
-    r"\bfinancial\b", r"\baccount\b.*\bnumber\b", r"\bcredit card\b",
-    r"\bsafety\b", r"\bsecurity\b", r"\bcompliance\b",
-    r"\breligion\b", r"\bpolitics\b", r"\belection\b",
-    r"\bconfidential\b", r"\bsensitive\b", r"\bclassified\b",
+    r"\blegal\b",
+    r"\blawyer\b",
+    r"\battorney\b",
+    r"\bmedical\b",
+    r"\bdiagnos\b",
+    r"\bpatient\b",
+    r"\bfinancial\b",
+    r"\baccount\b.*\bnumber\b",
+    r"\bcredit card\b",
+    r"\bsafety\b",
+    r"\bsecurity\b",
+    r"\bcompliance\b",
+    r"\breligion\b",
+    r"\bpolitics\b",
+    r"\belection\b",
+    r"\bconfidential\b",
+    r"\bsensitive\b",
+    r"\bclassified\b",
 )
 
 _REASONING_HEAVY_PATTERNS = (
-    r"\breason\b.*\bstep\b", r"\bstep\b.*\breason\b",
-    r"\bthink\b.*\bcarefully\b", r"\bcarefully\b.*\bthink\b",
-    r"\bexplain\b.*\bwhy\b", r"\bwhy\b.*\bexplain\b",
-    r"\bmulti-step\b", r"\bmulti step\b",
-    r"\bchain of thought\b", r"\bchain-of-thought\b",
-    r"\bdeduce\b", r"\binfer\b", r"\bsolve\b",
+    r"\breason\b.*\bstep\b",
+    r"\bstep\b.*\breason\b",
+    r"\bthink\b.*\bcarefully\b",
+    r"\bcarefully\b.*\bthink\b",
+    r"\bexplain\b.*\bwhy\b",
+    r"\bwhy\b.*\bexplain\b",
+    r"\bmulti-step\b",
+    r"\bmulti step\b",
+    r"\bchain of thought\b",
+    r"\bchain-of-thought\b",
+    r"\bdeduce\b",
+    r"\binfer\b",
+    r"\bsolve\b",
 )
 
 
@@ -180,7 +199,9 @@ def compute_risk_score(request: Request) -> SemanticRiskScore:
 
     # High-stakes entities (0–15)
     hse_score = 0.0
-    if re.search(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", text, re.IGNORECASE):
+    if re.search(
+        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", text, re.IGNORECASE
+    ):
         hse_score += 5.0
     if re.search(r"https?://[^\s)]+", text, re.IGNORECASE):
         hse_score += 3.0
@@ -199,6 +220,7 @@ def compute_risk_score(request: Request) -> SemanticRiskScore:
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     if len(lines) > 3:
         from collections import Counter
+
         line_counts = Counter(lines)
         repeated_count = sum(c for line, c in line_counts.items() if c >= 3)
         ir_score = min(repeated_count * 2.0, 10.0) if repeated_count >= 3 else 0.0
@@ -345,7 +367,9 @@ def _looks_structured(text: str) -> bool:
 
 
 def _has_high_stakes_entities(text: str) -> bool:
-    if re.search(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", text, re.IGNORECASE):
+    if re.search(
+        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", text, re.IGNORECASE
+    ):
         return True
     if re.search(r"https?://[^\s)]+", text, re.IGNORECASE):
         return True
@@ -396,7 +420,13 @@ def structure_signature(text: str) -> dict[str, Any]:
         "lines": text.count("\n") + 1 if text else 0,
         "has_code": has_code_blocks(text),
         "has_table": bool(re.search(r"^\s*\|.*\|\s*$", text, re.MULTILINE)),
-        "uuid_count": len(re.findall(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", text, re.IGNORECASE)),
+        "uuid_count": len(
+            re.findall(
+                r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
+                text,
+                re.IGNORECASE,
+            )
+        ),
         "url_count": len(re.findall(r"https?://[^\s)]+", text, re.IGNORECASE)),
         "number_count": len(re.findall(r"\b\d+(?:\.\d+)?\b", text)),
         "json_keys": sorted(parsed_json.keys()) if isinstance(parsed_json, dict) else [],

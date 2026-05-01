@@ -86,22 +86,37 @@ class ProxyLiveDisplay:
         uptime_sec = time.perf_counter() - self._start_time
 
         # Metrics
-        total_requests = getattr(self.metrics, "get_counter", lambda k, d=0: d)("lattice_requests_total")
+        total_requests = getattr(self.metrics, "get_counter", lambda k, d=0: d)(
+            "lattice_requests_total"
+        )
         rps = total_requests / max(uptime_sec, 1.0)
 
-        latency_ms = getattr(self.metrics, "get_histogram_avg", lambda k, d=0.0: d)("lattice_request_latency_ms")
-        llm_latency_ms = getattr(self.metrics, "get_histogram_avg", lambda k, d=0.0: d)("lattice_llm_latency_ms")
+        latency_ms = getattr(self.metrics, "get_histogram_avg", lambda k, d=0.0: d)(
+            "lattice_request_latency_ms"
+        )
+        llm_latency_ms = getattr(self.metrics, "get_histogram_avg", lambda k, d=0.0: d)(
+            "lattice_llm_latency_ms"
+        )
 
-        active_sessions = getattr(self.metrics, "get_gauge", lambda k, d=0: d)("lattice_active_sessions")
+        active_sessions = getattr(self.metrics, "get_gauge", lambda k, d=0: d)(
+            "lattice_active_sessions"
+        )
 
         # Compression stats
-        compression = getattr(self.metrics, "get_gauge", lambda k, d="0%": d)("lattice_last_compression_ratio")
+        compression = getattr(self.metrics, "get_gauge", lambda k, d="0%": d)(
+            "lattice_last_compression_ratio"
+        )
 
         table = Table(show_header=False, box=None, padding=(0, 2))
         table.add_column("Label", style="cyan", justify="right")
         table.add_column("Value", style="white")
 
-        table.add_row("Mode", Text(mode, style="green" if mode == "safe" else "yellow" if mode == "balanced" else "red"))
+        table.add_row(
+            "Mode",
+            Text(
+                mode, style="green" if mode == "safe" else "yellow" if mode == "balanced" else "red"
+            ),
+        )
         table.add_row("Uptime", f"{uptime_sec:.0f}s")
         table.add_row("Requests", str(total_requests))
         table.add_row("RPS", f"{rps:.1f}")
@@ -118,8 +133,12 @@ class ProxyLiveDisplay:
 
         provider_names = getattr(self.metrics, "provider_names", lambda: [])()
         for provider in provider_names:
-            avg = getattr(self.metrics, "get_histogram_avg", lambda k, d=0.0: d)(f"lattice_provider_latency_ms{{provider={provider}}}")
-            p99 = getattr(self.metrics, "get_histogram_p99", lambda k, d=0.0: d)(f"lattice_provider_latency_ms{{provider={provider}}}")
+            avg = getattr(self.metrics, "get_histogram_avg", lambda k, d=0.0: d)(
+                f"lattice_provider_latency_ms{{provider={provider}}}"
+            )
+            p99 = getattr(self.metrics, "get_histogram_p99", lambda k, d=0.0: d)(
+                f"lattice_provider_latency_ms{{provider={provider}}}"
+            )
             provider_table.add_row(provider, f"{avg:.0f}", f"{p99:.0f}")
 
         if not provider_names:

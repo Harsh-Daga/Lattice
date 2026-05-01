@@ -279,8 +279,7 @@ def detect_provider(model: str, provider_hint: str | None = None) -> str:
         if hint in _SUPPORTED_PROVIDERS:
             return hint
         raise ProviderDetectionError(
-            f"Unknown provider hint '{provider_hint}'. "
-            f"Supported: {', '.join(_SUPPORTED_PROVIDERS)}"
+            f"Unknown provider hint '{provider_hint}'. Supported: {', '.join(_SUPPORTED_PROVIDERS)}"
         )
     if "/" in model:
         prefix = model.split("/", 1)[0].lower()
@@ -306,7 +305,7 @@ def detect_new_messages(existing: list[Message], incoming: list[Message]) -> lis
     for _i, (a, b) in enumerate(zip(existing, incoming, strict=False)):
         if a.content != b.content or a.role != b.role:
             return list(incoming)
-    return list(incoming[len(existing):])
+    return list(incoming[len(existing) :])
 
 
 def deserialize_openai_request(body: dict[str, Any]) -> Request:
@@ -392,9 +391,7 @@ def deserialize_anthropic_request(body: dict[str, Any]) -> Request:
                     elif isinstance(result_content, str):
                         text_parts.append(result_content)
                 elif btype == "image":
-                    text_parts.append(
-                        f"[Image: {block.get('source', {}).get('type', 'unknown')}]"
-                    )
+                    text_parts.append(f"[Image: {block.get('source', {}).get('type', 'unknown')}]")
             content = "\n".join(text_parts)
         else:
             content = str(content)
@@ -555,9 +552,12 @@ async def compress_anthropic_body(
     """Compress Anthropic request text blocks while preserving shape."""
     blocks = extract_anthropic_text_blocks(body)
     if not blocks:
-        return body, TransformContext(
-            request_id=str(time.time()), provider=provider_name, model=model
-        ), 0, 0
+        return (
+            body,
+            TransformContext(request_id=str(time.time()), provider=provider_name, model=model),
+            0,
+            0,
+        )
 
     pseudo_messages = [
         Message(role="user" if i % 2 == 0 else "assistant", content=text)
@@ -625,9 +625,12 @@ async def compress_responses_body(
     """Compress OpenAI Responses request text blocks while preserving shape."""
     blocks = extract_responses_text_blocks(body)
     if not blocks:
-        return body, TransformContext(
-            request_id=str(time.time()), provider="openai", model=model
-        ), 0, 0
+        return (
+            body,
+            TransformContext(request_id=str(time.time()), provider="openai", model=model),
+            0,
+            0,
+        )
 
     pseudo_messages = [
         Message(role="user" if i % 2 == 0 else "assistant", content=text)
@@ -711,7 +714,7 @@ async def responses_passthrough(
                             error_body=error_body.decode("utf-8", errors="replace")[:500],
                         )
                         yield (
-                            f'event: error\ndata: '
+                            f"event: error\ndata: "
                             f'{{"error":"upstream_error","message":"HTTP {resp.status_code}"}}\n\n'
                         )
                         return
@@ -723,10 +726,7 @@ async def responses_passthrough(
                     error=str(exc),
                     error_type=type(exc).__name__,
                 )
-                yield (
-                    f'event: error\ndata: '
-                    f'{{"error":"stream_error","message":"{str(exc)}"}}\n\n'
-                )
+                yield (f'event: error\ndata: {{"error":"stream_error","message":"{str(exc)}"}}\n\n')
 
         transport_outcome = TransportOutcome(
             http_version=http_version,
@@ -933,7 +933,7 @@ async def anthropic_passthrough(
                             error_body=error_body.decode("utf-8", errors="replace")[:500],
                         )
                         yield (
-                            f'event: error\ndata: '
+                            f"event: error\ndata: "
                             f'{{"type":"error","error":{{"type":"upstream_error",'
                             f'"message":"HTTP {resp.status_code}"}}}}\n\n'
                         )
@@ -947,7 +947,7 @@ async def anthropic_passthrough(
                     error_type=type(exc).__name__,
                 )
                 yield (
-                    f'event: error\ndata: '
+                    f"event: error\ndata: "
                     f'{{"type":"error","error":{{"type":"stream_error",'
                     f'"message":"{str(exc)}"}}}}\n\n'
                 )
@@ -1157,7 +1157,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     )
                     delta_savings_bytes = max(0, full_bytes - delta_bytes)
                 except (TypeError, ValueError) as exc:
-                    deps.logger.warning("delta_wire_bytes_failed", error=str(exc), session_id=session.session_id)
+                    deps.logger.warning(
+                        "delta_wire_bytes_failed", error=str(exc), session_id=session.session_id
+                    )
 
         if session.manifest:
             cache_planner = deps.get_cache_planner(provider_name)
@@ -1293,9 +1295,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     )
                     # Run reverse transforms on cached response
                     if not x_lattice_disable_transforms:
-                        cached_response = await deps.pipeline.reverse(
-                            cached_response, ctx
-                        )
+                        cached_response = await deps.pipeline.reverse(cached_response, ctx)
                     response_body = deps.serialize_openai_response(
                         cached_response, compressed_request
                     )
@@ -1412,7 +1412,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                                         if "name" in fn:
                                             tool_calls_acc[idx]["function"]["name"] = fn["name"]
                                         if "arguments" in fn:
-                                            tool_calls_acc[idx]["function"]["arguments"] += fn["arguments"]
+                                            tool_calls_acc[idx]["function"]["arguments"] += fn[
+                                                "arguments"
+                                            ]
 
                             lat_meta = chunk.pop("_lattice_metadata", None)
                             if lat_meta:
@@ -1467,7 +1469,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                                 assemble_cached_response(
                                     model=model_used,
                                     content=full_content,
-                                    tool_calls=list(tool_calls_acc.values()) if tool_calls_acc else None,
+                                    tool_calls=list(tool_calls_acc.values())
+                                    if tool_calls_acc
+                                    else None,
                                     usage=stream_meta.get("usage", {}),
                                     finish_reason="stop",
                                     sse_chunks=sse_chunks,
@@ -1479,7 +1483,11 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         if deps.agent_stats:
                             stream_usage = stream_meta.get("usage", {})
                             normalized_usage = normalize_usage(stream_usage)
-                            stream_prompt = normalized_usage["prompt_tokens"] or compressed_request.token_estimate or 0
+                            stream_prompt = (
+                                normalized_usage["prompt_tokens"]
+                                or compressed_request.token_estimate
+                                or 0
+                            )
                             stream_completion = normalized_usage["completion_tokens"]
                             stream_cached = normalized_usage["cached_tokens"]
                             await deps.agent_stats.record_request(
@@ -1529,7 +1537,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
 
             used_speculative = False
             prediction_hit = False
-            batching_eligible = ctx.metrics.get("transforms", {}).get("batching", {}).get("eligible", False)
+            batching_eligible = (
+                ctx.metrics.get("transforms", {}).get("batching", {}).get("eligible", False)
+            )
             if batching_eligible and not x_lattice_disable_transforms:
                 try:
                     compressed_request.metadata["_lattice_is_batch"] = True
@@ -1572,7 +1582,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     speculative_response = None
                     if not speculative_task.done():
                         with contextlib.suppress(asyncio.TimeoutError):
-                            speculative_response = await asyncio.wait_for(speculative_task, timeout=0.5)
+                            speculative_response = await asyncio.wait_for(
+                                speculative_task, timeout=0.5
+                            )
                     else:
                         speculative_response = speculative_task.result()
 
@@ -1748,7 +1760,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         transport_outcome = TransportOutcome(
             semantic_cache_status="miss" if cache_key is not None else "",
             batching_status="batched" if batching_eligible else "",
-            speculative_status="hit" if (used_speculative and prediction_hit) else ("miss" if used_speculative else ""),
+            speculative_status="hit"
+            if (used_speculative and prediction_hit)
+            else ("miss" if used_speculative else ""),
             delta_mode=delta_mode,
             http_version=http_version,
         )
@@ -1818,7 +1832,11 @@ def make_models_handler(deps: ResponsesCompatDeps) -> Handler:
         x_lattice_session_id: str | None = None,
     ) -> Any:
         return await deps.responses_passthrough(
-            "GET", "/v1/models", b"", request, deps.provider,
+            "GET",
+            "/v1/models",
+            b"",
+            request,
+            deps.provider,
             session_id=x_lattice_session_id or "",
         )
 
@@ -1837,7 +1855,11 @@ def make_responses_handler(deps: ResponsesCompatDeps) -> Handler:
         path = "/v1/responses" if response_id is None else f"/v1/responses/{response_id}"
         body = await request.body() if method == "POST" else b""
         return await deps.responses_passthrough(
-            method, path, body, request, deps.provider,
+            method,
+            path,
+            body,
+            request,
+            deps.provider,
             session_id=x_lattice_session_id or "",
         )
 
@@ -1959,9 +1981,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
                 "provider": live,
                 "provider_detail": detail,
                 "http2_pools": deps.provider.pool.pool_count,
-                "sessions": deps.store.session_count
-                if hasattr(deps.store, "session_count")
-                else 0,
+                "sessions": deps.store.session_count if hasattr(deps.store, "session_count") else 0,
             },
         }
 
@@ -1982,9 +2002,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
             "version": deps.version,
             "transforms": [t.name for t in deps.pipeline.transforms],
             "pipeline": pipeline_summary(deps.pipeline),
-            "sessions": deps.store.session_count
-            if hasattr(deps.store, "session_count")
-            else 0,
+            "sessions": deps.store.session_count if hasattr(deps.store, "session_count") else 0,
             "provider": "direct_http",
             "adapters": deps.provider.registry.list_adapters(),
             "capabilities": {
@@ -2002,9 +2020,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
             "pools": deps.provider.pool.pool_count,
             "batching": await deps.batching_engine.stats(),
             "speculation": deps.speculative_executor.stats,
-            "tacc": deps.provider.tacc.all_stats()
-            if hasattr(deps.provider, "tacc")
-            else {},
+            "tacc": deps.provider.tacc.all_stats() if hasattr(deps.provider, "tacc") else {},
         }
         manifest_stats: dict[str, Any] = {
             "sessions_with_manifest": 0,
@@ -2058,8 +2074,10 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
             result["downgrades"] = deps.downgrade_telemetry.snapshot()
             # Transport outcome rollup derived from canonical telemetry
             result["transport_outcome_rollup"] = {
-                k: v for k, v in deps.downgrade_telemetry._counts.items()
-                if k in (
+                k: v
+                for k, v in deps.downgrade_telemetry._counts.items()
+                if k
+                in (
                     "binary_to_json",
                     "delta_to_full_prompt",
                     "http2_to_http11",

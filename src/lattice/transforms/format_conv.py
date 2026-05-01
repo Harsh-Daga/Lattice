@@ -63,19 +63,21 @@ logger = structlog.get_logger()
 # Data shape detection
 # =============================================================================
 
+
 class DataShape(enum.Enum):
     """Classification of parsed JSON data."""
 
-    TABULAR = "tabular"           # list[dict] with mostly identical keys
-    CONFIG = "config"             # dict with nested dicts
-    IRREGULAR = "irregular"       # list[dict] with mixed/inconsistent keys
-    PRIMITIVE = "primitive"       # not a dict or list
+    TABULAR = "tabular"  # list[dict] with mostly identical keys
+    CONFIG = "config"  # dict with nested dicts
+    IRREGULAR = "irregular"  # list[dict] with mixed/inconsistent keys
+    PRIMITIVE = "primitive"  # not a dict or list
     ARRAY_PRIMITIVE = "array_primitive"  # list[str|int|...] (not list[dict])
 
 
 # =============================================================================
 # FormatConverter
 # =============================================================================
+
 
 class FormatConverter(ReversibleSyncTransform):
     """Convert structured data to token-efficient formats.
@@ -144,7 +146,9 @@ class FormatConverter(ReversibleSyncTransform):
                 continue
 
             # Validate round-trip (expensive, disabled in production)
-            if self.validate_roundtrip and not self._validate_roundtrip(original_content, converted):
+            if self.validate_roundtrip and not self._validate_roundtrip(
+                original_content, converted
+            ):
                 self._log.warning(
                     "roundtrip_failed",
                     request_id=context.request_id,
@@ -258,6 +262,7 @@ class FormatConverter(ReversibleSyncTransform):
             return DataShape.IRREGULAR
 
         from collections import Counter
+
         counter = Counter(frozenset(ks) for ks in key_sets)
 
         # Strategy 1: exact schema match
@@ -317,8 +322,7 @@ class FormatConverter(ReversibleSyncTransform):
 
         # Require at least 2 diff signals
         diff_signals = sum(
-            1 for line in lines
-            if line.startswith(("--- ", "+++ ", "@@ ", "diff --git"))
+            1 for line in lines if line.startswith(("--- ", "+++ ", "@@ ", "diff --git"))
         )
         if diff_signals < 2:
             return None
@@ -356,7 +360,11 @@ class FormatConverter(ReversibleSyncTransform):
                 current_hunk = [line]
                 in_hunk = True
             elif in_hunk:
-                if line.startswith(("+", "-")) or line.startswith(" ") or line == "\\ No newline at end of file":
+                if (
+                    line.startswith(("+", "-"))
+                    or line.startswith(" ")
+                    or line == "\\ No newline at end of file"
+                ):
                     current_hunk.append(line)
                 else:
                     # End of hunk
@@ -384,7 +392,8 @@ class FormatConverter(ReversibleSyncTransform):
 
         # Count log-like lines (timestamp or severity)
         log_lines = sum(
-            1 for line in lines
+            1
+            for line in lines
             if re.search(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}", line)
             or re.search(r"\b(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL)\b", line)
         )
@@ -478,6 +487,7 @@ class FormatConverter(ReversibleSyncTransform):
             return None
 
         from collections import Counter
+
         key_sets = [tuple(sorted(row.keys())) for row in rows]
         header = list(Counter(key_sets).most_common(1)[0][0])
 
@@ -486,7 +496,9 @@ class FormatConverter(ReversibleSyncTransform):
             (len(str(v)) for row in rows for v in row.values()),
             default=0,
         )
-        use_tsv = len(header) > self.tsv_threshold_cols or max_field_len > self.tsv_threshold_field_len
+        use_tsv = (
+            len(header) > self.tsv_threshold_cols or max_field_len > self.tsv_threshold_field_len
+        )
 
         output = io.StringIO()
         delimiter = "\t" if use_tsv else ","
@@ -643,6 +655,7 @@ class FormatConverter(ReversibleSyncTransform):
         """Parse YAML text back to native Python."""
         try:
             import yaml
+
             return yaml.safe_load(text)
         except Exception:
             return None

@@ -51,6 +51,7 @@ _DEFAULT_ALPHA: float = 0.5
 # LinUCB Arm State
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class _ArmState:
     """Per-arm bandit state for LinUCB.
@@ -122,8 +123,7 @@ class _ArmState:
 
         # Create augmented matrix [A | b]
         aug: list[list[float]] = [
-            [self.A[i][j] for j in range(dim)] + [self.b[i]]
-            for i in range(dim)
+            [self.A[i][j] for j in range(dim)] + [self.b[i]] for i in range(dim)
         ]
 
         # Gaussian elimination with partial pivoting
@@ -190,10 +190,7 @@ class _ArmState:
     def _solve_ax_eq_b(self, rhs: list[float]) -> list[float]:
         """Solve A x = rhs for x using Gaussian elimination."""
         dim = len(rhs)
-        aug: list[list[float]] = [
-            [self.A[i][j] for j in range(dim)] + [rhs[i]]
-            for i in range(dim)
-        ]
+        aug: list[list[float]] = [[self.A[i][j] for j in range(dim)] + [rhs[i]] for i in range(dim)]
 
         for col in range(dim):
             max_row = col
@@ -229,6 +226,7 @@ class _ArmState:
 # =============================================================================
 # StrategySelector
 # =============================================================================
+
 
 class StrategySelector(ReversibleSyncTransform):
     """LinUCB-based adaptive compression strategy selector.
@@ -287,9 +285,7 @@ class StrategySelector(ReversibleSyncTransform):
         self.reward_ttl_seconds = max(1.0, reward_ttl_seconds)
         self.default_strategy = default_strategy or self.arms[0]
         if self.default_strategy not in self.arms:
-            raise ValueError(
-                f"default_strategy {default_strategy!r} not in arms {self.arms}"
-            )
+            raise ValueError(f"default_strategy {default_strategy!r} not in arms {self.arms}")
         self._log = logger.bind(transform=self.name)
 
     def process(

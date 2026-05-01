@@ -34,6 +34,7 @@ from lattice.core.transport import Request, Response
 # PrefixOptimizer
 # =============================================================================
 
+
 class PrefixOptimizer(ReversibleSyncTransform):
     """Optimize prefix for provider-side caching.
 
@@ -146,9 +147,7 @@ class PrefixOptimizer(ReversibleSyncTransform):
                 params = func.get("parameters", {})
                 param_keys = ""
                 if isinstance(params, dict) and "properties" in params:
-                    param_keys = ",".join(
-                        sorted(params["properties"].keys())
-                    )
+                    param_keys = ",".join(sorted(params["properties"].keys()))
                 parts.append(f"{name}:{desc}:{param_keys}")
             else:
                 parts.append(str(tool))

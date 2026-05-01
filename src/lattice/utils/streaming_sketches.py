@@ -107,7 +107,7 @@ class HyperLogLog:
 
     def count(self) -> int:
         """Return the estimated cardinality."""
-        raw_estimate = self._alpha_value * (self.m ** 2) / sum(2 ** -r for r in self._registers)
+        raw_estimate = self._alpha_value * (self.m**2) / sum(2**-r for r in self._registers)
 
         # Small range correction
         if raw_estimate <= 2.5 * self.m:
@@ -170,9 +170,7 @@ class BloomFilter:
     def merge(self, other: BloomFilter) -> BloomFilter:
         """Return a new Bloom filter that is the union of this and *other*."""
         if self.size != other.size or self.num_hashes != other.num_hashes:
-            raise ValueError(
-                "Cannot merge Bloom filters with different parameters"
-            )
+            raise ValueError("Cannot merge Bloom filters with different parameters")
         merged = BloomFilter(self.size, self.num_hashes)
         merged._bits = [a or b for a, b in zip(self._bits, other._bits, strict=False)]
         return merged

@@ -39,6 +39,7 @@ logger = structlog.get_logger()
 # StreamChunk
 # =============================================================================
 
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class StreamChunk:
     """A single chunk in a resumable stream.
@@ -57,6 +58,7 @@ class StreamChunk:
 # =============================================================================
 # ReplayWindow
 # =============================================================================
+
 
 class ReplayWindow:
     """Circular buffer of recent stream chunks for replay.
@@ -124,6 +126,7 @@ class ReplayWindow:
 # StreamState
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class StreamState:
     """Mutable state for an active or recently-closed stream."""
@@ -145,6 +148,7 @@ class StreamState:
 # =============================================================================
 # ResumeTokenManager
 # =============================================================================
+
 
 class ResumeTokenManager:
     """Creates and validates cryptographically signed resume tokens.
@@ -212,6 +216,7 @@ class ResumeTokenManager:
 # =============================================================================
 # StreamManager
 # =============================================================================
+
 
 class StreamManager:
     """Manages active streams and their replay windows.

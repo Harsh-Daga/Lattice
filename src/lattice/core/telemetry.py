@@ -78,9 +78,7 @@ class DowngradeTelemetry:
         """Return serializable telemetry for /stats."""
         return {
             "counts": dict(self._counts),
-            "recent_reasons": {
-                k: v[:5] for k, v in self._reasons.items() if v
-            },
+            "recent_reasons": {k: v[:5] for k, v in self._reasons.items() if v},
         }
 
     def reset(self) -> None:

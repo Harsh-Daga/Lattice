@@ -66,6 +66,7 @@ _ctx_tool_id_mapping: contextvars.ContextVar[dict[str, str] | None] = contextvar
 # AnthropicAdapter
 # =============================================================================
 
+
 class AnthropicAdapter:
     """Anthropic Messages API adapter with full Claude Code parity."""
 
@@ -90,9 +91,7 @@ class AnthropicAdapter:
 
     def supports(self, model: str) -> bool:
         """Matches ``anthropic/...`` or bare ``claude-...`` names."""
-        prefix = (
-            model.split("/", 1)[0].lower() if "/" in model else model.split("-", 1)[0].lower()
-        )
+        prefix = model.split("/", 1)[0].lower() if "/" in model else model.split("-", 1)[0].lower()
         return prefix in self._PREFIXES
 
     def chat_endpoint(self, _model: str, base_url: str) -> str:
@@ -132,9 +131,7 @@ class AnthropicAdapter:
 
         is_oauth = api_key.startswith("sk-ant-oat")
         if is_oauth:
-            h["Authorization"] = (
-                api_key if api_key.startswith("Bearer ") else f"Bearer {api_key}"
-            )
+            h["Authorization"] = api_key if api_key.startswith("Bearer ") else f"Bearer {api_key}"
             h["anthropic-beta"] = self._OAUTH_BETA_HEADERS
             h["user-agent"] = "claude-cli/2.1.2 (external, cli)"
             h["x-app"] = "cli"
@@ -435,10 +432,7 @@ class AnthropicAdapter:
                     last
                     and last.get("role") == "user"
                     and isinstance(last.get("content"), list)
-                    and all(
-                        b.get("type") == "tool_result"
-                        for b in last["content"]
-                    )
+                    and all(b.get("type") == "tool_result" for b in last["content"])
                 ):
                     last["content"].append(tool_block)
                 else:
@@ -526,9 +520,7 @@ class AnthropicAdapter:
         return 4096
 
     @classmethod
-    def _compute_max_tokens(
-        cls, request: Request, thinking: dict[str, Any] | None
-    ) -> int | None:
+    def _compute_max_tokens(cls, request: Request, thinking: dict[str, Any] | None) -> int | None:
         """Compute ``max_tokens`` for Anthropic API.
 
         Design decisions:
@@ -689,11 +681,7 @@ class AnthropicAdapter:
         elif etype == "message_stop":
             finish = self._map_finish_reason(self._stop_reason or "stop")
             if finish:
-                return {
-                    "choices": [
-                        {"delta": {}, "finish_reason": finish}
-                    ]
-                }
+                return {"choices": [{"delta": {}, "finish_reason": finish}]}
             return None
         else:
             return None

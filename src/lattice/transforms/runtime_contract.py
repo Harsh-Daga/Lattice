@@ -34,7 +34,9 @@ class RuntimeContractTransform(ReversibleSyncTransform):
         request.metadata["_lattice_runtime_contract"] = decision.contract
         context.record_metric(self.name, "tier_score", decision.score)
         context.record_metric(self.name, "confidence", decision.confidence)
-        context.record_metric(self.name, "transform_budget_ms", decision.contract["max_transform_latency_ms"])
+        context.record_metric(
+            self.name, "transform_budget_ms", decision.contract["max_transform_latency_ms"]
+        )
         return Ok(request)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:

@@ -199,6 +199,7 @@ def _is_multi_line_pattern_start(line: str) -> bool:
 # Structural fingerprinting
 # =============================================================================
 
+
 def _structural_hash(line: str) -> str:
     """Create a structural fingerprint of a line.
 
@@ -233,7 +234,7 @@ def _structural_hash(line: str) -> str:
     result = re.sub(r"[0-9a-fA-F]{6,}", "H", result)
 
     # Replace quoted strings
-    result = re.sub(r'"[^"]*"', "\"S\"", result)
+    result = re.sub(r'"[^"]*"', '"S"', result)
     result = re.sub(r"'[^']*'", "'S'", result)
 
     # Replace backtick strings
@@ -246,12 +247,40 @@ def _structural_hash(line: str) -> str:
     # Replace remaining words with W (but preserve keywords that indicate structure)
     # Keep structural keywords: FAILED, PASSED, error, warning, etc.
     structural_keywords = {
-        "FAILED", "PASSED", "ERROR", "WARN", "WARNING", "INFO", "DEBUG",
-        "error", "warning", "info", "debug", "note", "help", "suggestion",
-        "Compiling", "Finished", "Running", "Testing", "Doc-tests",
-        "ok", "failed", "ignored", "bench", "test", "running",
-        "new file", "modified", "deleted", "renamed", "untracked",
-        "Changes", "staged", "unstaged", "committed",
+        "FAILED",
+        "PASSED",
+        "ERROR",
+        "WARN",
+        "WARNING",
+        "INFO",
+        "DEBUG",
+        "error",
+        "warning",
+        "info",
+        "debug",
+        "note",
+        "help",
+        "suggestion",
+        "Compiling",
+        "Finished",
+        "Running",
+        "Testing",
+        "Doc-tests",
+        "ok",
+        "failed",
+        "ignored",
+        "bench",
+        "test",
+        "running",
+        "new file",
+        "modified",
+        "deleted",
+        "renamed",
+        "untracked",
+        "Changes",
+        "staged",
+        "unstaged",
+        "committed",
     }
 
     def replace_word(match: re.Match[str]) -> str:
@@ -298,6 +327,7 @@ class LineCluster:
 # =============================================================================
 # StructuralFingerprint
 # =============================================================================
+
 
 class StructuralFingerprint(ReversibleSyncTransform):
     """Generic repeated pattern detection and compression.
@@ -443,9 +473,7 @@ class StructuralFingerprint(ReversibleSyncTransform):
                 preserve_mask.add(j)
 
         # Cluster lines (excluding preserved ones)
-        clusterable_body = [
-            ln for idx, ln in enumerate(body) if idx not in preserve_mask
-        ]
+        clusterable_body = [ln for idx, ln in enumerate(body) if idx not in preserve_mask]
         clusters = self._cluster_lines(clusterable_body)
 
         # Build output
@@ -563,9 +591,7 @@ class StructuralFingerprint(ReversibleSyncTransform):
 
         return clusters
 
-    def _find_cluster_for_line(
-        self, line: str, clusters: list[LineCluster]
-    ) -> LineCluster | None:
+    def _find_cluster_for_line(self, line: str, clusters: list[LineCluster]) -> LineCluster | None:
         """Find the cluster that contains this line."""
         for cluster in clusters:
             if line in cluster.lines:

@@ -42,10 +42,10 @@ class StreamStallDetector:
 
     # Phase-specific tolerance multipliers
     _PHASE_MULTIPLIERS: dict[str, float] = {
-        "first_chunk": 1.5,   # Longer grace for first chunk
-        "streaming": 1.0,     # Baseline
-        "thinking": 2.0,      # Thinking can be very slow
-        "tool_call": 1.2,     # Tool calls have moderate latency
+        "first_chunk": 1.5,  # Longer grace for first chunk
+        "streaming": 1.0,  # Baseline
+        "thinking": 2.0,  # Thinking can be very slow
+        "tool_call": 1.2,  # Tool calls have moderate latency
     }
 
     def __init__(self, default_epsilon: float = 0.02, strict_mode: bool = False) -> None:
@@ -137,9 +137,8 @@ class StreamStallDetector:
                 state.rolling_inter_chunk_ms = elapsed_ms
             else:
                 state.rolling_inter_chunk_ms = (
-                    (1.0 - self._INTER_CHUNK_EWMA_ALPHA) * state.rolling_inter_chunk_ms
-                    + self._INTER_CHUNK_EWMA_ALPHA * elapsed_ms
-                )
+                    1.0 - self._INTER_CHUNK_EWMA_ALPHA
+                ) * state.rolling_inter_chunk_ms + self._INTER_CHUNK_EWMA_ALPHA * elapsed_ms
 
             # Update token velocity (tokens per second)
             if elapsed_ms > 0 and tokens > 0:
@@ -148,9 +147,8 @@ class StreamStallDetector:
                     state.token_velocity = instant_velocity
                 else:
                     state.token_velocity = (
-                        (1.0 - self._INTER_CHUNK_EWMA_ALPHA) * state.token_velocity
-                        + self._INTER_CHUNK_EWMA_ALPHA * instant_velocity
-                    )
+                        1.0 - self._INTER_CHUNK_EWMA_ALPHA
+                    ) * state.token_velocity + self._INTER_CHUNK_EWMA_ALPHA * instant_velocity
 
             state.last_chunk_at = now
 

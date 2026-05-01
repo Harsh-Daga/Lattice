@@ -74,6 +74,7 @@ from lattice.core.transport import Request, Response
 # Tree node analysis
 # =============================================================================
 
+
 def _is_nested_structure(value: Any) -> bool:
     """Check if a value is a nested structure worth summarizing."""
     if isinstance(value, list):
@@ -168,8 +169,20 @@ def _summarize_value(
 
 def _is_error_key(key: str) -> bool:
     """Check if a dictionary key indicates error information."""
-    error_keywords = {"error", "errors", "fail", "failed", "failure", "exception",
-                      "panic", "abort", "critical", "fatal", "stacktrace", "traceback"}
+    error_keywords = {
+        "error",
+        "errors",
+        "fail",
+        "failed",
+        "failure",
+        "exception",
+        "panic",
+        "abort",
+        "critical",
+        "fatal",
+        "stacktrace",
+        "traceback",
+    }
     key_lower = key.lower()
     return any(kw in key_lower for kw in error_keywords)
 
@@ -208,7 +221,9 @@ def _summarize_dict_list(
             if len(unique_errors) <= max_items:
                 field_stats[key] = unique_errors
             else:
-                field_stats[key] = unique_errors[:max_items] + [f"... {len(unique_errors) - max_items} more"]
+                field_stats[key] = unique_errors[:max_items] + [
+                    f"... {len(unique_errors) - max_items} more"
+                ]
             continue
 
         # For primitive values, compute frequency distribution
@@ -245,6 +260,7 @@ def _summarize_dict_list(
 # =============================================================================
 # HierarchicalSummarizer
 # =============================================================================
+
 
 class HierarchicalSummarizer(ReversibleSyncTransform):
     """Multi-level summarization for nested structures.
@@ -415,9 +431,7 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
 
         # Check for tree-like patterns
         tree_indicators = ["├──", "└──", "|--", "`--", "│", "|"]
-        tree_line_count = sum(
-            1 for line in lines if any(ind in line for ind in tree_indicators)
-        )
+        tree_line_count = sum(1 for line in lines if any(ind in line for ind in tree_indicators))
         if tree_line_count < len(lines) * 0.3:
             return None
 
@@ -484,13 +498,18 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
         yaml_indicators = 0
         for line in lines[:20]:
             stripped = line.strip()
-            if stripped.startswith("- ") or re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*\s*:", stripped) or stripped.startswith("#"):
+            if (
+                stripped.startswith("- ")
+                or re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*\s*:", stripped)
+                or stripped.startswith("#")
+            ):
                 yaml_indicators += 1
         if yaml_indicators < 5:
             return None
 
         try:
             import yaml  # type: ignore[import-untyped]
+
             parsed = yaml.safe_load(text)
         except Exception:
             return None
@@ -525,6 +544,7 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
 
         try:
             import xml.etree.ElementTree as ET
+
             root = ET.fromstring(stripped)
         except Exception:
             return None
@@ -591,6 +611,7 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
         # Parse rows
         import csv
         from io import StringIO
+
         reader = csv.DictReader(StringIO(text), delimiter=delimiter)
         rows: list[dict[str, str]] = []
         try:
@@ -633,6 +654,7 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
         # Parse into nested dict
         import configparser
         from io import StringIO
+
         parser = configparser.ConfigParser()
         try:
             parser.read_file(StringIO(text))
@@ -713,7 +735,7 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
 
         if error_messages:
             result_lines.append(f"Unique errors ({len(error_messages)}):")
-            for msg in error_messages[:self.max_items]:
+            for msg in error_messages[: self.max_items]:
                 result_lines.append(f"  - {msg}")
             if len(error_messages) > self.max_items:
                 result_lines.append(f"  ... {len(error_messages) - self.max_items} more")

@@ -177,10 +177,7 @@ class RedisCacheBackend:
         prefix: str = "lattice:cache:",
     ) -> None:
         if not _REDIS_AVAILABLE:
-            raise ImportError(
-                "Redis is not installed. "
-                "Install with: pip install redis"
-            )
+            raise ImportError("Redis is not installed. Install with: pip install redis")
         self.url = url
         self.prefix = prefix
         self._client: Any | None = None
@@ -850,9 +847,7 @@ class SemanticCache:
             total = self._hits + self._misses
             hit_rate = self._hits / total if total > 0 else 0.0
             approx_total = self._approximate_hits + self._approximate_misses
-            approx_hit_rate = (
-                self._approximate_hits / approx_total if approx_total > 0 else 0.0
-            )
+            approx_hit_rate = self._approximate_hits / approx_total if approx_total > 0 else 0.0
             return {
                 "enabled": self.enabled,
                 "entries": len(self._fingerprints),

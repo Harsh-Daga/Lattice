@@ -59,18 +59,20 @@ logger = structlog.get_logger()
 # Delta types
 # =============================================================================
 
+
 class DeltaType(enum.Enum):
     """Classification of how a new request relates to session history."""
 
-    APPEND = "append"                     # New messages appended to end
-    TRUNCATION = "truncation"             # Old messages removed from beginning
-    FULL_REPLACEMENT = "full_replacement" # Complete overwrite (new conversation)
-    ERROR = "error"                       # Cannot determine delta (mismatch)
+    APPEND = "append"  # New messages appended to end
+    TRUNCATION = "truncation"  # Old messages removed from beginning
+    FULL_REPLACEMENT = "full_replacement"  # Complete overwrite (new conversation)
+    ERROR = "error"  # Cannot determine delta (mismatch)
 
 
 # =============================================================================
 # DeltaEncoder
 # =============================================================================
+
 
 class DeltaEncoder(ReversibleSyncTransform):
     """Delta encoding for multi-turn session optimization.
@@ -177,7 +179,9 @@ class DeltaEncoder(ReversibleSyncTransform):
 
         elif delta_type == DeltaType.TRUNCATION:
             full_messages = list(new_messages)  # Client already pruned
-            context.record_metric(self.name, "truncated_messages", len(session.messages) - len(new_messages))
+            context.record_metric(
+                self.name, "truncated_messages", len(session.messages) - len(new_messages)
+            )
             self._log.debug(
                 "delta_truncation",
                 request_id=context.request_id,
@@ -229,9 +233,7 @@ class DeltaEncoder(ReversibleSyncTransform):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _classify_delta(
-        existing: list[Message], new_messages: list[Message]
-    ) -> DeltaType:
+    def _classify_delta(existing: list[Message], new_messages: list[Message]) -> DeltaType:
         """Determine how the new messages relate to the existing session.
 
         Algorithm:

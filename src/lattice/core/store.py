@@ -29,6 +29,7 @@ logger = structlog.get_logger()
 _REDIS_AVAILABLE = False
 try:
     import redis.asyncio as redis
+
     _REDIS_AVAILABLE = True
 except ImportError:
     redis = None  # type: ignore[assignment]
@@ -37,6 +38,7 @@ except ImportError:
 # =============================================================================
 # RedisSessionStore
 # =============================================================================
+
 
 class RedisSessionStore:
     """Redis-backed session store for multi-process deployments.
@@ -60,10 +62,7 @@ class RedisSessionStore:
         ttl_seconds: int = 3600,
     ) -> None:
         if not _REDIS_AVAILABLE:
-            raise ImportError(
-                "Redis is not installed. "
-                "Install with: pip install redis"
-            )
+            raise ImportError("Redis is not installed. Install with: pip install redis")
         self.url = url
         self.prefix = prefix
         self.ttl_seconds = ttl_seconds

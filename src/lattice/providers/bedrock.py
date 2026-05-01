@@ -106,9 +106,7 @@ class BedrockAdapter:
             body["inferenceConfig"]["stopSequences"] = request.stop
         if request.tools:
             body["toolConfig"] = {
-                "tools": [
-                    {"toolSpec": self._remap_tool(t)} for t in request.tools
-                ]
+                "tools": [{"toolSpec": self._remap_tool(t)} for t in request.tools]
             }
             if request.tool_choice is not None:
                 body["toolConfig"]["toolChoice"] = self._remap_tool_choice(request.tool_choice)
@@ -249,20 +247,26 @@ class BedrockAdapter:
             if "toolUse" in delta:
                 tu = delta["toolUse"]
                 return {
-                    "choices": [{
-                        "delta": {
-                            "tool_calls": [{
-                                "index": chunk["contentBlockDelta"].get("contentBlockIndex", 0),
-                                "id": tu.get("toolUseId", ""),
-                                "type": "function",
-                                 "function": {
-                                     "name": tu.get("name", ""),
-                                     "arguments": tu.get("input", ""),
-                                 },
-                            }]
-                        },
-                        "index": 0,
-                    }],
+                    "choices": [
+                        {
+                            "delta": {
+                                "tool_calls": [
+                                    {
+                                        "index": chunk["contentBlockDelta"].get(
+                                            "contentBlockIndex", 0
+                                        ),
+                                        "id": tu.get("toolUseId", ""),
+                                        "type": "function",
+                                        "function": {
+                                            "name": tu.get("name", ""),
+                                            "arguments": tu.get("input", ""),
+                                        },
+                                    }
+                                ]
+                            },
+                            "index": 0,
+                        }
+                    ],
                 }
         if "messageStop" in chunk:
             stop_reason = chunk["messageStop"].get("stopReason")

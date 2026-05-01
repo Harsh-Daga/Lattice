@@ -147,7 +147,9 @@ class LLMTPGateway:
             provider_name = self._resolve_provider_name(body, headers, request.model)
         except ValueError as exc:
             return (
-                json.dumps({"error": "provider_detection_failed", "message": str(exc)}).encode("utf-8"),
+                json.dumps({"error": "provider_detection_failed", "message": str(exc)}).encode(
+                    "utf-8"
+                ),
                 {"x-lattice-framing": "json"},
             )
         ctx = TransformContext(
@@ -283,7 +285,9 @@ class LLMTPGateway:
             metadata=base_manifest.metadata,
             manifest_id=base_manifest.manifest_id,
         )
-        session = await self.session_manager.update_session(session_id, new_messages, manifest=new_manifest)
+        session = await self.session_manager.update_session(
+            session_id, new_messages, manifest=new_manifest
+        )
         if session is None:
             return None
         return {

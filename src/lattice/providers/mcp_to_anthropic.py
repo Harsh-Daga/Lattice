@@ -19,6 +19,7 @@ from typing import Any
 # Data model
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class MCPServerTool:
     """Normalised representation of an MCP server tool in OpenAI format.
@@ -48,6 +49,7 @@ class MCPServerTool:
 # Detection
 # ============================================================================
 
+
 def _extract_url(tool: dict[str, Any]) -> str | None:
     """Return the URL string if *tool* carries one, else ``None``."""
     if "url" in tool and isinstance(tool["url"], str):
@@ -74,6 +76,7 @@ def is_mcp_tool(tool: dict[str, Any]) -> bool:
 # ============================================================================
 # Conversion helpers
 # ============================================================================
+
 
 def _extract_authorization(tool: dict[str, Any]) -> str | None:
     """Locate the authorization token in all supported nesting levels."""
@@ -152,6 +155,7 @@ def _build_anthropic_url_tool(tool: dict[str, Any]) -> dict[str, Any]:
 # ============================================================================
 # Public API
 # ============================================================================
+
 
 def convert_mcp_to_anthropic(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Convert MCP tools in an OpenAI-format ``tools`` array to Anthropic ``url`` tools.

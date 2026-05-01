@@ -39,6 +39,7 @@ from lattice.core.transport import Message, Request, Response
 # MessageDeduplicator
 # =============================================================================
 
+
 class MessageDeduplicator(ReversibleSyncTransform):
     """Remove duplicate and near-duplicate messages from conversation history.
 
@@ -145,8 +146,9 @@ class MessageDeduplicator(ReversibleSyncTransform):
             context.record_metric(self.name, "removed_count", removed_count)
             context.record_metric(self.name, "original_count", original_count)
             context.record_metric(
-                self.name, "tokens_saved_estimate",
-                sum(len(m.content) for m in request.messages[:removed_count]) // 4
+                self.name,
+                "tokens_saved_estimate",
+                sum(len(m.content) for m in request.messages[:removed_count]) // 4,
             )
 
         return Ok(request)
@@ -179,7 +181,9 @@ class MessageDeduplicator(ReversibleSyncTransform):
             return normalized
         if structure_type == "log_output":
             # Strip timestamps
-            normalized = re.sub(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?", "TIMESTAMP", content)
+            normalized = re.sub(
+                r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?", "TIMESTAMP", content
+            )
             return normalized
         return content
 

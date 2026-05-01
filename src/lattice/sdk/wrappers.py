@@ -27,6 +27,7 @@ from lattice.core.serialization import message_to_dict
 # OpenAI wrapper
 # =============================================================================
 
+
 def wrap_openai(
     client: Any,
     *,
@@ -92,6 +93,7 @@ def wrap_openai(
 # =============================================================================
 # Anthropic wrapper
 # =============================================================================
+
 
 def wrap_anthropic(
     client: Any,

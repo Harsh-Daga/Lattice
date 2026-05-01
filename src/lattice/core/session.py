@@ -30,6 +30,7 @@ from lattice.protocol.manifest import Manifest
 # Session
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class Session:
     """Tracks anchored context across turns.
@@ -143,6 +144,7 @@ class Session:
 # SessionStore Protocol
 # =============================================================================
 
+
 class SessionStore(Protocol):
     """Protocol for session storage backends."""
 
@@ -181,6 +183,7 @@ class SessionStore(Protocol):
 # =============================================================================
 # MemorySessionStore
 # =============================================================================
+
 
 class MemorySessionStore:
     """In-memory session store with TTL eviction and CAS versioning.
@@ -251,9 +254,7 @@ class MemorySessionStore:
             # LRU eviction if exceeding max
             if len(self._sessions) > self._max_sessions:
                 # Remove oldest by last_accessed_at
-                oldest = min(
-                    self._sessions.values(), key=lambda s: s.last_accessed_at
-                )
+                oldest = min(self._sessions.values(), key=lambda s: s.last_accessed_at)
                 del self._sessions[oldest.session_id]
             return True
 
@@ -295,6 +296,7 @@ class MemorySessionStore:
 # SessionManager
 # =============================================================================
 
+
 class SessionManager:
     """High-level session management API.
 
@@ -334,7 +336,10 @@ class SessionManager:
         manifest = manifest_from_messages(
             session_id=session_id,
             messages=[
-                {"role": m.role.value if isinstance(m.role, Role) else str(m.role), "content": m.content}
+                {
+                    "role": m.role.value if isinstance(m.role, Role) else str(m.role),
+                    "content": m.content,
+                }
                 for m in messages
             ],
             tools=tools,
@@ -451,7 +456,10 @@ class SessionManager:
         base = manifest_from_messages(
             session_id=session.session_id,
             messages=[
-                {"role": m.role.value if isinstance(m.role, Role) else str(m.role), "content": m.content}
+                {
+                    "role": m.role.value if isinstance(m.role, Role) else str(m.role),
+                    "content": m.content,
+                }
                 for m in session.messages
             ],
             tools=session.tool_schemas or None,
@@ -467,9 +475,7 @@ class SessionManager:
             manifest_id=base.manifest_id,
         )
 
-    async def compute_delta(
-        self, session_id: str, new_messages: list[Message]
-    ) -> list[Message]:
+    async def compute_delta(self, session_id: str, new_messages: list[Message]) -> list[Message]:
         """Compute which messages are new compared to the session.
 
         Simple append-only logic: messages after session.message_count

@@ -180,7 +180,9 @@ def build_install_target_envs(
     return result
 
 
-def build_launch_env(agent: str, port: int, backend: str = "openai") -> tuple[dict[str, str], list[str]]:
+def build_launch_env(
+    agent: str, port: int, backend: str = "openai"
+) -> tuple[dict[str, str], list[str]]:
     """Build the environment dict and display lines for a single agent."""
     builders = _ensure_builders()
     builder = builders.get(agent)

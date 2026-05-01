@@ -55,6 +55,7 @@ class CacheArbitrageOutcome:
             "reordered": self.reordered,
         }
 
+
 try:
     from lattice.protocol.cache_planner import (
         CachePlan,
@@ -126,7 +127,12 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
         # Step 3 — annotate static/stable content metadata on the new copies
         for msg in request.messages:
             role = msg.role.value if isinstance(msg.role, Role) else msg.role
-            if role == "system" or role == "tool" or role == "assistant" and msg.metadata.get("is_static_doc"):
+            if (
+                role == "system"
+                or role == "tool"
+                or role == "assistant"
+                and msg.metadata.get("is_static_doc")
+            ):
                 msg.metadata.setdefault("_cache_stable", True)
             else:
                 msg.metadata.setdefault("_cache_stable", False)
@@ -142,9 +148,7 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
 
         # Step 5 — compute prefix stability score
         stable_token_count = sum(
-            m.token_estimate
-            for m in request.messages
-            if m.metadata.get("_cache_stable")
+            m.token_estimate for m in request.messages if m.metadata.get("_cache_stable")
         )
         total_tokens = request.token_estimate or 1
         stability_score = stable_token_count / total_tokens
@@ -227,9 +231,11 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
                 parts.append(f"{role}:{msg.content or ''}")
         if request.tools:
             import json
+
             parts.append(json.dumps(request.tools, sort_keys=True, ensure_ascii=True))
         text = "\n".join(parts)
         import hashlib
+
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
     def _apply_provider_cache_plan(
@@ -272,7 +278,9 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
 
             # Determine manifest source without mutating the Manifest object
             outcome.manifest_source = (
-                "injected" if request.metadata.get("_lattice_manifest") is not None else "reconstructed"
+                "injected"
+                if request.metadata.get("_lattice_manifest") is not None
+                else "reconstructed"
             )
 
             # Populate outcome with plan info
@@ -332,7 +340,11 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
             outcome.plan_applied = False
             context.record_metric(self.name, "planner_failure", "validation_error")
         except Exception as exc:
-            outcome.planner_failure = {"category": "unexpected", "exception": type(exc).__name__, "detail": str(exc)}
+            outcome.planner_failure = {
+                "category": "unexpected",
+                "exception": type(exc).__name__,
+                "detail": str(exc),
+            }
             outcome.skip_reason = ""
             outcome.plan_applied = False
             context.record_metric(self.name, "planner_failure", "unexpected")
@@ -383,6 +395,7 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
 
         if request.tools:
             import json
+
             segments.insert(
                 0,
                 build_segment(

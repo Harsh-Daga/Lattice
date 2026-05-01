@@ -28,6 +28,7 @@ from typing import Any
 # Image source types
 # =============================================================================
 
+
 class ImageSourceType(str, enum.Enum):
     """How image data is encoded."""
 
@@ -55,7 +56,11 @@ class ImageSource:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ImageSource:
         if "url" in data:
-            return cls(type=ImageSourceType.URL, data=data["url"], media_type=data.get("media_type", "image/jpeg"))
+            return cls(
+                type=ImageSourceType.URL,
+                data=data["url"],
+                media_type=data.get("media_type", "image/jpeg"),
+            )
         return cls(
             type=ImageSourceType.BASE64,
             data=data.get("data", ""),
@@ -66,6 +71,7 @@ class ImageSource:
 # =============================================================================
 # ContentPart union
 # =============================================================================
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class TextPart:
@@ -177,7 +183,10 @@ ContentPart = TextPart | ImagePart | ToolCallPart | ToolResultPart | ReasoningPa
 # Content helpers
 # =============================================================================
 
-def content_to_parts(content: str | list[ContentPart] | list[dict[str, Any]] | None) -> list[ContentPart]:
+
+def content_to_parts(
+    content: str | list[ContentPart] | list[dict[str, Any]] | None,
+) -> list[ContentPart]:
     """Normalize content to a list of ContentPart.
 
     Args:

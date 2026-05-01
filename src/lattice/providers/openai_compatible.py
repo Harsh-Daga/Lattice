@@ -27,6 +27,7 @@ from lattice.providers.openai import OpenAIAdapter
 # Generic base
 # =============================================================================
 
+
 class OpenAICompatibleAdapter(OpenAIAdapter):
     """Generic adapter for any provider that speaks OpenAI's API.
 
@@ -69,6 +70,7 @@ class OpenAICompatibleAdapter(OpenAIAdapter):
 # =============================================================================
 # Concrete adapters
 # =============================================================================
+
 
 class GroqAdapter(OpenAICompatibleAdapter):
     """Groq — ultra-fast inference (OpenAI-compatible).

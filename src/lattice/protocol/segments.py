@@ -32,6 +32,7 @@ from lattice.protocol.content import (
 # Segment type enum
 # =============================================================================
 
+
 class SegmentType(str, enum.Enum):
     """Classification of a canonical segment."""
 
@@ -45,6 +46,7 @@ class SegmentType(str, enum.Enum):
 # =============================================================================
 # Segment
 # =============================================================================
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Segment:
@@ -90,16 +92,14 @@ class Segment:
     @property
     def token_estimate(self) -> int:
         """Rough token estimate for this segment."""
-        text_len = sum(
-            len(getattr(p, "text", getattr(p, "content", "")))
-            for p in self.parts
-        )
+        text_len = sum(len(getattr(p, "text", getattr(p, "content", ""))) for p in self.parts)
         return max(1, text_len // 4)
 
 
 # =============================================================================
 # Segment builder
 # =============================================================================
+
 
 def build_segment(
     segment_type: SegmentType,
@@ -134,12 +134,16 @@ def build_segment(
 def build_system_segment(text: str, metadata: dict[str, Any] | None = None) -> Segment:
     """Convenience builder for system segments."""
     from lattice.protocol.content import TextPart
+
     return build_segment(SegmentType.SYSTEM, [TextPart(text=text)], metadata=metadata)
 
 
-def build_tools_segment(tools: list[dict[str, Any]], metadata: dict[str, Any] | None = None) -> Segment:
+def build_tools_segment(
+    tools: list[dict[str, Any]], metadata: dict[str, Any] | None = None
+) -> Segment:
     """Convenience builder for tool schema segments."""
     from lattice.protocol.content import TextPart
+
     # Tools are stored as JSON text for stable hashing
     tools_json = json.dumps(tools, sort_keys=True, ensure_ascii=False)
     return build_segment(SegmentType.TOOLS, [TextPart(text=tools_json)], metadata=metadata)

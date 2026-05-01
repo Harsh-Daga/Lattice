@@ -47,6 +47,7 @@ class StreamingToolCall:
 # Result types
 # ============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class StreamResult:
     """What the caller should emit after processing one chunk."""

@@ -122,18 +122,21 @@ class LatticeConfig(BaseSettings):
     semantic_cache_enabled: bool = Field(
         default=True,
         description="Enable proxy-side response caching. "
-                     "Caches complete responses keyed by request checksum.",
+        "Caches complete responses keyed by request checksum.",
     )
     semantic_cache_ttl_seconds: int = Field(
-        default=300, ge=1,
+        default=300,
+        ge=1,
         description="TTL for cached responses in seconds.",
     )
     semantic_cache_max_entries: int = Field(
-        default=1000, ge=1,
+        default=1000,
+        ge=1,
         description="Maximum number of cached responses before LRU eviction.",
     )
     semantic_cache_max_entry_size_kb: int = Field(
-        default=512, ge=1,
+        default=512,
+        ge=1,
         description="Maximum size of a single cached response in KB.",
     )
     semantic_cache_backend: str = Field(
@@ -142,8 +145,7 @@ class LatticeConfig(BaseSettings):
     )
     semantic_cache_backend_url: str | None = Field(
         default=None,
-        description="Redis URL for semantic cache backend. "
-                    "Defaults to redis_url if not set.",
+        description="Redis URL for semantic cache backend. Defaults to redis_url if not set.",
     )
 
     # ------------------------------------------------------------------
@@ -152,7 +154,7 @@ class LatticeConfig(BaseSettings):
     compression_mode: str = Field(
         default="balanced",
         description="Compression mode: 'safe', 'balanced', or 'aggressive'. "
-                    "Maps to transform enablement flags internally.",
+        "Maps to transform enablement flags internally.",
     )
     transform_reference_sub: bool = True
     transform_tool_filter: bool = True
@@ -176,7 +178,7 @@ class LatticeConfig(BaseSettings):
         ge=0.0,
         le=1.0,
         description="Maximum acceptable distortion (0-1) for RateDistortionCompressor. "
-                    "Higher = more compression, lower = higher fidelity.",
+        "Higher = more compression, lower = higher fidelity.",
     )
     submodular_token_budget: int = Field(
         default=4096,
@@ -229,23 +231,25 @@ class LatticeConfig(BaseSettings):
     default_input_token_budget: int | None = Field(
         default=None,
         description="Max input tokens (messages + tools) per request. "
-                    "Rejects requests that exceed this budget.",
+        "Rejects requests that exceed this budget.",
     )
     min_max_tokens: int = Field(
-        default=64, ge=1,
+        default=64,
+        ge=1,
         description="Minimum allowed max_tokens value. Requests with "
-                    "max_tokens below this are rejected. 64 ensures "
-                    "models can produce a meaningful response.",
+        "max_tokens below this are rejected. 64 ensures "
+        "models can produce a meaningful response.",
     )
     default_context_limit: int = Field(default=128_000, ge=1)
     max_request_size_mb: int = Field(default=10, ge=1)
     request_timeout_seconds: int = Field(default=120, ge=1)
     compression_timeout_ms: int = Field(default=100, ge=1)
     max_transform_expansion_ratio: float = Field(
-        default=1.5, ge=1.0,
+        default=1.5,
+        ge=1.0,
         description="Hard cap on per-transform intermediate token growth. "
-                    "Any transform that expands input tokens by more than "
-                    "this ratio is aborted."
+        "Any transform that expands input tokens by more than "
+        "this ratio is aborted.",
     )
     graceful_degradation: bool = True
 
@@ -254,9 +258,10 @@ class LatticeConfig(BaseSettings):
     # ------------------------------------------------------------------
     provider_stall_timeout_seconds: int = Field(default=30, ge=1)
     provider_max_retries: int = Field(
-        default=3, ge=0,
+        default=3,
+        ge=0,
         description="Max retries for the SAME model on transient errors "
-                    "(429, 502, 503, 504). LATTICE never changes the model."
+        "(429, 502, 503, 504). LATTICE never changes the model.",
     )
 
     # ------------------------------------------------------------------
@@ -307,9 +312,7 @@ class LatticeConfig(BaseSettings):
     @model_validator(mode="after")
     def _validate_redis_url(self) -> LatticeConfig:
         if self.session_store == "redis" and not self.redis_url:
-            raise ValueError(
-                "redis_url is required when session_store='redis'"
-            )
+            raise ValueError("redis_url is required when session_store='redis'")
         if self.semantic_cache_backend == "redis":
             cache_url = self.semantic_cache_backend_url or self.redis_url
             if not cache_url:
@@ -337,9 +340,7 @@ class LatticeConfig(BaseSettings):
         if "compression_mode" not in self.model_fields_set:
             return self
         # If any transform flag was explicitly set, respect it
-        transform_fields = {
-            f for f in self.model_fields_set if f.startswith("transform_")
-        }
+        transform_fields = {f for f in self.model_fields_set if f.startswith("transform_")}
         if transform_fields:
             return self
         self.apply_compression_mode()

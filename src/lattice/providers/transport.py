@@ -59,6 +59,7 @@ logger = structlog.get_logger()
 # ProviderRegistry
 # =============================================================================
 
+
 class ProviderRegistry:
     """Maps model strings to the correct ``ProviderAdapter``.
 
@@ -71,23 +72,23 @@ class ProviderRegistry:
         if not self._adapters:
             self._adapters = [
                 # OpenAI-compatible providers (prefix matching)
-                GroqAdapter(),          # groq/ prefix
-                TogetherAdapter(),      # together/ prefix
-                DeepSeekAdapter(),      # deepseek/ prefix
-                PerplexityAdapter(),    # perplexity/ prefix
-                MistralAdapter(),       # mistral/ prefix
-                FireworksAdapter(),     # fireworks/ prefix
-                OpenRouterAdapter(),    # openrouter/ prefix
-                CohereAdapter(),        # cohere/ prefix
-                AI21Adapter(),          # ai21/ prefix
-                GeminiAdapter(),        # gemini/ or google/ prefix
-                VertexAdapter(),        # vertex/ prefix
-                OllamaCloudAdapter(),   # ollama-cloud/ prefix
-                OllamaAdapter(),        # ollama/ prefix
-                AnthropicAdapter(),     # anthropic/ or claude- prefix
-                AzureAdapter(),         # azure/ prefix
-                BedrockAdapter(),       # bedrock/ prefix
-                OpenAIAdapter(),        # openai/ prefix
+                GroqAdapter(),  # groq/ prefix
+                TogetherAdapter(),  # together/ prefix
+                DeepSeekAdapter(),  # deepseek/ prefix
+                PerplexityAdapter(),  # perplexity/ prefix
+                MistralAdapter(),  # mistral/ prefix
+                FireworksAdapter(),  # fireworks/ prefix
+                OpenRouterAdapter(),  # openrouter/ prefix
+                CohereAdapter(),  # cohere/ prefix
+                AI21Adapter(),  # ai21/ prefix
+                GeminiAdapter(),  # gemini/ or google/ prefix
+                VertexAdapter(),  # vertex/ prefix
+                OllamaCloudAdapter(),  # ollama-cloud/ prefix
+                OllamaAdapter(),  # ollama/ prefix
+                AnthropicAdapter(),  # anthropic/ or claude- prefix
+                AzureAdapter(),  # azure/ prefix
+                BedrockAdapter(),  # bedrock/ prefix
+                OpenAIAdapter(),  # openai/ prefix
             ]
 
     def resolve(self, model: str) -> ProviderAdapter:
@@ -202,6 +203,7 @@ def _should_retry(status_code: int, retry_on: tuple[int, ...]) -> bool:
 # Connection Pool Manager
 # =============================================================================
 
+
 class ConnectionPoolManager:
     """Manages persistent ``httpx.AsyncClient`` instances per provider.
 
@@ -286,6 +288,7 @@ class ConnectionPoolManager:
 # =============================================================================
 # DirectHTTPProvider
 # =============================================================================
+
 
 class RateLimitTracker:
     """Light-weight per-provider rate-limit state.
@@ -417,9 +420,7 @@ class DirectHTTPProvider:
         """Admit a request through the queued TACC controller."""
         estimate = self._tacc_reservation(request)
         priority = int(request.metadata.get("tacc_priority", 0) or 0)
-        cache_hit_expected = bool(
-            request.metadata.get("_lattice_cache_hit_expected", False)
-        )
+        cache_hit_expected = bool(request.metadata.get("_lattice_cache_hit_expected", False))
         is_speculative = bool(request.metadata.get("_lattice_is_speculative", False))
         is_batch = bool(request.metadata.get("_lattice_is_batch", False))
 
@@ -622,7 +623,9 @@ class DirectHTTPProvider:
                             try:
                                 raw_line = await self._next_stream_line(
                                     iterator,
-                                    deadline_monotonic=deadline if not first_chunk_emitted else None,
+                                    deadline_monotonic=deadline
+                                    if not first_chunk_emitted
+                                    else None,
                                 )
                             except StopAsyncIteration:
                                 break
@@ -644,15 +647,23 @@ class DirectHTTPProvider:
                             while "\n" in buffer:
                                 line, buffer = buffer.split("\n", 1)
                                 if stream_state is not None:
-                                    for st_chunk in self._process_sse_line_with_state(line, stream_state):
+                                    for st_chunk in self._process_sse_line_with_state(
+                                        line, stream_state
+                                    ):
                                         for optimized in self._optimize_stream_chunk(
                                             st_chunk,
                                             stream_optimizer,
                                             stream_optimizer_state,
                                         ):
-                                            chunk_tokens = len(self._stream_chunk_text(optimized)) // 4
+                                            chunk_tokens = (
+                                                len(self._stream_chunk_text(optimized)) // 4
+                                            )
                                             streamed_tokens += chunk_tokens
-                                            kind = "first_chunk" if not first_chunk_emitted else "chunk"
+                                            kind = (
+                                                "first_chunk"
+                                                if not first_chunk_emitted
+                                                else "chunk"
+                                            )
                                             self.stall_detector.record_chunk(
                                                 provider_name,
                                                 kind,
@@ -686,9 +697,15 @@ class DirectHTTPProvider:
                                             stream_optimizer,
                                             stream_optimizer_state,
                                         ):
-                                            chunk_tokens = len(self._stream_chunk_text(optimized)) // 4
+                                            chunk_tokens = (
+                                                len(self._stream_chunk_text(optimized)) // 4
+                                            )
                                             streamed_tokens += chunk_tokens
-                                            kind = "first_chunk" if not first_chunk_emitted else "chunk"
+                                            kind = (
+                                                "first_chunk"
+                                                if not first_chunk_emitted
+                                                else "chunk"
+                                            )
                                             self.stall_detector.record_chunk(
                                                 provider_name,
                                                 kind,
@@ -882,7 +899,7 @@ class DirectHTTPProvider:
             return []
         if not line.startswith("data: "):
             return []
-        payload = line[len("data: "):]
+        payload = line[len("data: ") :]
         if payload.strip() == "[DONE]":
             return [{"choices": [], "done": True}]
         try:
@@ -950,7 +967,10 @@ class DirectHTTPProvider:
 
         # No key found — raise clear error
         from lattice.core.credentials import _PROVIDER_ENV_VARS
-        env_var = _PROVIDER_ENV_VARS.get(provider_name, {}).get("api_key", f"{provider_name.upper().replace('-', '_')}_API_KEY")
+
+        env_var = _PROVIDER_ENV_VARS.get(provider_name, {}).get(
+            "api_key", f"{provider_name.upper().replace('-', '_')}_API_KEY"
+        )
         raise ProviderError(
             provider=provider_name,
             status_code=401,
@@ -1312,7 +1332,9 @@ class DirectHTTPProvider:
                             try:
                                 raw_line = await self._next_stream_line(
                                     iterator,
-                                    deadline_monotonic=deadline if not first_chunk_emitted else None,
+                                    deadline_monotonic=deadline
+                                    if not first_chunk_emitted
+                                    else None,
                                 )
                             except StopAsyncIteration:
                                 break
@@ -1487,7 +1509,7 @@ class DirectHTTPProvider:
             return None
         if not line.startswith("data: "):
             return None
-        payload = line[len("data: "):]
+        payload = line[len("data: ") :]
         if payload.strip() == "[DONE]":
             return {"choices": [], "done": True}
         try:

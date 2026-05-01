@@ -18,6 +18,7 @@ from typing import Any
 # LatticeError (base)
 # =============================================================================
 
+
 class LatticeError(Exception):
     """Base exception for all LATTICE errors.
 
@@ -57,6 +58,7 @@ class LatticeError(Exception):
 # Configuration errors
 # =============================================================================
 
+
 class ConfigurationError(LatticeError):
     """Configuration is invalid, incomplete, or contradictory.
 
@@ -82,6 +84,7 @@ class ValidationError(LatticeError):
 # =============================================================================
 # Session errors
 # =============================================================================
+
 
 class SessionError(LatticeError):
     """Base for session-related errors."""
@@ -124,6 +127,7 @@ class SessionStoreError(SessionError):
 # Pipeline errors
 # =============================================================================
 
+
 class PipelineError(LatticeError):
     """Base for pipeline errors."""
 
@@ -156,6 +160,7 @@ class TransformCircularDependencyError(PipelineError):
 # =============================================================================
 # Proxy errors
 # =============================================================================
+
 
 class ProxyError(LatticeError):
     """Base for proxy errors."""
@@ -210,6 +215,7 @@ class RequestTooLargeError(ProxyError):
 # =============================================================================
 # TransformError (recoverable, returned as Result.Err)
 # =============================================================================
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class TransformError:

@@ -257,7 +257,10 @@ class TACCController:
 
             if status_code == 200:
                 # Congestion signal: latency spike compared to EWMA baseline.
-                if state.rtt_estimate > 0 and effective_latency > _HIGH_LATENCY_MULTIPLIER * state.rtt_estimate:
+                if (
+                    state.rtt_estimate > 0
+                    and effective_latency > _HIGH_LATENCY_MULTIPLIER * state.rtt_estimate
+                ):
                     self._on_timeout_like_signal(state, now)
                 else:
                     self._on_success(state, effective_latency, tokens_generated, now)
@@ -308,9 +311,7 @@ class TACCController:
         async with self._condition:
             state = self._get_or_create(provider)
             state.token_velocity = tokens_per_second
-            state.token_rate_estimate = self._ewma(
-                state.token_rate_estimate, tokens_per_second
-            )
+            state.token_rate_estimate = self._ewma(state.token_rate_estimate, tokens_per_second)
             self._condition.notify_all()
 
     def should_downgrade_priority(
@@ -443,9 +444,7 @@ class TACCController:
             "active_requests": state.active_requests,
             "pending_requests": len(state.pending_waiters),
             "pending_token_pressure": sum(
-                waiter.estimated_tokens
-                for waiter in state.pending_waiters
-                if not waiter.cancelled
+                waiter.estimated_tokens for waiter in state.pending_waiters if not waiter.cancelled
             ),
             "consecutive_successes": state.consecutive_successes,
             "consecutive_failures": state.consecutive_failures,

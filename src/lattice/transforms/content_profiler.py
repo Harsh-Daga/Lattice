@@ -41,26 +41,28 @@ from lattice.utils.validation import SemanticRiskScore, compute_risk_score
 # Content profiles
 # =============================================================================
 
+
 class ContentProfile(enum.Enum):
     """Classification of request content type."""
 
-    CODE_HEAVY = "code_heavy"           # Lots of code blocks, identifiers
-    TABLE_HEAVY = "table_heavy"         # JSON arrays, markdown tables
-    NARRATIVE_LONG = "narrative_long"   # Long natural language text
-    TOOL_OUTPUT = "tool_output"         # Tool/API response JSON
-    LOG_OUTPUT = "log_output"           # Timestamped log lines
-    DIFF_OUTPUT = "diff_output"         # Unified diff / patch
-    STACK_TRACE = "stack_trace"         # Exception stack traces
-    GREP_OUTPUT = "grep_output"         # Grep / search results
-    FILE_TREE = "file_tree"             # Directory tree listings
-    MCP_OUTPUT = "mcp_output"           # MCP tool result structures
-    MIXED = "mixed"                     # Balanced mix
-    SHORT = "short"                     # Too short to benefit from compression
+    CODE_HEAVY = "code_heavy"  # Lots of code blocks, identifiers
+    TABLE_HEAVY = "table_heavy"  # JSON arrays, markdown tables
+    NARRATIVE_LONG = "narrative_long"  # Long natural language text
+    TOOL_OUTPUT = "tool_output"  # Tool/API response JSON
+    LOG_OUTPUT = "log_output"  # Timestamped log lines
+    DIFF_OUTPUT = "diff_output"  # Unified diff / patch
+    STACK_TRACE = "stack_trace"  # Exception stack traces
+    GREP_OUTPUT = "grep_output"  # Grep / search results
+    FILE_TREE = "file_tree"  # Directory tree listings
+    MCP_OUTPUT = "mcp_output"  # MCP tool result structures
+    MIXED = "mixed"  # Balanced mix
+    SHORT = "short"  # Too short to benefit from compression
 
 
 # =============================================================================
 # ContentProfiler
 # =============================================================================
+
 
 class ContentProfiler(ReversibleSyncTransform):
     """Profile request content and recommend compression strategy.
@@ -178,9 +180,7 @@ class ContentProfiler(ReversibleSyncTransform):
         # Narrative signals
         non_code_text = re.sub(r"```.*?```", "", all_text, flags=re.DOTALL)
         sentences = len(re.split(r"[.!?]+", non_code_text))
-        scores[ContentProfile.NARRATIVE_LONG] += (
-            sentences * self.narrative_length_weight
-        )
+        scores[ContentProfile.NARRATIVE_LONG] += sentences * self.narrative_length_weight
 
         # Tool output signals
         tool_msgs = sum(1 for m in request.messages if m.role in ("tool", "function"))
@@ -188,8 +188,10 @@ class ContentProfiler(ReversibleSyncTransform):
 
         # Log output signals: timestamped lines, severity levels
         log_timestamps = len(re.findall(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}", all_text))
-        log_levels = len(re.findall(r"\b(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL)\b", all_text))
-        scores[ContentProfile.LOG_OUTPUT] += (log_timestamps * 2.0 + log_levels * 1.5)
+        log_levels = len(
+            re.findall(r"\b(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL)\b", all_text)
+        )
+        scores[ContentProfile.LOG_OUTPUT] += log_timestamps * 2.0 + log_levels * 1.5
 
         # Diff output signals: unified diff headers, +/- lines, @@ hunks, diff --git
         diff_headers = len(re.findall(r"^(---|\+\+\+) ", all_text, re.MULTILINE))
@@ -215,7 +217,9 @@ class ContentProfiler(ReversibleSyncTransform):
 
         # File tree signals: directory indentation, tree branch characters, tree command output
         tree_lines = len(re.findall(r"^[\s│├└├──]*[├└]── ", all_text, re.MULTILINE))
-        tree_cmd = len(re.findall(r"^[\s│]*\d+\s+directories,\s+\d+\s+files", all_text, re.MULTILINE))
+        tree_cmd = len(
+            re.findall(r"^[\s│]*\d+\s+directories,\s+\d+\s+files", all_text, re.MULTILINE)
+        )
         tree_indent = len(re.findall(r"^\s+[^\s/]+(?:\.\w+)?/?$", all_text, re.MULTILINE))
         scores[ContentProfile.FILE_TREE] += tree_lines * 1.5 + tree_cmd * 2.0 + tree_indent * 0.5
 
@@ -266,56 +270,103 @@ class ContentProfiler(ReversibleSyncTransform):
         }
 
         if profile == ContentProfile.SHORT:
-            return {**base, "reference_sub": False, "tool_filter": False,
-                    "format_conversion": False, "message_dedup": False}
+            return {
+                **base,
+                "reference_sub": False,
+                "tool_filter": False,
+                "format_conversion": False,
+                "message_dedup": False,
+            }
 
         if profile == ContentProfile.CODE_HEAVY:
-            return {**base, "semantic_compress": False,
-                    "format_conversion": False, "reference_sub": True}
+            return {
+                **base,
+                "semantic_compress": False,
+                "format_conversion": False,
+                "reference_sub": True,
+            }
 
         if profile == ContentProfile.TABLE_HEAVY:
             return {**base, "format_conversion": True, "semantic_compress": False}
 
         if profile == ContentProfile.NARRATIVE_LONG:
-            return {**base, "semantic_compress": True, "compression_ratio": 0.6,
-                    "format_conversion": False}
+            return {
+                **base,
+                "semantic_compress": True,
+                "compression_ratio": 0.6,
+                "format_conversion": False,
+            }
 
         if profile == ContentProfile.TOOL_OUTPUT:
-            return {**base, "tool_filter": True, "semantic_compress": False,
-                    "format_conversion": True}
+            return {
+                **base,
+                "tool_filter": True,
+                "semantic_compress": False,
+                "format_conversion": True,
+            }
 
         if profile == ContentProfile.LOG_OUTPUT:
             # Logs: dedup repeated lines, keep recent, no semantic compress
-            return {**base, "tool_filter": True, "semantic_compress": False,
-                    "format_conversion": False, "message_dedup": True,
-                    "reference_sub": True}
+            return {
+                **base,
+                "tool_filter": True,
+                "semantic_compress": False,
+                "format_conversion": False,
+                "message_dedup": True,
+                "reference_sub": True,
+            }
 
         if profile == ContentProfile.DIFF_OUTPUT:
             # Diffs: reference substitution for repeated paths, no cleanup
-            return {**base, "reference_sub": True, "output_cleanup": False,
-                    "semantic_compress": False, "format_conversion": False}
+            return {
+                **base,
+                "reference_sub": True,
+                "output_cleanup": False,
+                "semantic_compress": False,
+                "format_conversion": False,
+            }
 
         if profile == ContentProfile.STACK_TRACE:
             # Stack traces: reference substitution for paths, keep structure
-            return {**base, "reference_sub": True, "output_cleanup": False,
-                    "semantic_compress": False, "format_conversion": False,
-                    "tool_filter": False}
+            return {
+                **base,
+                "reference_sub": True,
+                "output_cleanup": False,
+                "semantic_compress": False,
+                "format_conversion": False,
+                "tool_filter": False,
+            }
 
         if profile == ContentProfile.GREP_OUTPUT:
             # Grep: format conversion if tabular, reference sub for paths
-            return {**base, "format_conversion": True, "reference_sub": True,
-                    "semantic_compress": False, "output_cleanup": False}
+            return {
+                **base,
+                "format_conversion": True,
+                "reference_sub": True,
+                "semantic_compress": False,
+                "output_cleanup": False,
+            }
 
         if profile == ContentProfile.FILE_TREE:
             # File trees: heavy reference substitution, no cleanup
-            return {**base, "reference_sub": True, "output_cleanup": False,
-                    "semantic_compress": False, "format_conversion": False,
-                    "tool_filter": False}
+            return {
+                **base,
+                "reference_sub": True,
+                "output_cleanup": False,
+                "semantic_compress": False,
+                "format_conversion": False,
+                "tool_filter": False,
+            }
 
         if profile == ContentProfile.MCP_OUTPUT:
             # MCP: schema-aware tool filter, preserve structure
-            return {**base, "tool_filter": True, "semantic_compress": False,
-                    "format_conversion": True, "output_cleanup": False}
+            return {
+                **base,
+                "tool_filter": True,
+                "semantic_compress": False,
+                "format_conversion": True,
+                "output_cleanup": False,
+            }
 
         # MIXED
         return base

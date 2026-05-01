@@ -37,6 +37,7 @@ from lattice.protocol.segments import (
 # Manifest
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class Manifest:
     """Complete prompt state as an ordered list of segments.
@@ -107,6 +108,7 @@ class Manifest:
 # Manifest builder / canonicalizer
 # =============================================================================
 
+
 def compute_anchor_hash(segments: list[Segment], metadata: dict[str, Any]) -> str:
     """Compute deterministic anchor hash from segments and metadata.
 
@@ -116,8 +118,7 @@ def compute_anchor_hash(segments: list[Segment], metadata: dict[str, Any]) -> st
     """
     canonical = {
         "segments": [
-            {"type": s.type.value, "version": s.version, "hash": s.hash}
-            for s in segments
+            {"type": s.type.value, "version": s.version, "hash": s.hash} for s in segments
         ],
         "metadata": _sort_dict(metadata),
     }
@@ -246,10 +247,12 @@ def manifest_from_messages(
                     conversation_parts.extend(parts)
 
     if system_texts:
-        segments.append(build_segment(
-            SegmentType.SYSTEM,
-            [TextPart(text="\n".join(system_texts))],
-        ))
+        segments.append(
+            build_segment(
+                SegmentType.SYSTEM,
+                [TextPart(text="\n".join(system_texts))],
+            )
+        )
 
     if tools:
         segments.append(build_tools_segment(tools))
@@ -296,7 +299,7 @@ def manifest_to_messages(manifest: Manifest) -> list[dict[str, Any]]:
                 end_bracket = part.text.find("] ")
                 if end_bracket != -1:
                     current_role = part.text[1:end_bracket].lower()
-                    current_texts.append(part.text[end_bracket + 2:])
+                    current_texts.append(part.text[end_bracket + 2 :])
                 else:
                     current_texts.append(part.text)
             else:
@@ -311,6 +314,7 @@ def manifest_to_messages(manifest: Manifest) -> list[dict[str, Any]]:
 # =============================================================================
 # Delta operations on manifests
 # =============================================================================
+
 
 def apply_delta(
     manifest: Manifest,
@@ -338,13 +342,24 @@ def apply_delta(
     # Replace messages segment if provided
     if replace_messages:
         segments = [s for s in segments if s.type != SegmentType.MESSAGES]
-        segments.append(build_segment(SegmentType.MESSAGES, replace_messages, version=manifest.anchor_version + 1))
+        segments.append(
+            build_segment(
+                SegmentType.MESSAGES, replace_messages, version=manifest.anchor_version + 1
+            )
+        )
 
     # Append new segments
     if new_segments:
         for seg in new_segments:
             # If same type exists, replace it
-            existing_idx = next((i for i, s in enumerate(segments) if s.type == seg.type and s.type != SegmentType.MESSAGES), None)
+            existing_idx = next(
+                (
+                    i
+                    for i, s in enumerate(segments)
+                    if s.type == seg.type and s.type != SegmentType.MESSAGES
+                ),
+                None,
+            )
             if existing_idx is not None:
                 segments[existing_idx] = seg
             else:
@@ -363,6 +378,7 @@ def apply_delta(
 # =============================================================================
 # Internal helpers
 # =============================================================================
+
 
 def _sort_dict(d: dict[str, Any]) -> dict[str, Any]:
     """Recursively sort dict keys for canonical serialization."""

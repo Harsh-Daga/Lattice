@@ -23,6 +23,7 @@ from typing import Any
 # Capability flags
 # =============================================================================
 
+
 class Capability(enum.IntFlag):
     """Feature capabilities that a provider may support."""
 
@@ -44,13 +45,14 @@ class Capability(enum.IntFlag):
 # Cache semantics
 # =============================================================================
 
+
 class CacheMode(enum.Enum):
     """How a provider implements prompt caching."""
 
     NONE = "none"
-    AUTO_PREFIX = "auto_prefix"      # OpenAI: automatic exact-prefix
+    AUTO_PREFIX = "auto_prefix"  # OpenAI: automatic exact-prefix
     EXPLICIT_BREAKPOINT = "explicit"  # Anthropic: cache_control breakpoints
-    ADAPTER_MANAGED = "adapter"       # Provider adapter handles it
+    ADAPTER_MANAGED = "adapter"  # Provider adapter handles it
     EXPLICIT_CONTEXT = "explicit_context"  # Gemini/Vertex: cachedContent resource
 
 
@@ -111,6 +113,7 @@ class RateLimitSemantics:
 # ProviderCapability
 # =============================================================================
 
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class ProviderCapability:
     """Complete capability snapshot for a provider."""
@@ -166,9 +169,18 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
         max_context_tokens=128_000,
         max_output_tokens=16_384,
         supported_models=(
-            "gpt-5.1", "gpt-5.1-codex", "gpt-5", "gpt-5-codex",
-            "gpt-4.1", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo",
-            "o1", "o1-mini", "o3", "o3-mini",
+            "gpt-5.1",
+            "gpt-5.1-codex",
+            "gpt-5",
+            "gpt-5-codex",
+            "gpt-4.1",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-4-turbo",
+            "o1",
+            "o1-mini",
+            "o3",
+            "o3-mini",
         ),
         default_base_url="https://api.openai.com",
         cache=CacheSemantics(
@@ -208,9 +220,15 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
         max_context_tokens=200_000,
         max_output_tokens=8192,
         supported_models=(
-            "claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5",
-            "claude-3-7-sonnet", "claude-3-5-sonnet", "claude-3-5-haiku",
-            "claude-3-opus", "claude-3-sonnet", "claude-3-haiku",
+            "claude-opus-4-5",
+            "claude-sonnet-4-5",
+            "claude-haiku-4-5",
+            "claude-3-7-sonnet",
+            "claude-3-5-sonnet",
+            "claude-3-5-haiku",
+            "claude-3-opus",
+            "claude-3-sonnet",
+            "claude-3-haiku",
         ),
         default_base_url="https://api.anthropic.com",
         cache=CacheSemantics(
@@ -268,8 +286,10 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
         max_context_tokens=8_192,
         max_output_tokens=4_096,
         supported_models=(
-            "llama-3.1-70b-versatile", "llama-3.1-8b-instant",
-            "mixtral-8x7b", "gemma-7b-it",
+            "llama-3.1-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b",
+            "gemma-7b-it",
         ),
         default_base_url="https://api.groq.com/openai",
         rate_limits=RateLimitSemantics(
@@ -331,8 +351,11 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
         max_context_tokens=200_000,
         max_output_tokens=4096,
         supported_models=(
-            "claude-3-5-sonnet", "claude-3-opus", "claude-3-sonnet",
-            "llama-3-70b", "mistral-large",
+            "claude-3-5-sonnet",
+            "claude-3-opus",
+            "claude-3-sonnet",
+            "llama-3-70b",
+            "mistral-large",
         ),
         default_base_url="",
         cache=CacheSemantics(
@@ -366,9 +389,13 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
         max_context_tokens=1_000_000,
         max_output_tokens=8192,
         supported_models=(
-            "gemini-3-pro-preview", "gemini-3-flash-preview",
-            "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash",
-            "gemini-1.5-pro", "gemini-1.5-flash",
+            "gemini-3-pro-preview",
+            "gemini-3-flash-preview",
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-pro",
+            "gemini-1.5-flash",
         ),
         default_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
         cache=CacheSemantics(
@@ -425,7 +452,10 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
     ),
     "together": ProviderCapability(
         provider="together",
-        capabilities=Capability.CHAT_COMPLETIONS | Capability.STREAMING | Capability.TOOL_CALLS | Capability.HTTP2,
+        capabilities=Capability.CHAT_COMPLETIONS
+        | Capability.STREAMING
+        | Capability.TOOL_CALLS
+        | Capability.HTTP2,
         cache_mode=CacheMode.NONE,
         max_context_tokens=128_000,
         max_output_tokens=8192,
@@ -435,7 +465,11 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
     ),
     "deepseek": ProviderCapability(
         provider="deepseek",
-        capabilities=Capability.CHAT_COMPLETIONS | Capability.STREAMING | Capability.TOOL_CALLS | Capability.REASONING | Capability.HTTP2,
+        capabilities=Capability.CHAT_COMPLETIONS
+        | Capability.STREAMING
+        | Capability.TOOL_CALLS
+        | Capability.REASONING
+        | Capability.HTTP2,
         cache_mode=CacheMode.NONE,
         max_context_tokens=128_000,
         max_output_tokens=8192,
@@ -455,7 +489,11 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
     ),
     "mistral": ProviderCapability(
         provider="mistral",
-        capabilities=Capability.CHAT_COMPLETIONS | Capability.STREAMING | Capability.TOOL_CALLS | Capability.STRUCTURED_OUTPUT | Capability.HTTP2,
+        capabilities=Capability.CHAT_COMPLETIONS
+        | Capability.STREAMING
+        | Capability.TOOL_CALLS
+        | Capability.STRUCTURED_OUTPUT
+        | Capability.HTTP2,
         cache_mode=CacheMode.NONE,
         max_context_tokens=128_000,
         max_output_tokens=8192,
@@ -465,7 +503,10 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
     ),
     "fireworks": ProviderCapability(
         provider="fireworks",
-        capabilities=Capability.CHAT_COMPLETIONS | Capability.STREAMING | Capability.TOOL_CALLS | Capability.HTTP2,
+        capabilities=Capability.CHAT_COMPLETIONS
+        | Capability.STREAMING
+        | Capability.TOOL_CALLS
+        | Capability.HTTP2,
         cache_mode=CacheMode.NONE,
         max_context_tokens=128_000,
         max_output_tokens=8192,
@@ -475,7 +516,11 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
     ),
     "openrouter": ProviderCapability(
         provider="openrouter",
-        capabilities=Capability.CHAT_COMPLETIONS | Capability.STREAMING | Capability.TOOL_CALLS | Capability.MULTIMODAL | Capability.HTTP2,
+        capabilities=Capability.CHAT_COMPLETIONS
+        | Capability.STREAMING
+        | Capability.TOOL_CALLS
+        | Capability.MULTIMODAL
+        | Capability.HTTP2,
         cache_mode=CacheMode.ADAPTER_MANAGED,
         max_context_tokens=1_000_000,
         max_output_tokens=16_384,
@@ -490,7 +535,11 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
     ),
     "cohere": ProviderCapability(
         provider="cohere",
-        capabilities=Capability.CHAT_COMPLETIONS | Capability.STREAMING | Capability.TOOL_CALLS | Capability.STRUCTURED_OUTPUT | Capability.HTTP2,
+        capabilities=Capability.CHAT_COMPLETIONS
+        | Capability.STREAMING
+        | Capability.TOOL_CALLS
+        | Capability.STRUCTURED_OUTPUT
+        | Capability.HTTP2,
         cache_mode=CacheMode.NONE,
         max_context_tokens=128_000,
         max_output_tokens=8192,
@@ -514,6 +563,7 @@ _BUILTIN_CAPABILITIES: dict[str, ProviderCapability] = {
 # =============================================================================
 # Capability registry
 # =============================================================================
+
 
 class CapabilityRegistry:
     """Queryable database of provider capabilities."""

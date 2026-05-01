@@ -85,14 +85,15 @@ class OpenAIAdapter:
             body["stop"] = request.stop
 
         # JSON mode / structured output
-        response_format = request.metadata.get("response_format") or request.extra_body.get("response_format")
+        response_format = request.metadata.get("response_format") or request.extra_body.get(
+            "response_format"
+        )
         if response_format is not None:
             body["response_format"] = response_format
 
         # Reasoning effort for o1/o3
-        reasoning_effort = (
-            request.metadata.get("reasoning_effort")
-            or request.extra_body.get("reasoning_effort")
+        reasoning_effort = request.metadata.get("reasoning_effort") or request.extra_body.get(
+            "reasoning_effort"
         )
         if reasoning_effort is not None:
             body["reasoning_effort"] = reasoning_effort
@@ -142,14 +143,18 @@ class OpenAIAdapter:
                         parts.append({"type": "text", "text": part.text})
                     elif isinstance(part, ImagePart):
                         if part.source.type.value == "url":
-                            parts.append({"type": "image_url", "image_url": {"url": part.source.data}})
+                            parts.append(
+                                {"type": "image_url", "image_url": {"url": part.source.data}}
+                            )
                         else:
-                            parts.append({
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{part.source.media_type};base64,{part.source.data}",
-                                },
-                            })
+                            parts.append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{part.source.media_type};base64,{part.source.data}",
+                                    },
+                                }
+                            )
                     else:
                         # Fallback: serialize as dict
                         parts.append(part.to_dict())
@@ -158,14 +163,18 @@ class OpenAIAdapter:
                 part = content_parts[0]
                 if isinstance(part, ImagePart):
                     if part.source.type.value == "url":
-                        m["content"] = [{"type": "image_url", "image_url": {"url": part.source.data}}]
+                        m["content"] = [
+                            {"type": "image_url", "image_url": {"url": part.source.data}}
+                        ]
                     else:
-                        m["content"] = [{
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{part.source.media_type};base64,{part.source.data}",
-                            },
-                        }]
+                        m["content"] = [
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{part.source.media_type};base64,{part.source.data}",
+                                },
+                            }
+                        ]
                 elif isinstance(part, TextPart):
                     m["content"] = part.text
                 else:

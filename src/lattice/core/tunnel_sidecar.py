@@ -61,6 +61,7 @@ logger = structlog.get_logger()
 # Replay buffer
 # ---------------------------------------------------------------------------
 
+
 @dataclass(slots=True)
 class ReplayBuffer:
     """Circular buffer of recent frames for replay on reconnect."""
@@ -88,6 +89,7 @@ class ReplayBuffer:
 # TunnelState
 # ---------------------------------------------------------------------------
 
+
 class TunnelState:
     """State machine for the tunnel connection."""
 
@@ -97,9 +99,11 @@ class TunnelState:
     RECONNECTING = "reconnecting"
     SHUTDOWN = "shutdown"
 
+
 # ---------------------------------------------------------------------------
 # LocalSocketServer
 # ---------------------------------------------------------------------------
+
 
 class LocalSocketServer:
     """Accepts agent connections on a local Unix domain socket or TCP port."""
@@ -215,9 +219,11 @@ class LocalSocketServer:
     def set_frame_handler(self, handler: callable) -> None:
         self._on_frame = handler
 
+
 # ---------------------------------------------------------------------------
 # HTTPProxyServer
 # ---------------------------------------------------------------------------
+
 
 @dataclass(slots=True)
 class _HTTPRequest:
@@ -307,9 +313,7 @@ class HTTPProxyServer:
                 await writer.wait_closed()
             logger.info("agent_http_disconnected", peer=str(peer))
 
-    async def _read_request(
-        self, reader: asyncio.StreamReader
-    ) -> _HTTPRequest | None:
+    async def _read_request(self, reader: asyncio.StreamReader) -> _HTTPRequest | None:
         """Read and parse a single HTTP/1.1 request."""
         # Read headers
         header_lines: list[bytes] = []
@@ -352,16 +356,18 @@ class HTTPProxyServer:
 
         return _HTTPRequest(method=method, path=path, version=version, headers=headers, body=body)
 
-    async def _forward_request(
-        self, request: _HTTPRequest, writer: asyncio.StreamWriter
-    ) -> bool:
+    async def _forward_request(self, request: _HTTPRequest, writer: asyncio.StreamWriter) -> bool:
         """Forward a request to the proxy and write the response.
 
         Returns True if the connection should be closed after this request.
         """
         url = f"{self.proxy_url}{request.path}"
-        fwd_headers = {k: v for k, v in request.headers.items() if k not in ("host", "content-length")}
-        fwd_headers["host"] = self.proxy_url.replace("http://", "").replace("https://", "").split("/")[0]
+        fwd_headers = {
+            k: v for k, v in request.headers.items() if k not in ("host", "content-length")
+        }
+        fwd_headers["host"] = (
+            self.proxy_url.replace("http://", "").replace("https://", "").split("/")[0]
+        )
 
         is_streaming = self._is_streaming_request(request)
         last_error: Exception | None = None
@@ -375,7 +381,7 @@ class HTTPProxyServer:
                 break
             except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError) as exc:
                 last_error = exc
-                wait = min(self.base_retry_interval * (2 ** attempt), 30.0)
+                wait = min(self.base_retry_interval * (2**attempt), 30.0)
                 logger.info(
                     "proxy_retry",
                     attempt=attempt + 1,
@@ -473,9 +479,7 @@ class HTTPProxyServer:
             writer.write(b"0\r\n\r\n")
             await writer.drain()
 
-    async def _send_error(
-        self, writer: asyncio.StreamWriter, code: int, message: bytes
-    ) -> None:
+    async def _send_error(self, writer: asyncio.StreamWriter, code: int, message: bytes) -> None:
         """Send an HTTP error response."""
         body = message
         writer.write(f"HTTP/1.1 {code} Error\r\n".encode())
@@ -488,6 +492,7 @@ class HTTPProxyServer:
 # ---------------------------------------------------------------------------
 # WebSocketTunnel
 # ---------------------------------------------------------------------------
+
 
 class WebSocketTunnel:
     """WebSocket tunnel to the LATTICE proxy."""
@@ -626,9 +631,11 @@ class WebSocketTunnel:
             return host, int(port_str)
         return url, 443 if is_wss else 80
 
+
 # ---------------------------------------------------------------------------
 # TunnelSidecar
 # ---------------------------------------------------------------------------
+
 
 class TunnelSidecar:
     """Main sidecar that exposes a local HTTP proxy for agents.
@@ -653,9 +660,9 @@ class TunnelSidecar:
         self.config = config
         self.session_id = session_id or f"tun_{uuid.uuid4().hex[:16]}"
         if unix_socket_path is self._UNSET:
-            self.unix_socket_path = pathlib.Path(
-                tempfile.gettempdir()
-            ) / f"lattice-{self.session_id}.sock"
+            self.unix_socket_path = (
+                pathlib.Path(tempfile.gettempdir()) / f"lattice-{self.session_id}.sock"
+            )
         else:
             self.unix_socket_path = unix_socket_path
         self.tcp_port = tcp_port

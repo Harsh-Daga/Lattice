@@ -43,21 +43,25 @@ logger = structlog.get_logger()
 # PolicyDecision — tagged union
 # =============================================================================
 
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Allow:
     """Transform is allowed to run."""
+
     pass
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Skip:
     """Transform should be skipped (non-fatal)."""
+
     reason: str = ""
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Reject:
     """Request violates a hard limit — abort pipeline."""
+
     code: str
     message: str
     detail: dict[str, Any] = dataclasses.field(default_factory=dict)
@@ -69,6 +73,7 @@ PolicyDecision = Allow | Skip | Reject
 # =============================================================================
 # OptimizationPolicy
 # =============================================================================
+
 
 class OptimizationPolicy:
     """Per-request optimization policy engine.
@@ -122,9 +127,7 @@ class OptimizationPolicy:
 
         # 2. Request-level disable via header
         if context.session_state.get("x_lattice_disable_transforms"):
-            disabled = set(
-                context.session_state["x_lattice_disable_transforms"].split(",")
-            )
+            disabled = set(context.session_state["x_lattice_disable_transforms"].split(","))
             if transform_name in disabled or "all" in disabled:
                 return Skip(reason="disabled_by_header")
 
@@ -203,8 +206,11 @@ class OptimizationPolicy:
         # Model-specific overrides
         model_rules = self.model_transform_rules(request.model)
         if transform_name in model_rules:
-            return Allow() if model_rules[transform_name] else Skip(
-                reason=f"disabled_for_model_{request.model}")
+            return (
+                Allow()
+                if model_rules[transform_name]
+                else Skip(reason=f"disabled_for_model_{request.model}")
+            )
 
         runtime_contract = request.metadata.get("_lattice_runtime_contract")
         if isinstance(runtime_contract, dict):
@@ -214,14 +220,7 @@ class OptimizationPolicy:
 
         return Allow()
 
-
-
-
-
-
-    def _check_budget(
-        self, request: Request, _context: TransformContext
-    ) -> PolicyDecision:
+    def _check_budget(self, request: Request, _context: TransformContext) -> PolicyDecision:
         """Check per-request token budget constraints.
 
         Validates two things:
@@ -243,10 +242,7 @@ class OptimizationPolicy:
                 )
 
         # 2. max_tokens lower bound check
-        if (
-            request.max_tokens is not None
-            and request.max_tokens < self.config.min_max_tokens
-        ):
+        if request.max_tokens is not None and request.max_tokens < self.config.min_max_tokens:
             return Reject(
                 code="MAX_TOKENS_TOO_LOW",
                 message=(
@@ -304,6 +300,7 @@ class OptimizationPolicy:
 # =============================================================================
 # TransformConfig
 # =============================================================================
+
 
 @dataclasses.dataclass(slots=True)
 class TransformConfig:

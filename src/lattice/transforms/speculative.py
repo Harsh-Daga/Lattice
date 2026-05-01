@@ -48,6 +48,7 @@ logger = structlog.get_logger()
 # SpeculationResult
 # =============================================================================
 
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class SpeculationResult:
     """Outcome of a speculative execution attempt."""
@@ -62,6 +63,7 @@ class SpeculationResult:
 # =============================================================================
 # SpeculativeExecutor
 # =============================================================================
+
 
 class SpeculativeExecutor:
     """Pre-runs predicted next steps in parallel with the main request.
@@ -116,9 +118,7 @@ class SpeculativeExecutor:
     # Prediction (rule-based, fast)
     # ------------------------------------------------------------------
 
-    def predict(
-        self, request: Request, _context: TransformContext
-    ) -> str | None:
+    def predict(self, request: Request, _context: TransformContext) -> str | None:
         """Predict the most likely next step for this request.
 
         Returns:
@@ -133,8 +133,7 @@ class SpeculativeExecutor:
 
         # Heuristic 1: explicit tool request
         if request.tools and any(
-            t.get("function", {}).get("name", "").lower() in content
-            for t in request.tools
+            t.get("function", {}).get("name", "").lower() in content for t in request.tools
         ):
             return "tool_call"
 
@@ -165,9 +164,7 @@ class SpeculativeExecutor:
     # Speculative execution
     # ------------------------------------------------------------------
 
-    async def run_speculative(
-        self, request: Request, prediction: str
-    ) -> Response | None:
+    async def run_speculative(self, request: Request, prediction: str) -> Response | None:
         """Execute a speculative pre-run.
 
         Constructs a modified request based on the prediction and sends it
@@ -193,9 +190,7 @@ class SpeculativeExecutor:
             self._log.debug("speculative_execution_failed", error=str(exc))
             return None
 
-    def _build_speculative_request(
-        self, request: Request, prediction: str
-    ) -> Request | None:
+    def _build_speculative_request(self, request: Request, prediction: str) -> Request | None:
         """Build a request for the speculative branch."""
         speculative = request.copy()
         speculative.max_tokens = self.max_speculative_tokens
@@ -262,6 +257,7 @@ class SpeculativeExecutor:
 # =============================================================================
 # SpeculativeTransform (pipeline integration)
 # =============================================================================
+
 
 class SpeculativeTransform(ReversibleSyncTransform):
     """Pipeline-friendly wrapper for speculative metadata.

@@ -63,6 +63,7 @@ logger = structlog.get_logger()
 # BatchKey — compatibility grouping
 # =============================================================================
 
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class BatchKey:
     """Immutable key for grouping compatible requests.
@@ -84,11 +85,9 @@ class BatchKey:
         if request.tools:
             # Fast stable hash of tool identities
             import hashlib
+
             tool_str = "|".join(
-                sorted(
-                    str(t.get("function", {}).get("name", ""))
-                    for t in request.tools
-                )
+                sorted(str(t.get("function", {}).get("name", "")) for t in request.tools)
             )
             tools_hash = hashlib.md5(tool_str.encode()).hexdigest()[:16]
         return cls(
@@ -105,6 +104,7 @@ class BatchKey:
 # PendingRequest
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class PendingRequest:
     """A request waiting to be batched, with its completion future."""
@@ -118,6 +118,7 @@ class PendingRequest:
 # =============================================================================
 # BatchedRequest / BatchedResponse
 # =============================================================================
+
 
 @dataclasses.dataclass(slots=True)
 class BatchedRequest:
@@ -142,6 +143,7 @@ class BatchedResponse:
 # =============================================================================
 # BatchingEngine
 # =============================================================================
+
 
 class BatchingEngine:
     """Groups and dispatches batched LLM requests.
@@ -192,9 +194,7 @@ class BatchingEngine:
     # Public API
     # ------------------------------------------------------------------
 
-    async def submit(
-        self, request: Request, context: TransformContext
-    ) -> Response:
+    async def submit(self, request: Request, context: TransformContext) -> Response:
         """Submit a request for potential batching.
 
         If batching conditions are met and a provider caller is configured,
@@ -213,10 +213,7 @@ class BatchingEngine:
 
         # Quick reject: streaming requests get their own channel
         if request.stream:
-            raise ValueError(
-                "Streaming requests are not eligible for batching. "
-                "Dispatch solo."
-            )
+            raise ValueError("Streaming requests are not eligible for batching. Dispatch solo.")
 
         key = BatchKey.from_request(request)
         future: asyncio.Future[Response] = asyncio.get_event_loop().create_future()
@@ -307,8 +304,7 @@ class BatchingEngine:
                 "queue_sizes": queue_sizes,
                 "pending_by_provider": pending_by_provider,
                 "effective_batch_sizes": {
-                    provider: self.effective_batch_size(provider)
-                    for provider in providers
+                    provider: self.effective_batch_size(provider) for provider in providers
                 },
                 "total_pending": sum(queue_sizes.values()),
             }
@@ -319,9 +315,7 @@ class BatchingEngine:
         self._flush_tasks.add(task)
         task.add_done_callback(self._flush_tasks.discard)
 
-    async def _flush_batch(
-        self, key: BatchKey, queue: list[PendingRequest]
-    ) -> None:
+    async def _flush_batch(self, key: BatchKey, queue: list[PendingRequest]) -> None:
         """Execute a batched request and distribute responses."""
         if not queue:
             return
@@ -357,9 +351,7 @@ class BatchingEngine:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _build_batched_request(
-        key: BatchKey, queue: list[PendingRequest]
-    ) -> BatchedRequest:
+    def _build_batched_request(key: BatchKey, queue: list[PendingRequest]) -> BatchedRequest:
         """Compose a BatchedRequest from a queue of PendingRequests."""
         system: Message | None = None
         tools: list[dict[str, Any]] | None = None
@@ -399,21 +391,16 @@ class BatchingEngine:
         )
 
     @staticmethod
-    def _distribute_responses(
-        queue: list[PendingRequest], response: BatchedResponse
-    ) -> None:
+    def _distribute_responses(queue: list[PendingRequest], response: BatchedResponse) -> None:
         """Split a BatchedResponse back to individual callers."""
         # Simple allocation: round-robin choices to callers
         num_requests = len(queue)
         choices = response.choices
-        usage_per = {
-            k: v // max(num_requests, 1) for k, v in response.usage.items()
-        }
+        usage_per = {k: v // max(num_requests, 1) for k, v in response.usage.items()}
         # Ensure total_tokens is present
         if "total_tokens" not in usage_per:
-            usage_per["total_tokens"] = (
-                usage_per.get("prompt_tokens", 0)
-                + usage_per.get("completion_tokens", 0)
+            usage_per["total_tokens"] = usage_per.get("prompt_tokens", 0) + usage_per.get(
+                "completion_tokens", 0
             )
 
         for i, pending in enumerate(queue):
@@ -443,9 +430,7 @@ class BatchingEngine:
     async def shutdown(self) -> None:
         """Flush all pending requests and cancel background tasks."""
         async with self._lock:
-            all_pending: list[tuple[BatchKey, list[PendingRequest]]] = list(
-                self._pending.items()
-            )
+            all_pending: list[tuple[BatchKey, list[PendingRequest]]] = list(self._pending.items())
             self._pending.clear()
 
         for key, queue in all_pending:
@@ -460,6 +445,7 @@ class BatchingEngine:
 # =============================================================================
 # BatchingTransform (pipeline integration)
 # =============================================================================
+
 
 class BatchingTransform(ReversibleSyncTransform):
     """Pipeline-friendly wrapper for batching metadata.

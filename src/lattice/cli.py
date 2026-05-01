@@ -318,12 +318,16 @@ def _cmd_proxy_run(args: list[str]) -> None:
             class _DummyMetrics:
                 def get_counter(self, _key: str, default: int = 0) -> int:
                     return default
+
                 def get_histogram_avg(self, _key: str, default: float = 0.0) -> float:
                     return default
+
                 def get_histogram_p99(self, _key: str, default: float = 0.0) -> float:
                     return default
+
                 def get_gauge(self, _key: str, default: Any = 0) -> Any:
                     return default
+
                 def provider_names(self) -> list[str]:
                     return []
 
@@ -913,7 +917,6 @@ def _cmd_agent_status(args: list[str]) -> None:
 
     # Mutated agents (durable init)
 
-
     mutated = _list_mutated_agents()
     if mutated:
         for agent in mutated:
@@ -980,7 +983,9 @@ def _cmd_doctor(args: list[str]) -> None:
             if resp.status == 200:
                 table.add_row("Proxy running", "[green]✓[/green]", proxy_url)
             else:
-                table.add_row("Proxy running", "[yellow]⚠[/yellow]", f"Health check returned {resp.status}")
+                table.add_row(
+                    "Proxy running", "[yellow]⚠[/yellow]", f"Health check returned {resp.status}"
+                )
     except Exception as exc:
         table.add_row("Proxy running", "[red]✗[/red]", f"{exc}\nStart with: lattice proxy run")
 
@@ -1003,10 +1008,7 @@ def _cmd_doctor(args: list[str]) -> None:
 
     _print_banner()
     console.print(table)
-    note = (
-        "\n[bold]Note:[/bold] CLI tools should use "
-        "[cyan]lattice lace <agent>[/cyan]"
-    )
+    note = "\n[bold]Note:[/bold] CLI tools should use [cyan]lattice lace <agent>[/cyan]"
     console.print(note)
     console.print("        OAuth tokens are forwarded transparently.")
 

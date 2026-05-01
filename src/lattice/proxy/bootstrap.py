@@ -239,7 +239,10 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
     cache_backend = None
     if config.semantic_cache_backend == "redis":
         from lattice.core.semantic_cache import RedisCacheBackend
-        cache_url = config.semantic_cache_backend_url or config.redis_url or "redis://localhost:6379/0"
+
+        cache_url = (
+            config.semantic_cache_backend_url or config.redis_url or "redis://localhost:6379/0"
+        )
         cache_backend = RedisCacheBackend(url=cache_url)
 
     semantic_cache = SemanticCache(

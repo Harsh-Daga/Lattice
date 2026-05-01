@@ -6,9 +6,7 @@ import os
 from collections.abc import Mapping
 
 
-def build_launch_env(
-    port: int, environ: Mapping[str, str] | None = None
-) -> dict[str, str]:
+def build_launch_env(port: int, environ: Mapping[str, str] | None = None) -> dict[str, str]:
     """Build environment variables for Copilot BYOK through the local proxy."""
     env = dict(environ or os.environ)
     env["COPILOT_PROVIDER_TYPE"] = "openai"

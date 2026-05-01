@@ -80,10 +80,7 @@ class Ok(Generic[T, E]):
 
         Raises RuntimeError because there's no error to unwrap.
         """
-        raise RuntimeError(
-            "Called unwrap_err on an Ok value: "
-            f"{_value_repr(self.value)}"
-        )
+        raise RuntimeError(f"Called unwrap_err on an Ok value: {_value_repr(self.value)}")
 
     def unwrap_or(self, _default: U) -> T | U:
         """Return the contained value, ignoring the default."""
@@ -146,10 +143,7 @@ class Err(Generic[T, E]):
 
         Raises RuntimeError with the error message.
         """
-        raise RuntimeError(
-            "Called unwrap() on an Err value: "
-            f"{_value_repr(self.error)}"
-        )
+        raise RuntimeError(f"Called unwrap() on an Err value: {_value_repr(self.error)}")
 
     def unwrap_err(self) -> E:
         """Return the contained error."""
@@ -193,6 +187,7 @@ class Never:
 # =============================================================================
 # Public API
 # =============================================================================
+
 
 def is_ok(result: Result[T, E]) -> bool:
     """Check if a Result is Ok.
@@ -286,6 +281,7 @@ def unwrap_or_else(result: Result[T, E], op: Callable[[E], U]) -> T | U:
 # =============================================================================
 # Private helpers
 # =============================================================================
+
 
 def _value_repr(value: Any) -> str:
     """Safe repr that truncates long values."""

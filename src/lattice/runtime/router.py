@@ -22,6 +22,7 @@ from lattice.core.transport import Request
 # Tier definitions
 # =============================================================================
 
+
 class Tier:
     """Workload complexity tier."""
 
@@ -36,6 +37,7 @@ class Tier:
 # =============================================================================
 # Routing decision
 # =============================================================================
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class RoutingDecision:
@@ -61,6 +63,7 @@ class RoutingDecision:
 # Router
 # =============================================================================
 
+
 class RuntimeRouter:
     """Classifies requests into tiers for compute/optimization decisions.
 
@@ -84,14 +87,35 @@ class RuntimeRouter:
         code_indicators: list[str] | None = None,
     ) -> None:
         self.reasoning_keywords = reasoning_keywords or [
-            "prove", "step by step", "reasoning", "derivation", "theorem",
-            "mathematical", "equation", "formal proof", "logic", "deduction",
-            "induction", "axiom", "lemma", "corollary",
+            "prove",
+            "step by step",
+            "reasoning",
+            "derivation",
+            "theorem",
+            "mathematical",
+            "equation",
+            "formal proof",
+            "logic",
+            "deduction",
+            "induction",
+            "axiom",
+            "lemma",
+            "corollary",
         ]
         self.code_indicators = code_indicators or [
-            "function", "class ", "def ", "import ", "component",
-            "architecture", "microservice", "implementation", "refactor",
-            "algorithm", "data structure", "api design", "unit test",
+            "function",
+            "class ",
+            "def ",
+            "import ",
+            "component",
+            "architecture",
+            "microservice",
+            "implementation",
+            "refactor",
+            "algorithm",
+            "data structure",
+            "api design",
+            "unit test",
         ]
 
     def classify(self, request: Request) -> RoutingDecision:
@@ -151,11 +175,11 @@ class RuntimeRouter:
             confidence = min(1.0, (20 - total_score) / 20)
 
         features = {
-                "length": length_score,
-                "tools": tool_score,
-                "reasoning": reasoning_score,
-                "code": code_score,
-                "depth": depth_score,
+            "length": length_score,
+            "tools": tool_score,
+            "reasoning": reasoning_score,
+            "code": code_score,
+            "depth": depth_score,
         }
         return RoutingDecision(
             tier=tier,

@@ -29,6 +29,7 @@ logger = structlog.get_logger()
 # ReversibleSyncTransform base class
 # =============================================================================
 
+
 class ReversibleSyncTransform:
     """Base class for transforms that can be reversed.
 
@@ -65,6 +66,7 @@ class ReversibleSyncTransform:
 # =============================================================================
 # CompressorPipeline
 # =============================================================================
+
 
 class CompressorPipeline:
     """Orchestrates transform execution.
@@ -296,12 +298,8 @@ class CompressorPipeline:
                         risk_total=risk.total,
                         reason=reason,
                     )
-                    context.record_metric(
-                        transform.name, "risk_blocked", True
-                    )
-                    context.record_metric(
-                        transform.name, "risk_block_reason", reason
-                    )
+                    context.record_metric(transform.name, "risk_blocked", True)
+                    context.record_metric(transform.name, "risk_block_reason", reason)
                     # Track in metrics for observability
                     blocked = context.metrics.setdefault("risk_blocked_transforms", [])
                     if isinstance(blocked, list):
@@ -372,9 +370,7 @@ class CompressorPipeline:
                         expansion_ratio=round(expansion_ratio, 2),
                         max_ratio=max_ratio,
                     )
-                    context.record_metric(
-                        transform.name, "expansion_aborted", True
-                    )
+                    context.record_metric(transform.name, "expansion_aborted", True)
                     context.record_metric(
                         transform.name, "expansion_ratio", round(expansion_ratio, 2)
                     )
@@ -397,9 +393,7 @@ class CompressorPipeline:
                             },
                         )
                     )
-                context.record_metric(
-                    transform.name, "expansion_ratio", round(expansion_ratio, 2)
-                )
+                context.record_metric(transform.name, "expansion_ratio", round(expansion_ratio, 2))
             # ---- End expansion guardrail ----
 
             backup = working.copy()
@@ -440,7 +434,9 @@ class CompressorPipeline:
             transforms_applied=context.transforms_applied,
             tokens_before=original_token_estimate,
             tokens_after=final_tokens,
-            compression_ratio=round((original_token_estimate - final_tokens) / max(original_token_estimate, 1), 4),
+            compression_ratio=round(
+                (original_token_estimate - final_tokens) / max(original_token_estimate, 1), 4
+            ),
         )
 
         return Ok[Request, TransformError](working)
@@ -455,9 +451,7 @@ class CompressorPipeline:
             return max(0.0, float(value))
         return 0.0
 
-    async def reverse(
-        self, response: Response, context: TransformContext
-    ) -> Response:
+    async def reverse(self, response: Response, context: TransformContext) -> Response:
         """Reverse compress transforms on the response.
 
         Iterates `transforms_applied` in reverse order and calls reverse()

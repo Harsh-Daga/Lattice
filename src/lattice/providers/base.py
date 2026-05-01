@@ -33,6 +33,7 @@ from lattice.core.transport import Request, Response
 # ProviderAdapter protocol
 # =============================================================================
 
+
 class ProviderAdapter(Protocol):
     """Transform OpenAI-shaped Request ↔ provider-native HTTP.
 
@@ -124,6 +125,7 @@ class ProviderAdapter(Protocol):
 # =============================================================================
 # Shared helpers (all adapters can import these)
 # =============================================================================
+
 
 def _pop_system(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
     """Extract the first system message from an OpenAI message list.

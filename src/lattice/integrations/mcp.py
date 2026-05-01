@@ -34,6 +34,7 @@ from lattice.core.transport import Request
 _MCP_AVAILABLE = False
 try:
     import mcp.types  # noqa: F401
+
     _MCP_AVAILABLE = True
 except ImportError:
     pass
@@ -42,6 +43,7 @@ except ImportError:
 # =============================================================================
 # Tool definitions
 # =============================================================================
+
 
 class LatticeMCPTools:
     """MCP tool definitions for LATTICE.
@@ -63,7 +65,9 @@ class LatticeMCPTools:
     # lattice_compress
     # ------------------------------------------------------------------
 
-    def lattice_compress(self, messages: list[dict[str, Any]], model: str = "openai/gpt-4") -> dict[str, Any]:
+    def lattice_compress(
+        self, messages: list[dict[str, Any]], model: str = "openai/gpt-4"
+    ) -> dict[str, Any]:
         """Compress a list of messages using the full LATTICE pipeline.
 
         Args:
@@ -97,7 +101,9 @@ class LatticeMCPTools:
                 "tokens_before": request.token_estimate,
                 "tokens_after": compressed.token_estimate,
                 "compression_ratio": round(
-                    (request.token_estimate - compressed.token_estimate) / max(request.token_estimate, 1), 4
+                    (request.token_estimate - compressed.token_estimate)
+                    / max(request.token_estimate, 1),
+                    4,
                 ),
                 "transforms_applied": context.transforms_applied,
                 "content_profile": context.session_state.get("content_profile"),
@@ -106,12 +112,14 @@ class LatticeMCPTools:
             }
 
         import asyncio
+
         try:
             asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(_run())
         # In an async context — schedule in a thread pool to avoid deadlock
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             future = pool.submit(asyncio.run, _run())
             return future.result()
@@ -133,6 +141,7 @@ class LatticeMCPTools:
         if not provider:
             raise ValueError("provider is required")
         import time as time_mod
+
         sid = f"sess-{uuid.uuid4().hex[:12]}"
         session = Session(
             session_id=sid,
@@ -147,12 +156,14 @@ class LatticeMCPTools:
             await self.store.set(session)
 
         import asyncio
+
         try:
             asyncio.get_running_loop()
         except RuntimeError:
             asyncio.run(_persist())
         else:
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 future = pool.submit(asyncio.run, _persist())
                 future.result()
@@ -170,6 +181,7 @@ class LatticeMCPTools:
             Dict with version, available_transforms, and session_count.
         """
         from lattice._version import __version__
+
         return {
             "version": __version__,
             "available_transforms": [t.name for t in self.pipeline.transforms],
@@ -192,6 +204,7 @@ class LatticeMCPTools:
             Dict with token_count.
         """
         from lattice.utils.token_count import TiktokenCounter
+
         try:
             counter = TiktokenCounter(model)
             count = counter.count(text)
@@ -204,13 +217,14 @@ class LatticeMCPTools:
 # MCP Tool schema definitions (for MCP servers)
 # =============================================================================
 
+
 def _make_tool_schema() -> dict[str, Any]:
     """Return MCP tool schema definitions."""
     return {
         "lattice_compress": {
             "description": "Compress a list of messages using LATTICE transforms. "
-                "Replaces long identifiers with short aliases, filters tool output noise, "
-                "deduplicates messages, and cleans conversational fluff.",
+            "Replaces long identifiers with short aliases, filters tool output noise, "
+            "deduplicates messages, and cleans conversational fluff.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -220,7 +234,10 @@ def _make_tool_schema() -> dict[str, Any]:
                         "items": {
                             "type": "object",
                             "properties": {
-                                "role": {"type": "string", "enum": ["system", "user", "assistant", "tool"]},
+                                "role": {
+                                    "type": "string",
+                                    "enum": ["system", "user", "assistant", "tool"],
+                                },
                                 "content": {"type": "string"},
                             },
                             "required": ["role", "content"],

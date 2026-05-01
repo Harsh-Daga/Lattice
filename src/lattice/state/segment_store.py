@@ -30,6 +30,7 @@ logger = structlog.get_logger()
 # SegmentRecord
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class SegmentRecord:
     """Stored segment with metadata for lifecycle management."""
@@ -67,6 +68,7 @@ class SegmentRecord:
 # SegmentStore Protocol
 # =============================================================================
 
+
 class SegmentStore(Protocol):
     """Protocol for segment storage backends."""
 
@@ -94,16 +96,15 @@ class SegmentStore(Protocol):
         """Return all segment hashes."""
         ...
 
-    async def start(self) -> None:
-        ...
+    async def start(self) -> None: ...
 
-    async def stop(self) -> None:
-        ...
+    async def stop(self) -> None: ...
 
 
 # =============================================================================
 # MemorySegmentStore
 # =============================================================================
+
 
 class MemorySegmentStore:
     """In-memory segment store with refcounting and TTL eviction."""
@@ -199,6 +200,7 @@ class MemorySegmentStore:
 _REDIS_AVAILABLE = False
 try:
     import redis.asyncio as redis
+
     _REDIS_AVAILABLE = True
 except ImportError:
     redis = None  # type: ignore[assignment]

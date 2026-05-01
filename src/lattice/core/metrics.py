@@ -22,6 +22,7 @@ logger = structlog.get_logger()
 # LatencyTracker
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class LatencyTracker:
     """Tracks latency distributions for percentile reporting.
@@ -39,7 +40,7 @@ class LatencyTracker:
         # Prune if too many samples
         if len(self._samples) > self._max_samples:
             # Keep most recent samples (last N)
-            self._samples = self._samples[-self._max_samples:]
+            self._samples = self._samples[-self._max_samples :]
 
     @property
     def count(self) -> int:
@@ -88,6 +89,7 @@ class LatencyTracker:
 # =============================================================================
 # MetricsCollector
 # =============================================================================
+
 
 class MetricsCollector:
     """Central metrics collection for LATTICE.
@@ -159,7 +161,9 @@ class MetricsCollector:
     # Latency tracking
     # ------------------------------------------------------------------
 
-    def record_latency(self, name: str, latency_ms: float, labels: dict[str, str] | None = None) -> None:
+    def record_latency(
+        self, name: str, latency_ms: float, labels: dict[str, str] | None = None
+    ) -> None:
         """Record a latency sample.
 
         Args:

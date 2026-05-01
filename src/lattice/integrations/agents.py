@@ -234,10 +234,7 @@ class EnvFileIntegration(AgentIntegration):
                 patched=True,
                 backup_path=str(env_path),
                 changes=[],
-                message=(
-                    f"{self.name} is already routed through LATTICE.\n"
-                    f"Env file: {env_path}"
-                ),
+                message=(f"{self.name} is already routed through LATTICE.\nEnv file: {env_path}"),
             )
 
         backup: pathlib.Path | None = None
@@ -286,9 +283,7 @@ class EnvFileIntegration(AgentIntegration):
             patched=False,
             backup_path=None,
             changes=[],
-            message=(
-                f"No env file found for {self.name} at {env_path}. Nothing to restore."
-            ),
+            message=(f"No env file found for {self.name} at {env_path}. Nothing to restore."),
         )
 
 
@@ -368,11 +363,13 @@ class CodexIntegration(EnvFileIntegration):
         try:
             if sys.version_info >= (3, 11):
                 import tomllib
+
                 with path.open("rb") as f:
                     data: dict[str, Any] = tomllib.load(f)
                     return data
             else:
                 import tomli
+
                 with path.open("rb") as f:
                     return dict(tomli.load(f))
         except Exception:
@@ -392,7 +389,7 @@ class CodexIntegration(EnvFileIntegration):
         if pattern.search(text):
             text = pattern.sub(rf'\g<1>"{value}"', text)
         else:
-            section_match = re.search(r'^\[', text, re.MULTILINE)
+            section_match = re.search(r"^\[", text, re.MULTILINE)
             if section_match:
                 insert_pos = section_match.start()
                 text = text[:insert_pos] + new_line + "\n\n" + text[insert_pos:]
@@ -407,7 +404,7 @@ class CodexIntegration(EnvFileIntegration):
             return
         text = path.read_text()
         pattern = re.compile(rf'^\s*{re.escape(key)}\s*=\s*["\'].*?["\']\s*\n?', re.MULTILINE)
-        text = pattern.sub('', text)
+        text = pattern.sub("", text)
         path.write_text(text)
 
     @staticmethod
@@ -424,18 +421,18 @@ class CodexIntegration(EnvFileIntegration):
 
         text = path.read_text()
         # Find the table header — match [table] but not [table.something]
-        header_re = re.compile(rf'^\[{re.escape(table)}\]\s*$', re.MULTILINE)
+        header_re = re.compile(rf"^\[{re.escape(table)}\]\s*$", re.MULTILINE)
         header_match = header_re.search(text)
 
         if not header_match:
             # Table doesn't exist — append at end
-            text = text.rstrip() + f"\n\n[{table}]\n{key} = \"{value}\"\n"
+            text = text.rstrip() + f'\n\n[{table}]\n{key} = "{value}"\n'
             path.write_text(text)
             return
 
         section_start = header_match.end()
         # Find the end of this section (next [ or EOF)
-        next_section = re.search(r'^(\[|\[\[)', text[section_start:], re.MULTILINE)
+        next_section = re.search(r"^(\[|\[\[)", text[section_start:], re.MULTILINE)
         section_end = section_start + next_section.start() if next_section else len(text)
 
         section_text = text[section_start:section_end]
@@ -456,18 +453,18 @@ class CodexIntegration(EnvFileIntegration):
         if not path.exists():
             return
         text = path.read_text()
-        header_re = re.compile(rf'^\[{re.escape(table)}\]\s*$', re.MULTILINE)
+        header_re = re.compile(rf"^\[{re.escape(table)}\]\s*$", re.MULTILINE)
         header_match = header_re.search(text)
         if not header_match:
             return
 
         section_start = header_match.end()
-        next_section = re.search(r'^(\[|\[\[)', text[section_start:], re.MULTILINE)
+        next_section = re.search(r"^(\[|\[\[)", text[section_start:], re.MULTILINE)
         section_end = section_start + next_section.start() if next_section else len(text)
 
         section_text = text[section_start:section_end]
         key_re = re.compile(rf'^\s*{re.escape(key)}\s*=\s*["\'].*?["\']\s*\n?', re.MULTILINE)
-        section_text = key_re.sub('', section_text)
+        section_text = key_re.sub("", section_text)
         text = text[:section_start] + section_text + text[section_end:]
         path.write_text(text)
 
@@ -495,7 +492,12 @@ class CodexIntegration(EnvFileIntegration):
         dry_run: bool,
     ) -> dict[str, Any] | None:
         """Patch a single Codex config file.  Returns a state dict or None."""
-        original: dict[str, Any] = {"path": str(path), "top_level": {}, "model_providers": {}, "profiles": {}}
+        original: dict[str, Any] = {
+            "path": str(path),
+            "top_level": {},
+            "model_providers": {},
+            "profiles": {},
+        }
         changed = False
 
         # 1. Top-level openai_base_url
@@ -631,18 +633,12 @@ class CodexIntegration(EnvFileIntegration):
             entry = self._patch_single_config(cfg_path, data, dry_run)
             if entry:
                 state["configs"].append(entry)
-                codex_messages.append(
-                    f"  {cfg_path}\n"
-                    f"    openai_base_url → {self.proxy_url}"
-                )
+                codex_messages.append(f"  {cfg_path}\n    openai_base_url → {self.proxy_url}")
 
         if codex_messages:
             if not dry_run:
                 self._save_state(state)
-            codex_msg = (
-                "\n\nAlso patched Codex config(s):\n"
-                + "\n".join(codex_messages)
-            )
+            codex_msg = "\n\nAlso patched Codex config(s):\n" + "\n".join(codex_messages)
             all_changes = list(result.changes) + ["codex_config"]
             result = AgentConfig(
                 agent_name=result.agent_name,
@@ -892,8 +888,8 @@ class CursorIntegration(JsonFileIntegration):
     )
 
     # Marker keys stored inside settings.json
-    _MARKER_ORIGINAL_URLS = "_lattice_original_urls"   # key → original URL
-    _MARKER_CREATED_KEYS = "_lattice_created_keys"     # keys we added
+    _MARKER_ORIGINAL_URLS = "_lattice_original_urls"  # key → original URL
+    _MARKER_CREATED_KEYS = "_lattice_created_keys"  # keys we added
 
     @property
     def name(self) -> str:
@@ -902,21 +898,12 @@ class CursorIntegration(JsonFileIntegration):
     def _config_path(self) -> pathlib.Path | None:
         home = pathlib.Path.home()
         if sys.platform == "darwin":
-            return (
-                home
-                / "Library"
-                / "Application Support"
-                / "Cursor"
-                / "User"
-                / "settings.json"
-            )
+            return home / "Library" / "Application Support" / "Cursor" / "User" / "settings.json"
         elif sys.platform.startswith("linux"):
             return home / ".config" / "Cursor" / "User" / "settings.json"
         elif sys.platform == "win32":
             return (
-                pathlib.Path(
-                    os.environ.get("APPDATA", str(home / "AppData" / "Roaming"))
-                )
+                pathlib.Path(os.environ.get("APPDATA", str(home / "AppData" / "Roaming")))
                 / "Cursor"
                 / "User"
                 / "settings.json"
@@ -1161,9 +1148,7 @@ class OpenCodeIntegration(JsonFileIntegration):
         home = pathlib.Path.home()
         if sys.platform == "win32":
             return (
-                pathlib.Path(
-                    os.environ.get("APPDATA", str(home / "AppData" / "Roaming"))
-                )
+                pathlib.Path(os.environ.get("APPDATA", str(home / "AppData" / "Roaming")))
                 / "opencode"
                 / "opencode.json"
             )

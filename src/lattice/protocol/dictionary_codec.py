@@ -256,6 +256,7 @@ def _find_string_end(data: bytes, start: int) -> int:
 # Dynamic table
 # =============================================================================
 
+
 class _DynamicTable:
     """Per-session dynamic dictionary with LRU eviction.
 
@@ -346,6 +347,7 @@ class _DynamicTable:
 # =============================================================================
 # DictionaryCodec
 # =============================================================================
+
 
 class DictionaryCodec:
     """Compress and decompress byte streams using shared static + dynamic dictionaries.
@@ -536,6 +538,7 @@ class DictionaryCodec:
 # =============================================================================
 # Convenience functions for one-shot compression
 # =============================================================================
+
 
 def compress(data: bytes, codec: DictionaryCodec | None = None) -> bytes:
     """One-shot compression. Creates a fresh codec if none provided."""

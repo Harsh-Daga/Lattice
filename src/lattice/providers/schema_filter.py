@@ -132,13 +132,24 @@ def _filter_node(
                 # Keep property names, filter each property's schema
                 out[key] = {
                     prop_name: _filter_node(prop_schema, _root=False, inject=inject, cap=cap)
-                    if isinstance(prop_schema, dict) else prop_schema
+                    if isinstance(prop_schema, dict)
+                    else prop_schema
                     for prop_name, prop_schema in value.items()
                 }
             elif key == "items" and isinstance(value, dict):
                 out[key] = _filter_node(value, _root=False, inject=inject, cap=cap)
-            elif key == "items" and isinstance(value, list) or key in ("anyOf", "oneOf", "allOf") and isinstance(value, list):
-                out[key] = [_filter_node(v, _root=False, inject=inject, cap=cap) if isinstance(v, dict) else v for v in value]
+            elif (
+                key == "items"
+                and isinstance(value, list)
+                or key in ("anyOf", "oneOf", "allOf")
+                and isinstance(value, list)
+            ):
+                out[key] = [
+                    _filter_node(v, _root=False, inject=inject, cap=cap)
+                    if isinstance(v, dict)
+                    else v
+                    for v in value
+                ]
             else:
                 out[key] = value
         elif key in _UNSUPPORTED_KEYS:

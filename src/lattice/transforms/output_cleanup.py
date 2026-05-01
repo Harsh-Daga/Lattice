@@ -37,6 +37,7 @@ from lattice.utils.patterns import DEFAULT_CLEANUP_PATTERNS
 # OutputCleanup
 # =============================================================================
 
+
 class OutputCleanup(ReversibleSyncTransform):
     """Remove conversational fluff from assistant output.
 
@@ -146,9 +147,7 @@ class OutputCleanup(ReversibleSyncTransform):
             original = match.group(0)
             placeholder = f"\x00CODEBLOCK{len(blocks)}\x00"
             placeholder_text = (
-                placeholder_text[: start + offset]
-                + placeholder
-                + placeholder_text[end + offset :]
+                placeholder_text[: start + offset] + placeholder + placeholder_text[end + offset :]
             )
             offset += len(placeholder) - len(original)
             blocks.append((start, end, original))

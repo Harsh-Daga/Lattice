@@ -327,6 +327,7 @@ def _lookup_pricing(provider: str, model: str) -> ModelPricing | None:
 # CostEstimator
 # ---------------------------------------------------------------------------
 
+
 @dataclass(slots=True)
 class CostEstimate:
     """Result of a cost estimation."""
@@ -529,6 +530,7 @@ class CostEstimator:
 # ---------------------------------------------------------------------------
 # Convenience
 # ---------------------------------------------------------------------------
+
 
 def format_cost_usd(value: float) -> str:
     """Format a USD value for display.

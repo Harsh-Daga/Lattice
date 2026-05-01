@@ -174,9 +174,7 @@ class DictionaryCompressor(ReversibleSyncTransform):
                     all_counts[phrase] = all_counts.get(phrase, 0) + cnt
 
             next_idx = max(fwd.values(), default=-1) + 1
-            for phrase, cnt in sorted(
-                all_counts.items(), key=lambda x: (-len(x[0]), x[1])
-            ):
+            for phrase, cnt in sorted(all_counts.items(), key=lambda x: (-len(x[0]), x[1])):
                 if phrase in fwd:
                     continue
                 if cnt < self.min_occurrences:

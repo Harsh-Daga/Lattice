@@ -37,14 +37,10 @@ _JSON_KV_PATTERN = re.compile(
 )
 
 # Table-like rows: | key | value | ...
-_TABLE_ROW_PATTERN = re.compile(
-    r"^\s*\|(?P<cells>[^|]+(?:\|[^|]+){2,})\|\s*$", re.MULTILINE
-)
+_TABLE_ROW_PATTERN = re.compile(r"^\s*\|(?P<cells>[^|]+(?:\|[^|]+){2,})\|\s*$", re.MULTILINE)
 
 # Repeated field names across lines
-_REPEAT_FIELD_PATTERN = re.compile(
-    r'^(\s*)(["\']?[a-zA-Z0-9_\- ]{2,30}["\']?)\s*:', re.MULTILINE
-)
+_REPEAT_FIELD_PATTERN = re.compile(r'^(\s*)(["\']?[a-zA-Z0-9_\- ]{2,30}["\']?)\s*:', re.MULTILINE)
 
 # Alias format: <g_N>
 _ALIAS_PREFIX = "<g"

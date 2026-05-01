@@ -25,9 +25,9 @@ class SemanticBoundaryDetector:
     Uses simple heuristics over plain text chunks to classify boundaries.
     """
 
-    SENTENCE_ENDINGS = {'.', '!', '?', '\n'}
-    TOOL_CALL_START_MARKER = '<|tool_call|>'
-    TOOL_CALL_END_MARKER = '<|/tool_call|>'
+    SENTENCE_ENDINGS = {".", "!", "?", "\n"}
+    TOOL_CALL_START_MARKER = "<|tool_call|>"
+    TOOL_CALL_END_MARKER = "<|/tool_call|>"
 
     @classmethod
     def classify_chunk(cls, text: str) -> BoundaryType:
@@ -45,6 +45,6 @@ class SemanticBoundaryDetector:
             return BoundaryType.TOOL_END
         if any(c in text for c in cls.SENTENCE_ENDINGS):
             return BoundaryType.SENTENCE_END
-        if text.strip().startswith('```'):
+        if text.strip().startswith("```"):
             return BoundaryType.CODE_BLOCK
         return BoundaryType.CONTINUATION

@@ -35,6 +35,7 @@ from lattice.core.result import Result
 # Message
 # =============================================================================
 
+
 class Role(str, enum.Enum):
     """Standard message roles.
 
@@ -73,6 +74,7 @@ class Message:
         """Typed content parts. Falls back to [TextPart(content)] if not set."""
         if self._content_parts is None:
             from lattice.protocol.content import content_to_parts
+
             return content_to_parts(self.content)
         return list(self._content_parts)
 
@@ -81,6 +83,7 @@ class Message:
         self._content_parts = parts
         if parts is not None:
             from lattice.protocol.content import parts_to_str
+
             self.content = parts_to_str(parts)
 
     @property
@@ -88,8 +91,7 @@ class Message:
         """Rough token estimate. 1 token ~ 4 chars for English text."""
         if self._content_parts:
             text_len = sum(
-                len(getattr(p, "text", getattr(p, "content", "")))
-                for p in self._content_parts
+                len(getattr(p, "text", getattr(p, "content", ""))) for p in self._content_parts
             )
             return max(1, text_len // 4)
         return max(1, len(self.content) // 4)
@@ -115,6 +117,7 @@ class Message:
 # =============================================================================
 # Request
 # =============================================================================
+
 
 @dataclasses.dataclass(slots=True)
 class Request:
@@ -144,10 +147,7 @@ class Request:
     @property
     def user_messages(self) -> list[Message]:
         """Return all user messages."""
-        return [
-            msg for msg in self.messages
-            if msg.role == Role.USER or msg.role == "user"
-        ]
+        return [msg for msg in self.messages if msg.role == Role.USER or msg.role == "user"]
 
     @property
     def token_estimate(self) -> int:
@@ -194,6 +194,7 @@ class Request:
 # Response
 # =============================================================================
 
+
 @dataclasses.dataclass(slots=True)
 class Response:
     """An LLM response."""
@@ -216,6 +217,7 @@ class Response:
 # Transform Protocol
 # =============================================================================
 
+
 class Transform(Protocol):
     """Protocol for all optimization transforms.
 
@@ -235,9 +237,7 @@ class Transform(Protocol):
     enabled: bool = True
     priority: int = 50
 
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, Any]:
+    def process(self, request: Request, context: TransformContext) -> Result[Request, Any]:
         """Process a request, returning modified request or error."""
         ...
 
@@ -253,10 +253,7 @@ class SyncTransform(Protocol):
     enabled: bool = True
     priority: int = 50
 
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, Any]:
-        ...
+    def process(self, request: Request, context: TransformContext) -> Result[Request, Any]: ...
 
     def can_process(self, _request: Request, _context: TransformContext) -> bool:
         return self.enabled

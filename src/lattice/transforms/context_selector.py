@@ -53,11 +53,7 @@ _STOPWORDS = frozenset(
 
 def _tokenize(text: str) -> list[str]:
     """Lower-cased word tokenization with stopword removal."""
-    return [
-        w.lower()
-        for w in _WORD_RE.findall(text)
-        if w.lower() not in _STOPWORDS and len(w) > 2
-    ]
+    return [w.lower() for w in _WORD_RE.findall(text) if w.lower() not in _STOPWORDS and len(w) > 2]
 
 
 def _compute_tfidf_vectors(docs: list[str]) -> list[dict[str, float]]:
@@ -202,9 +198,7 @@ class SubmodularContextSelector(ReversibleSyncTransform):
             return Ok(request)
 
         # Reorder messages: selected docs first, then rest
-        new_messages = self._reorder_messages(
-            request, doc_indices, selected_order, set(selected)
-        )
+        new_messages = self._reorder_messages(request, doc_indices, selected_order, set(selected))
 
         # Save state for reverse
         state = context.get_transform_state(self.name)

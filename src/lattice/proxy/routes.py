@@ -96,9 +96,7 @@ def register_native_lattice_routes(app: FastAPI, gateway: LLMTPGateway) -> None:
                 content=output, media_type="application/octet-stream", headers=response_headers
             )
         with contextlib.suppress(Exception):
-            return JSONResponse(
-                json.loads(output.decode("utf-8")), headers=response_headers
-            )
+            return JSONResponse(json.loads(output.decode("utf-8")), headers=response_headers)
         return StarletteResponse(
             content=output, media_type="application/json", headers=response_headers
         )

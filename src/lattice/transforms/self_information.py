@@ -174,21 +174,68 @@ def _normalize_timestamps(line: str) -> str:
 
 
 # Keywords that strongly indicate high information content
-_HIGH_INFORMATION_KEYWORDS = frozenset({
-    "error", "fail", "failed", "failure", "exception", "panic", "abort",
-    "critical", "fatal", "broken", "invalid", "not found", "missing",
-    "cannot", "unable", "refused", "denied", "timeout", "crash",
-    "warning", "warn", "deprecated", "obsolete", "unstable",
-    "differs", "mismatch", "conflict", "collision", "overflow",
-    "assert", "expect", "unwrap", "deadlock", "race",
-})
+_HIGH_INFORMATION_KEYWORDS = frozenset(
+    {
+        "error",
+        "fail",
+        "failed",
+        "failure",
+        "exception",
+        "panic",
+        "abort",
+        "critical",
+        "fatal",
+        "broken",
+        "invalid",
+        "not found",
+        "missing",
+        "cannot",
+        "unable",
+        "refused",
+        "denied",
+        "timeout",
+        "crash",
+        "warning",
+        "warn",
+        "deprecated",
+        "obsolete",
+        "unstable",
+        "differs",
+        "mismatch",
+        "conflict",
+        "collision",
+        "overflow",
+        "assert",
+        "expect",
+        "unwrap",
+        "deadlock",
+        "race",
+    }
+)
 
 # Keywords that indicate low information content (boilerplate)
-_LOW_INFORMATION_KEYWORDS = frozenset({
-    "ok", "passed", "success", "done", "complete", "finished",
-    "running", "started", "begin", "init", "loading", "processing",
-    "ok (", "ok\t", "✓", "✔", "[ok]", "[done]",
-})
+_LOW_INFORMATION_KEYWORDS = frozenset(
+    {
+        "ok",
+        "passed",
+        "success",
+        "done",
+        "complete",
+        "finished",
+        "running",
+        "started",
+        "begin",
+        "init",
+        "loading",
+        "processing",
+        "ok (",
+        "ok\t",
+        "✓",
+        "✔",
+        "[ok]",
+        "[done]",
+    }
+)
 
 # Patterns that are typically low-information boilerplate
 _BOILERPLATE_PATTERNS = [
@@ -308,6 +355,7 @@ def _structural_pattern(line: str) -> str:
 # SelfInformationScorer
 # =============================================================================
 
+
 class SelfInformationScorer(ReversibleSyncTransform):
     """Compress text by removing low-self-information lines.
 
@@ -380,7 +428,9 @@ class SelfInformationScorer(ReversibleSyncTransform):
                 continue
 
             lines = original.splitlines()
-            if len(lines) < max(self.max_input_lines, self.min_lines + self.preserve_first_n + self.preserve_last_n):
+            if len(lines) < max(
+                self.max_input_lines, self.min_lines + self.preserve_first_n + self.preserve_last_n
+            ):
                 continue
 
             compressed = self._compress_lines(lines)
@@ -405,7 +455,9 @@ class SelfInformationScorer(ReversibleSyncTransform):
             return False
         if request.token_estimate < self.max_input_lines:
             return False
-        return any(len(msg.content.splitlines()) >= self.max_input_lines for msg in request.messages)
+        return any(
+            len(msg.content.splitlines()) >= self.max_input_lines for msg in request.messages
+        )
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         """Irreversible — no-op."""

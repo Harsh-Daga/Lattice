@@ -36,6 +36,7 @@ logger = structlog.get_logger()
 # LatticeProxyClient
 # =============================================================================
 
+
 class LatticeProxyClient:
     """HTTP client for a LATTICE proxy server.
 
@@ -95,6 +96,7 @@ class LatticeProxyClient:
 # =============================================================================
 # Proxy chat completion namespace
 # =============================================================================
+
 
 class _ProxyChatCompletionNamespace:
     """Proxy-backed chat.completions namespace."""
@@ -255,7 +257,7 @@ class _ProxyChatCompletionNamespace:
                         continue
                     if not line.startswith("data: "):
                         continue
-                    payload = line[len("data: "):]
+                    payload = line[len("data: ") :]
                     if payload.strip() == "[DONE]":
                         return
                     try:
@@ -266,7 +268,7 @@ class _ProxyChatCompletionNamespace:
             if buffer.strip():
                 line = buffer.strip()
                 if line.startswith("data: "):
-                    payload = line[len("data: "):]
+                    payload = line[len("data: ") :]
                     if payload.strip() != "[DONE]":
                         with contextlib.suppress(Exception):
                             yield json.loads(payload)
@@ -275,6 +277,7 @@ class _ProxyChatCompletionNamespace:
 # =============================================================================
 # Proxy session namespace
 # =============================================================================
+
 
 class _ProxySessionNamespace:
     """Proxy-backed session management namespace."""
@@ -354,7 +357,10 @@ class _ProxySessionNamespace:
             result = cast(dict[str, Any], json.loads(payload_bytes.decode("utf-8")))
             result.setdefault("transport", {"framing": "binary", "delta": "bypassed"})
             return result
-        return {"raw": payload_bytes.decode("utf-8", errors="replace"), "transport": {"framing": "binary", "delta": "bypassed"}}
+        return {
+            "raw": payload_bytes.decode("utf-8", errors="replace"),
+            "transport": {"framing": "binary", "delta": "bypassed"},
+        }
 
     async def append(self, session_id: str, messages: list[dict[str, Any]]) -> dict[str, Any]:
         """Append messages to a session."""

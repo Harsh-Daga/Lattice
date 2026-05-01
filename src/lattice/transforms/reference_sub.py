@@ -57,9 +57,7 @@ def _extract_code_blocks(text: str) -> tuple[str, list[tuple[int, int, str]]]:
         placeholder = f"\x00CODEBLOCK{len(blocks)}\x00"
         # Replace in placeholder_text with offset tracking
         placeholder_text = (
-            placeholder_text[: start + offset]
-            + placeholder
-            + placeholder_text[end + offset :]
+            placeholder_text[: start + offset] + placeholder + placeholder_text[end + offset :]
         )
         offset += len(placeholder) - len(original)
         blocks.append((start, end, original))
@@ -78,7 +76,10 @@ def _restore_code_blocks(text: str, blocks: list[tuple[int, int, str]]) -> str:
 # Cross-message phrase deduplication
 # =============================================================================
 
-def _find_repeated_phrases(messages: list[str], min_len: int = 30, min_occurrences: int = 2) -> dict[str, str]:
+
+def _find_repeated_phrases(
+    messages: list[str], min_len: int = 30, min_occurrences: int = 2
+) -> dict[str, str]:
     """Find phrases that appear across multiple messages.
 
     Uses a simple sentence-level approach. For production,
@@ -124,6 +125,7 @@ def _find_repeated_phrases(messages: list[str], min_len: int = 30, min_occurrenc
 # =============================================================================
 # ReferenceSubstitution
 # =============================================================================
+
 
 class ReferenceSubstitution(ReversibleSyncTransform):
     """Replace long identifiers with short aliases.
@@ -217,9 +219,7 @@ class ReferenceSubstitution(ReversibleSyncTransform):
         # Phase 1: Per-message substitution
         for msg in request.messages:
             original = msg.content
-            modified = self._replace_in_text(
-                original, ref_map, reverse_map, cross_ref_map
-            )
+            modified = self._replace_in_text(original, ref_map, reverse_map, cross_ref_map)
             if modified != original:
                 msg.content = modified
                 modified_count += 1

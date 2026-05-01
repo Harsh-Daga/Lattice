@@ -101,6 +101,7 @@ def build_default_pipeline(
 
     return pipeline
 
+
 _EXECUTION_TRANSFORMS = {"batching", "speculative", "delta_encoder"}
 
 

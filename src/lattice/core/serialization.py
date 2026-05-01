@@ -29,6 +29,7 @@ from lattice.protocol.content import (
 # Message ↔ dict
 # =============================================================================
 
+
 def message_to_dict(msg: Message) -> dict[str, Any]:
     """Serialize a Message to an OpenAI-compatible dict.
 
@@ -114,6 +115,7 @@ def message_from_dict(d: dict[str, Any]) -> Message:
 # Request ↔ dict
 # =============================================================================
 
+
 def request_to_dict(req: Request) -> dict[str, Any]:
     """Serialize a Request to an OpenAI-compatible dict."""
     d: dict[str, Any] = {
@@ -167,10 +169,20 @@ def request_from_dict(d: dict[str, Any]) -> Request:
         req.extra_body.update(extra_body)
     # Restore metadata (strip fields that are direct Request attributes)
     reserved = {
-        "model", "messages", "temperature", "max_tokens", "top_p",
-        "tools", "tool_choice", "stream", "stop",
-        "_lattice_metadata", "_lattice_extra_headers", "_lattice_extra_body",
-        "extra_headers", "extra_body",
+        "model",
+        "messages",
+        "temperature",
+        "max_tokens",
+        "top_p",
+        "tools",
+        "tool_choice",
+        "stream",
+        "stop",
+        "_lattice_metadata",
+        "_lattice_extra_headers",
+        "_lattice_extra_body",
+        "extra_headers",
+        "extra_body",
     }
     meta = {k: v for k, v in d.items() if k not in reserved}
     # Also merge explicit _lattice_metadata
@@ -185,9 +197,11 @@ def request_from_dict(d: dict[str, Any]) -> Request:
 # Response → dict
 # =============================================================================
 
+
 def response_to_dict(resp: Response, request_model: str = "") -> dict[str, Any]:
     """Serialize a Response to an OpenAI-compatible response dict."""
     import time as time_mod
+
     body: dict[str, Any] = {
         "id": "chatcmpl-lattice",
         "object": "chat.completion",
@@ -220,6 +234,7 @@ def response_to_dict(resp: Response, request_model: str = "") -> dict[str, Any]:
 # Internal helpers
 # =============================================================================
 
+
 def _content_parts_to_openai(parts: list[ContentPart]) -> list[dict[str, Any]] | str:
     """Convert internal ContentPart list to OpenAI content array format."""
     out: list[dict[str, Any]] = []
@@ -230,24 +245,30 @@ def _content_parts_to_openai(parts: list[ContentPart]) -> list[dict[str, Any]] |
             if part.source.type == ImageSourceType.URL:
                 out.append({"type": "image_url", "image_url": {"url": part.source.data}})
             else:
-                out.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{part.source.media_type};base64,{part.source.data}",
-                    },
-                })
+                out.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{part.source.media_type};base64,{part.source.data}",
+                        },
+                    }
+                )
         elif isinstance(part, ToolCallPart):
-            out.append({
-                "type": "tool_call",
-                "id": part.id,
-                "function": {"name": part.name, "arguments": part.arguments},
-            })
+            out.append(
+                {
+                    "type": "tool_call",
+                    "id": part.id,
+                    "function": {"name": part.name, "arguments": part.arguments},
+                }
+            )
         elif isinstance(part, ToolResultPart):
-            out.append({
-                "type": "tool_result",
-                "tool_call_id": part.tool_call_id,
-                "content": part.content,
-            })
+            out.append(
+                {
+                    "type": "tool_result",
+                    "tool_call_id": part.tool_call_id,
+                    "content": part.content,
+                }
+            )
         else:
             # Fallback: serialize as dict
             out.append(part.to_dict())
@@ -279,23 +300,26 @@ def _openai_content_to_parts(content: list[dict[str, Any]]) -> list[ContentPart]
                     )
                 )
             else:
-                parts.append(
-                    ImagePart(source=ImageSource(type=ImageSourceType.URL, data=url_data))
-                )
+                parts.append(ImagePart(source=ImageSource(type=ImageSourceType.URL, data=url_data)))
         elif btype == "tool_call":
             fn = block.get("function", {})
-            parts.append(ToolCallPart(
-                id=block.get("id", ""),
-                name=fn.get("name", ""),
-                arguments=fn.get("arguments", ""),
-            ))
+            parts.append(
+                ToolCallPart(
+                    id=block.get("id", ""),
+                    name=fn.get("name", ""),
+                    arguments=fn.get("arguments", ""),
+                )
+            )
         elif btype == "tool_result":
-            parts.append(ToolResultPart(
-                tool_call_id=block.get("tool_call_id", ""),
-                content=block.get("content", ""),
-            ))
+            parts.append(
+                ToolResultPart(
+                    tool_call_id=block.get("tool_call_id", ""),
+                    content=block.get("content", ""),
+                )
+            )
         else:
             # Unknown block type — store as text
             import json
+
             parts.append(TextPart(text=json.dumps(block)))
     return parts

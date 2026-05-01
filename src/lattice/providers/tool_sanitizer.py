@@ -40,6 +40,7 @@ _BEDROCK_TOOL_NAME_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 # ToolSanitizer base
 # ============================================================================
 
+
 class ToolSanitizer:
     """Sanitize tool IDs so they comply with a provider's validation rules.
 
@@ -61,9 +62,7 @@ class ToolSanitizer:
         raise NotImplementedError
 
     @staticmethod
-    def register(
-        mapping: dict[str, str], raw_id: str, sanitized_id: str
-    ) -> None:
+    def register(mapping: dict[str, str], raw_id: str, sanitized_id: str) -> None:
         """Record ``raw <-> sanitized`` in a caller-supplied dict.
 
         The dict is updated in-place so that later ``unsanitize`` calls
@@ -90,6 +89,7 @@ class ToolSanitizer:
 # ============================================================================
 # AnthropicToolSanitizer
 # ============================================================================
+
 
 class AnthropicToolSanitizer(ToolSanitizer):
     """Sanitise tool and tool_use IDs for Anthropic Messages API.
@@ -134,6 +134,7 @@ class AnthropicToolSanitizer(ToolSanitizer):
         if not cleaned:
             # Fall back to generic hash-based name
             import hashlib
+
             h = hashlib.sha256(raw_id.encode()).hexdigest()[:16]
             cleaned = f"tool_{h}"
         return cleaned
@@ -145,6 +146,7 @@ class AnthropicToolSanitizer(ToolSanitizer):
 # ============================================================================
 # BedrockToolSanitizer
 # ============================================================================
+
 
 class BedrockToolSanitizer(ToolSanitizer):
     """Sanitise tool names for AWS Bedrock Converse ``toolSpec``.
@@ -166,6 +168,7 @@ class BedrockToolSanitizer(ToolSanitizer):
         cleaned = cleaned.strip("_")
         if not cleaned:
             import hashlib
+
             h = hashlib.sha256(raw_id.encode()).hexdigest()[:16]
             cleaned = f"tool_{h}"
         return cleaned
@@ -184,6 +187,7 @@ class BedrockToolSanitizer(ToolSanitizer):
 # ============================================================================
 # IdentitySanitizer (pass-through)
 # ============================================================================
+
 
 class IdentitySanitizer(ToolSanitizer):
     """No-op sanitizer for providers with no tool ID restrictions."""

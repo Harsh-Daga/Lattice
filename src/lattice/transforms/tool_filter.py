@@ -37,6 +37,7 @@ from lattice.utils.patterns import DEFAULT_BLACKLIST
 # ToolOutputFilter
 # =============================================================================
 
+
 class ToolOutputFilter(ReversibleSyncTransform):
     """Filter tool output JSON to relevant fields only.
 
@@ -94,7 +95,9 @@ class ToolOutputFilter(ReversibleSyncTransform):
         tokens_saved = 0
 
         # Extract schema-referenced fields if available
-        schema_fields = self._extract_schema_fields(request.tools) if self.enable_schema_aware else frozenset()
+        schema_fields = (
+            self._extract_schema_fields(request.tools) if self.enable_schema_aware else frozenset()
+        )
 
         # Determine structure type from profiler metadata
         structure_type = request.metadata.get("_lattice_profile", "")
@@ -225,7 +228,8 @@ class ToolOutputFilter(ReversibleSyncTransform):
             if depth >= self.max_nesting_depth:
                 # At max depth: keep only primitive values, discard nested
                 return {
-                    k: v for k, v in value.items()
+                    k: v
+                    for k, v in value.items()
                     if isinstance(v, (str, int, float, bool, type(None)))
                     and k not in self.default_blacklist
                 }
@@ -240,8 +244,10 @@ class ToolOutputFilter(ReversibleSyncTransform):
                     continue
                 # Schema-aware: if we have schema fields and this key isn't in them,
                 # still keep it if it's a common id/name field (never drop identity)
-                if schema_fields and key not in schema_fields and key not in (
-                    "id", "name", "type", "status", "error", "result"
+                if (
+                    schema_fields
+                    and key not in schema_fields
+                    and key not in ("id", "name", "type", "status", "error", "result")
                 ):
                     continue
                 result[key] = self._filter_value(val, depth + 1, schema_fields)
@@ -320,15 +326,11 @@ class ToolOutputFilter(ReversibleSyncTransform):
 
             # Numeric averages
             if numeric_sums:
-                summary["averages"] = {
-                    k: round(v / total, 2)
-                    for k, v in numeric_sums.items()
-                }
+                summary["averages"] = {k: round(v / total, 2) for k, v in numeric_sums.items()}
 
             # Representative sample (filtered)
             filtered_sample = [
-                self._filter_value(r, depth=0, schema_fields=schema_fields)
-                for r in sample
+                self._filter_value(r, depth=0, schema_fields=schema_fields) for r in sample
             ]
             summary["sample"] = filtered_sample
         else:
@@ -377,7 +379,15 @@ class ToolOutputFilter(ReversibleSyncTransform):
         if len(lines) <= 3:
             return content
 
-        severity_order = {"CRITICAL": 0, "FATAL": 0, "ERROR": 1, "WARN": 2, "WARNING": 2, "INFO": 3, "DEBUG": 4}
+        severity_order = {
+            "CRITICAL": 0,
+            "FATAL": 0,
+            "ERROR": 1,
+            "WARN": 2,
+            "WARNING": 2,
+            "INFO": 3,
+            "DEBUG": 4,
+        }
         severity_groups: dict[str, list[str]] = {}
         for line in lines:
             # Detect severity level
@@ -394,7 +404,9 @@ class ToolOutputFilter(ReversibleSyncTransform):
         for sev in ("CRITICAL", "FATAL", "ERROR", "WARN", "WARNING"):
             for line in severity_groups.get(sev, []):
                 # Normalize pattern: remove timestamps and numbers
-                pattern = re.sub(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?", "TIMESTAMP", line)
+                pattern = re.sub(
+                    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?", "TIMESTAMP", line
+                )
                 pattern = re.sub(r"\b\d+\b", "N", pattern)
                 if pattern not in seen_patterns:
                     seen_patterns.add(pattern)
@@ -446,7 +458,9 @@ class ToolOutputFilter(ReversibleSyncTransform):
                         result.extend(context_buffer)
                     context_buffer = []
                 result.append(line)
-            elif line.startswith("diff --git") or line.startswith("--- ") or line.startswith("+++ "):
+            elif (
+                line.startswith("diff --git") or line.startswith("--- ") or line.startswith("+++ ")
+            ):
                 result.append(line)
             else:
                 # Context line — buffer it
@@ -474,7 +488,9 @@ class ToolOutputFilter(ReversibleSyncTransform):
         other_lines: list[str] = []
         for line in lines:
             stripped = line.strip()
-            if re.search(r'File ".+?", line \d+', stripped) or re.search(r"\bat\s+\S+\s*\([^)]+:\d+\)", stripped):
+            if re.search(r'File ".+?", line \d+', stripped) or re.search(
+                r"\bat\s+\S+\s*\([^)]+:\d+\)", stripped
+            ):
                 frames.append(stripped)
             else:
                 other_lines.append(line)
@@ -542,7 +558,18 @@ class ToolOutputFilter(ReversibleSyncTransform):
 
         if isinstance(parsed, dict):
             # Keep only essential MCP fields
-            allowed = {"content", "type", "tool", "tool_call_id", "is_error", "error", "result", "id", "name", "status"}
+            allowed = {
+                "content",
+                "type",
+                "tool",
+                "tool_call_id",
+                "is_error",
+                "error",
+                "result",
+                "id",
+                "name",
+                "status",
+            }
             filtered = {k: v for k, v in parsed.items() if k in allowed}
             return json.dumps(filtered, separators=(",", ":"))
 

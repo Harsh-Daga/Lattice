@@ -50,42 +50,46 @@ _MAX_PAYLOAD_SIZE = 0xFFFFFFFF
 def _crc32(data: bytes) -> int:
     """Compute CRC32 checksum of data."""
     import binascii
+
     return binascii.crc32(data) & 0xFFFFFFFF
+
 
 # =============================================================================
 # Frame types
 # =============================================================================
 
+
 class FrameType(enum.IntEnum):
     """LATTICE binary frame types."""
 
-    PING = 0x01          # Keep-alive / RTT measurement
-    PONG = 0x02          # Ping response
-    REQUEST = 0x10       # Compressed request payload
-    RESPONSE = 0x11      # Compressed response payload
+    PING = 0x01  # Keep-alive / RTT measurement
+    PONG = 0x02  # Ping response
+    REQUEST = 0x10  # Compressed request payload
+    RESPONSE = 0x11  # Compressed response payload
     STREAM_CHUNK = 0x12  # Streaming SSE chunk
-    STREAM_DONE = 0x13   # Streaming end marker
-    SESSION_START = 0x20 # New session with manifest
-    SESSION_DELTA = 0x21 # Delta update to session
-    SESSION_CLOSE = 0x22 # Close session
+    STREAM_DONE = 0x13  # Streaming end marker
+    SESSION_START = 0x20  # New session with manifest
+    SESSION_DELTA = 0x21  # Delta update to session
+    SESSION_CLOSE = 0x22  # Close session
     RESUME_TOKEN = 0x30  # Resumable stream token
-    RESUME_REPLAY = 0x31 # Replay missed chunks
+    RESUME_REPLAY = 0x31  # Replay missed chunks
     CONNECTION_MIGRATE = 0x40  # Client connection changed; keep session
-    RESUME_REQUEST = 0x41      # Request replay from sequence N
+    RESUME_REQUEST = 0x41  # Request replay from sequence N
     DICTIONARY_NEGOTIATE = 0x50  # Dictionary version negotiation (ADR-002)
-    ERROR = 0xFF         # Protocol error
+    ERROR = 0xFF  # Protocol error
 
 
 # =============================================================================
 # Flags
 # =============================================================================
 
+
 class FrameFlags(enum.IntFlag):
     """Per-frame flag bits."""
 
     NONE = 0x00
-    COMPRESSED = 0x01    # Payload is zstd-compressed
-    ENCRYPTED = 0x02     # Payload is encrypted (future)
+    COMPRESSED = 0x01  # Payload is zstd-compressed
+    ENCRYPTED = 0x02  # Payload is encrypted (future)
     CONTINUATION = 0x04  # More frames follow for same logical message
     ACK_REQUIRED = 0x08  # Receiver must send ACK
     # Semantic reliability flags
@@ -106,6 +110,7 @@ class FrameFlags(enum.IntFlag):
 # =============================================================================
 # Frame
 # =============================================================================
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Frame:
@@ -150,13 +155,11 @@ class Frame:
         if magic != _MAGIC:
             raise ValueError(f"Magic mismatch: expected {_MAGIC!r}, got {magic!r}")
         if len(data) < _HEADER_SIZE + length:
-            raise ValueError(
-                f"Incomplete frame: need {_HEADER_SIZE + length}, have {len(data)}"
-            )
+            raise ValueError(f"Incomplete frame: need {_HEADER_SIZE + length}, have {len(data)}")
         return cls(
             frame_type=FrameType(ftype),
             flags=FrameFlags(flags),
-            payload=data[_HEADER_SIZE:_HEADER_SIZE + length],
+            payload=data[_HEADER_SIZE : _HEADER_SIZE + length],
             checksum=checksum,
         )
 
@@ -189,6 +192,7 @@ class Frame:
 # =============================================================================
 # Message assembly (handles chunked frames)
 # =============================================================================
+
 
 class MessageAssembler:
     """Assembles multi-frame messages from continuation frames.
@@ -238,6 +242,7 @@ class MessageAssembler:
 # =============================================================================
 # Framer (encoder / decoder)
 # =============================================================================
+
 
 class BinaryFramer:
     """Encode/decode LATTICE binary frames.
@@ -380,7 +385,9 @@ class BinaryFramer:
 
     def encode_negotiation_outcome(self, accepted: bool, fallback_reason: str = "") -> Frame:
         payload = json.dumps({"accepted": accepted, "reason": fallback_reason}).encode()
-        return Frame(frame_type=FrameType.DICTIONARY_NEGOTIATE, flags=FrameFlags.NONE, payload=payload)
+        return Frame(
+            frame_type=FrameType.DICTIONARY_NEGOTIATE, flags=FrameFlags.NONE, payload=payload
+        )
 
     def decode_negotiation_outcome(self, frame: Frame) -> tuple[bool, str]:
         payload = json.loads(frame.payload.decode("utf-8"))
@@ -437,10 +444,10 @@ class BinaryFramer:
         """Decode session start payload."""
         payload = frame.payload
         sid_len = struct.unpack("<I", payload[:4])[0]
-        session_id = payload[4:4 + sid_len].decode("utf-8")
+        session_id = payload[4 : 4 + sid_len].decode("utf-8")
         offset = 4 + sid_len
-        hash_len = struct.unpack("<I", payload[offset:offset + 4])[0]
-        manifest_hash = payload[offset + 4:offset + 4 + hash_len].decode("utf-8")
+        hash_len = struct.unpack("<I", payload[offset : offset + 4])[0]
+        manifest_hash = payload[offset + 4 : offset + 4 + hash_len].decode("utf-8")
         return session_id, manifest_hash
 
     @staticmethod
@@ -448,10 +455,10 @@ class BinaryFramer:
         """Decode session delta payload."""
         payload = frame.payload
         sid_len = struct.unpack("<I", payload[:4])[0]
-        session_id = payload[4:4 + sid_len].decode("utf-8")
+        session_id = payload[4 : 4 + sid_len].decode("utf-8")
         offset = 4 + sid_len
-        anchor_version = struct.unpack("<I", payload[offset:offset + 4])[0]
-        delta = payload[offset + 4:]
+        anchor_version = struct.unpack("<I", payload[offset : offset + 4])[0]
+        delta = payload[offset + 4 :]
         return session_id, anchor_version, delta
 
     @staticmethod
@@ -490,7 +497,7 @@ class BinaryFramer:
         frames: list[Frame] = []
         offset = 0
         while offset < len(payload):
-            chunk = payload[offset:offset + self.max_frame_payload]
+            chunk = payload[offset : offset + self.max_frame_payload]
             is_last = offset + self.max_frame_payload >= len(payload)
             chunk_flags = flags if is_last else flags | FrameFlags.CONTINUATION
             frames.append(
@@ -508,6 +515,7 @@ class BinaryFramer:
 # =============================================================================
 # Wire integrity
 # =============================================================================
+
 
 def compute_frame_digest(frames: list[Frame]) -> str:
     """Compute SHA-256 digest of a sequence of frames for tamper detection."""

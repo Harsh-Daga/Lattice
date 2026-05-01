@@ -220,7 +220,12 @@ class PIDManager:
 
         if not self._is_alive(pid):
             self._remove_stale()
-            return StopResult(stopped=True, was_running=False, pid=pid, message="Process not running (stale PID removed)")
+            return StopResult(
+                stopped=True,
+                was_running=False,
+                pid=pid,
+                message="Process not running (stale PID removed)",
+            )
 
         self._log.info("stopping_process", pid=pid, grace=grace_period)
         # Kill the process group (negative PID) to catch all children
@@ -232,14 +237,21 @@ class PIDManager:
             try:
                 os.kill(pid, signal_grace)
             except OSError:
-                return StopResult(stopped=False, was_running=True, pid=pid, message=f"Failed to signal: {exc}")
+                return StopResult(
+                    stopped=False, was_running=True, pid=pid, message=f"Failed to signal: {exc}"
+                )
 
         # Wait for graceful shutdown
         deadline = time.time() + grace_period
         while time.time() < deadline:
             if not self._is_alive(pid):
                 self.remove()
-                return StopResult(stopped=True, was_running=True, pid=pid, message=f"Stopped (graceful after {round(grace_period - (deadline - time.time()), 2)}s)")
+                return StopResult(
+                    stopped=True,
+                    was_running=True,
+                    pid=pid,
+                    message=f"Stopped (graceful after {round(grace_period - (deadline - time.time()), 2)}s)",
+                )
             time.sleep(0.5)
 
         # Force kill the process group
@@ -252,7 +264,9 @@ class PIDManager:
                 try:
                     os.kill(pid, signal_kill)
                 except OSError:
-                    return StopResult(stopped=False, was_running=True, pid=pid, message=f"SIGKILL failed: {exc}")
+                    return StopResult(
+                        stopped=False, was_running=True, pid=pid, message=f"SIGKILL failed: {exc}"
+                    )
             # Brief wait for OS to reap
             time.sleep(0.5)
 
@@ -321,10 +335,12 @@ def start_background_server(
 # Public API
 # ------------------------------------------------------------------------------
 
+
 # Back-compat alias (some early code references StartResult)
 @dataclasses.dataclass(frozen=True, slots=True)
 class _StartResult:
     """Result of a start operation."""
+
     pid: int
     success: bool
     message: str
