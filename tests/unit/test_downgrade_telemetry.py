@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from lattice.core.telemetry import DowngradeCategory, DowngradeTelemetry, TransportOutcome
 from lattice.providers.stall_detector import StreamStallDetector
 

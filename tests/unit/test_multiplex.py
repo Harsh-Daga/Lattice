@@ -60,7 +60,9 @@ class TestMultiStreamMux:
 
     def test_create_stream_with_options(self) -> None:
         mux = MultiStreamMux()
-        s = mux.create_stream(StreamType.SPECULATIVE, priority=5, reliability=ReliabilityMode.BEST_EFFORT)
+        s = mux.create_stream(
+            StreamType.SPECULATIVE, priority=5, reliability=ReliabilityMode.BEST_EFFORT
+        )
         assert s.priority == 5
         assert s.reliability == ReliabilityMode.BEST_EFFORT
 

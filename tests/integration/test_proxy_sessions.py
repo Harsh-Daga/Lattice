@@ -34,20 +34,24 @@ def app():
 @pytest.fixture
 async def client(app):
     from fastapi.testclient import TestClient
+
     with TestClient(app) as c:
         yield c
 
 
 class TestLatticeSessionEndpoints:
     def test_session_start(self, client) -> None:
-        resp = client.post("/lattice/session/start", json={
-            "messages": [
-                {"role": "system", "content": "sys"},
-                {"role": "user", "content": "hi"},
-            ],
-            "provider": "openai",
-            "model": "openai/gpt-4",
-        })
+        resp = client.post(
+            "/lattice/session/start",
+            json={
+                "messages": [
+                    {"role": "system", "content": "sys"},
+                    {"role": "user", "content": "hi"},
+                ],
+                "provider": "openai",
+                "model": "openai/gpt-4",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["session_id"].startswith("lattice-")
@@ -60,12 +64,15 @@ class TestLatticeSessionEndpoints:
         assert "expected_cached_tokens" in data["cache_plan"]
 
     def test_session_start_with_tools(self, client) -> None:
-        resp = client.post("/lattice/session/start", json={
-            "messages": [{"role": "user", "content": "hi"}],
-            "provider": "openai",
-            "model": "openai/gpt-4",
-            "tools": [{"name": "search"}],
-        })
+        resp = client.post(
+            "/lattice/session/start",
+            json={
+                "messages": [{"role": "user", "content": "hi"}],
+                "provider": "openai",
+                "model": "openai/gpt-4",
+                "tools": [{"name": "search"}],
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "session_id" in data
@@ -73,21 +80,27 @@ class TestLatticeSessionEndpoints:
 
     def test_session_append(self, client) -> None:
         # Start session
-        start = client.post("/lattice/session/start", json={
-            "messages": [{"role": "user", "content": "hi"}],
-            "provider": "openai",
-            "model": "openai/gpt-4",
-        })
+        start = client.post(
+            "/lattice/session/start",
+            json={
+                "messages": [{"role": "user", "content": "hi"}],
+                "provider": "openai",
+                "model": "openai/gpt-4",
+            },
+        )
         session_id = start.json()["session_id"]
 
         # Append
-        resp = client.post("/lattice/session/append", json={
-            "session_id": session_id,
-            "messages": [
-                {"role": "user", "content": "hi"},
-                {"role": "assistant", "content": "hello"},
-            ],
-        })
+        resp = client.post(
+            "/lattice/session/append",
+            json={
+                "session_id": session_id,
+                "messages": [
+                    {"role": "user", "content": "hi"},
+                    {"role": "assistant", "content": "hello"},
+                ],
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["session_id"] == session_id
@@ -97,26 +110,35 @@ class TestLatticeSessionEndpoints:
         assert data["cache_plan"]["provider"] == "openai"
 
     def test_session_append_missing_id(self, client) -> None:
-        resp = client.post("/lattice/session/append", json={
-            "messages": [{"role": "user", "content": "hi"}],
-        })
+        resp = client.post(
+            "/lattice/session/append",
+            json={
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+        )
         assert resp.status_code == 400
         assert resp.json()["error"] == "missing_session_id"
 
     def test_session_append_not_found(self, client) -> None:
-        resp = client.post("/lattice/session/append", json={
-            "session_id": "nonexistent",
-            "messages": [{"role": "user", "content": "hi"}],
-        })
+        resp = client.post(
+            "/lattice/session/append",
+            json={
+                "session_id": "nonexistent",
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+        )
         assert resp.status_code == 404
         assert resp.json()["error"] == "session_not_found"
 
     def test_session_get(self, client) -> None:
-        start = client.post("/lattice/session/start", json={
-            "messages": [{"role": "user", "content": "hi"}],
-            "provider": "anthropic",
-            "model": "anthropic/claude-sonnet",
-        })
+        start = client.post(
+            "/lattice/session/start",
+            json={
+                "messages": [{"role": "user", "content": "hi"}],
+                "provider": "anthropic",
+                "model": "anthropic/claude-sonnet",
+            },
+        )
         session_id = start.json()["session_id"]
 
         resp = client.get(f"/lattice/session/{session_id}")
@@ -142,6 +164,7 @@ class TestChatCompletionsSessionHeaders:
         # needing a real backend.
         import httpx
         import respx
+
         with respx.mock:
             respx.post("http://localhost:9999/v1/chat/completions").mock(
                 return_value=httpx.Response(
@@ -151,19 +174,24 @@ class TestChatCompletionsSessionHeaders:
                         "object": "chat.completion",
                         "created": 123,
                         "model": "gpt-4",
-                        "choices": [{
-                            "index": 0,
-                            "message": {"role": "assistant", "content": "hi"},
-                            "finish_reason": "stop",
-                        }],
+                        "choices": [
+                            {
+                                "index": 0,
+                                "message": {"role": "assistant", "content": "hi"},
+                                "finish_reason": "stop",
+                            }
+                        ],
                         "usage": {"prompt_tokens": 1, "completion_tokens": 1},
                     },
                 )
             )
-            resp = client.post("/v1/chat/completions", json={
-                "model": "openai/gpt-4",
-                "messages": [{"role": "user", "content": "hello"}],
-            })
+            resp = client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "openai/gpt-4",
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+            )
             assert resp.status_code == 200
             assert "x-lattice-session-id" in resp.headers
             session_id = resp.headers["x-lattice-session-id"]
@@ -172,6 +200,7 @@ class TestChatCompletionsSessionHeaders:
     def test_existing_session_reused(self, client) -> None:
         import httpx
         import respx
+
         with respx.mock:
             respx.post("http://localhost:9999/v1/chat/completions").mock(
                 return_value=httpx.Response(
@@ -181,31 +210,40 @@ class TestChatCompletionsSessionHeaders:
                         "object": "chat.completion",
                         "created": 123,
                         "model": "gpt-4",
-                        "choices": [{
-                            "index": 0,
-                            "message": {"role": "assistant", "content": "hi"},
-                            "finish_reason": "stop",
-                        }],
+                        "choices": [
+                            {
+                                "index": 0,
+                                "message": {"role": "assistant", "content": "hi"},
+                                "finish_reason": "stop",
+                            }
+                        ],
                         "usage": {"prompt_tokens": 1, "completion_tokens": 1},
                     },
                 )
             )
             # Turn 1
-            resp1 = client.post("/v1/chat/completions", json={
-                "model": "openai/gpt-4",
-                "messages": [{"role": "user", "content": "hello"}],
-            })
+            resp1 = client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "openai/gpt-4",
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+            )
             session_id = resp1.headers["x-lattice-session-id"]
 
             # Turn 2 with same session
-            resp2 = client.post("/v1/chat/completions", json={
-                "model": "openai/gpt-4",
-                "messages": [
-                    {"role": "user", "content": "hello"},
-                    {"role": "assistant", "content": "hi"},
-                    {"role": "user", "content": "how are you"},
-                ],
-            }, headers={"x-lattice-session-id": session_id})
+            resp2 = client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "openai/gpt-4",
+                    "messages": [
+                        {"role": "user", "content": "hello"},
+                        {"role": "assistant", "content": "hi"},
+                        {"role": "user", "content": "how are you"},
+                    ],
+                },
+                headers={"x-lattice-session-id": session_id},
+            )
             assert resp2.headers["x-lattice-session-id"] == session_id
 
 

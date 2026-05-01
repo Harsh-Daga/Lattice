@@ -9,10 +9,9 @@ from __future__ import annotations
 import pytest
 
 from lattice.core.session import MemorySessionStore, SessionManager
-from lattice.core.transport import Message, Role
-from lattice.protocol.content import ImagePart, TextPart
+from lattice.core.transport import Message
+from lattice.protocol.content import TextPart
 from lattice.protocol.manifest import (
-    Manifest,
     apply_delta,
     build_manifest,
     canonicalize_segments,
@@ -21,7 +20,6 @@ from lattice.protocol.manifest import (
     manifest_to_messages,
 )
 from lattice.protocol.segments import (
-    Segment,
     SegmentType,
     build_messages_segment,
     build_segment,
@@ -29,10 +27,10 @@ from lattice.protocol.segments import (
     build_tools_segment,
 )
 
-
 # =============================================================================
 # Manifest hash stability
 # =============================================================================
+
 
 class TestManifestHashStability:
     def test_same_segments_same_hash(self) -> None:
@@ -70,6 +68,7 @@ class TestManifestHashStability:
 # Segment ordering determinism
 # =============================================================================
 
+
 class TestSegmentOrderingDeterminism:
     def test_canonical_order_tools_system_docs_artifacts_messages(self) -> None:
         segments = [
@@ -103,6 +102,7 @@ class TestSegmentOrderingDeterminism:
 # =============================================================================
 # Session update auto-rebuilds manifest
 # =============================================================================
+
 
 class TestSessionUpdateRebuildsManifest:
     @pytest.mark.asyncio
@@ -196,6 +196,7 @@ class TestSessionUpdateRebuildsManifest:
 # Delta operations
 # =============================================================================
 
+
 class TestDeltaOperations:
     def test_delta_append_new_segment(self) -> None:
         manifest = build_manifest(
@@ -246,13 +247,17 @@ class TestDeltaOperations:
 # Multimodal round-trip
 # =============================================================================
 
+
 class TestMultimodalRoundTrip:
     def test_manifest_preserves_image_parts(self) -> None:
         messages = [
-            {"role": "user", "content": [
-                {"type": "text", "text": "describe this"},
-                {"type": "image_url", "image_url": {"url": "http://example.com/img.png"}},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "describe this"},
+                    {"type": "image_url", "image_url": {"url": "http://example.com/img.png"}},
+                ],
+            },
         ]
         manifest = manifest_from_messages("sess_1", messages)
         msg_seg = manifest.get_segment(SegmentType.MESSAGES)
@@ -277,6 +282,7 @@ class TestMultimodalRoundTrip:
 # =============================================================================
 # Reconstruction from manifest
 # =============================================================================
+
 
 class TestReconstructionFromManifest:
     def test_reconstruct_exact_messages(self) -> None:

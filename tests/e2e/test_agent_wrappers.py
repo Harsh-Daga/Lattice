@@ -4,7 +4,6 @@ Validates wrap/unwrap flows using the public API.
 These tests use dry_run to avoid modifying real config files.
 """
 
-
 from lattice.integrations.agents import (
     agent_status,
     list_agents,

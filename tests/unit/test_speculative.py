@@ -26,6 +26,7 @@ from lattice.transforms.speculative import (
 # Prediction
 # =============================================================================
 
+
 class TestPrediction:
     """Tests for SpeculativeExecutor.predict()."""
 
@@ -48,9 +49,7 @@ class TestPrediction:
 
     def test_code_completion_prediction(self) -> None:
         executor = SpeculativeExecutor()
-        req = Request(
-            messages=[Message(role="user", content="Write a function that sorts a list")]
-        )
+        req = Request(messages=[Message(role="user", content="Write a function that sorts a list")])
         ctx = TransformContext()
         pred = executor.predict(req, ctx)
         assert pred == "code_completion"
@@ -72,6 +71,7 @@ class TestPrediction:
 # Confidence
 # =============================================================================
 
+
 class TestConfidence:
     def test_tool_call_confidence(self) -> None:
         executor = SpeculativeExecutor()
@@ -91,6 +91,7 @@ class TestConfidence:
 # =============================================================================
 # Hit / Miss
 # =============================================================================
+
 
 class TestHitMiss:
     def test_tool_call_hit(self) -> None:
@@ -119,6 +120,7 @@ class TestHitMiss:
 # =============================================================================
 # Speculative Execution
 # =============================================================================
+
 
 class TestSpeculativeExecution:
     @pytest.mark.asyncio
@@ -154,6 +156,7 @@ class TestSpeculativeExecution:
 # Stats
 # =============================================================================
 
+
 class TestStats:
     def test_accuracy_empty(self) -> None:
         executor = SpeculativeExecutor()
@@ -162,8 +165,12 @@ class TestStats:
 
     def test_accuracy_after_hits(self) -> None:
         executor = SpeculativeExecutor()
-        executor.record_result(hit=True, _predicted="tool_call", _actual="tool_call", latency_ms=100.0)
-        executor.record_result(hit=False, _predicted="tool_call", _actual="completion", latency_ms=100.0)
+        executor.record_result(
+            hit=True, _predicted="tool_call", _actual="tool_call", latency_ms=100.0
+        )
+        executor.record_result(
+            hit=False, _predicted="tool_call", _actual="completion", latency_ms=100.0
+        )
         assert executor.accuracy == 0.5
         assert executor.stats["hits"] == 1
         assert executor.stats["total"] == 2
@@ -172,6 +179,7 @@ class TestStats:
 # =============================================================================
 # Pipeline Integration
 # =============================================================================
+
 
 class TestSpeculativeTransform:
     def test_prediction_metadata(self) -> None:

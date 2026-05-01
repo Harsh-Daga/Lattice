@@ -7,11 +7,16 @@ from pathlib import Path
 
 import pytest
 
+from benchmarks.evals.replay import ReplayTrace, run_trace_replay
 from benchmarks.evals.report import EvalSectionReport, ProductionEvalReport, render_markdown
 from benchmarks.evals.runner import _feature_matches, run_feature_eval, run_feature_matrix_eval
 from benchmarks.evals.surfaces import run_transport_eval
-from benchmarks.evals.replay import ReplayTrace, run_trace_replay
-from benchmarks.framework.types import BenchmarkReport, QualityMeasurement, ScenarioResult, TokenMeasurement
+from benchmarks.framework.types import (
+    BenchmarkReport,
+    QualityMeasurement,
+    ScenarioResult,
+    TokenMeasurement,
+)
 from benchmarks.scenarios.prompts import get_scenarios
 from lattice.core.config import LatticeConfig
 
@@ -182,7 +187,9 @@ def test_render_markdown_shows_all_usage_rows_and_feature_details() -> None:
                     "observed_tier": "MEDIUM",
                     "target_features": ["batching"],
                     "flaws": ["features not reached by pipeline: batching"],
-                    "suggestions": ["inspect pipeline ordering and transform eligibility for the missing features"],
+                    "suggestions": [
+                        "inspect pipeline ordering and transform eligibility for the missing features"
+                    ],
                     "passed": True,
                     "status": "pass",
                 },

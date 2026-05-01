@@ -51,12 +51,8 @@ def _make_opencode_config(tmp_path: pathlib.Path) -> pathlib.Path:
         json.dumps(
             {
                 "provider": {
-                    "openadapter": {
-                        "options": {"baseURL": "https://api.openadapter.in/v1"}
-                    },
-                    "ollama": {
-                        "options": {"baseURL": "http://127.0.0.1:11434/v1"}
-                    },
+                    "openadapter": {"options": {"baseURL": "https://api.openadapter.in/v1"}},
+                    "ollama": {"options": {"baseURL": "http://127.0.0.1:11434/v1"}},
                 }
             }
         )
@@ -106,7 +102,10 @@ class TestOpenCodeIntegration:
         raw = json.loads(config_path.read_text())
         assert raw["provider"]["openadapter"]["options"]["baseURL"] == lattice_config.proxy_url()
         assert raw["provider"]["ollama"]["options"]["baseURL"] == lattice_config.proxy_url()
-        assert raw["provider"]["openadapter"]["options"]["headers"]["x-lattice-provider"] == "openadapter"
+        assert (
+            raw["provider"]["openadapter"]["options"]["headers"]["x-lattice-provider"]
+            == "openadapter"
+        )
         assert raw["provider"]["ollama"]["options"]["headers"]["x-lattice-provider"] == "ollama"
         # LATTICE state must NOT be inside opencode.json
         assert "_lattice_wrapped" not in raw
@@ -123,7 +122,9 @@ class TestOpenCodeIntegration:
             restored = integration.unpatch(dry_run=False)
         assert restored.patched is False
         raw2 = json.loads(config_path.read_text())
-        assert raw2["provider"]["openadapter"]["options"]["baseURL"] == "https://api.openadapter.in/v1"
+        assert (
+            raw2["provider"]["openadapter"]["options"]["baseURL"] == "https://api.openadapter.in/v1"
+        )
         assert raw2["provider"]["ollama"]["options"]["baseURL"] == "http://127.0.0.1:11434/v1"
         # Headers should be removed on unpatch
         assert "headers" not in raw2["provider"]["openadapter"]["options"]
@@ -149,25 +150,19 @@ class TestOpenCodeIntegration:
         assert second.patched is True
         assert "already routed" in second.message.lower()
 
-    def test_unsupported_providers_skipped(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_unsupported_providers_skipped(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """Unsupported providers are left untouched; supported ones are patched."""
         config_path = tmp_path / "opencode.json"
         config_path.write_text(
             json.dumps(
                 {
                     "provider": {
-                        "openadapter": {
-                            "options": {"baseURL": "https://api.openadapter.in/v1"}
-                        },
-                        "groq": {
-                            "options": {"baseURL": "https://api.groq.com/v1"}
-                        },
-                        "ollama-cloud": {
-                            "options": {"baseURL": "https://ollama.com/v1"}
-                        },
-                        "mistral": {
-                            "options": {"baseURL": "https://api.mistral.ai/v1"}
-                        },
+                        "openadapter": {"options": {"baseURL": "https://api.openadapter.in/v1"}},
+                        "groq": {"options": {"baseURL": "https://api.groq.com/v1"}},
+                        "ollama-cloud": {"options": {"baseURL": "https://ollama.com/v1"}},
+                        "mistral": {"options": {"baseURL": "https://api.mistral.ai/v1"}},
                     }
                 }
             )
@@ -188,8 +183,14 @@ class TestOpenCodeIntegration:
         assert raw["provider"]["groq"]["options"]["baseURL"] == "https://api.groq.com/v1"
         assert raw["provider"]["mistral"]["options"]["baseURL"] == "https://api.mistral.ai/v1"
         # Headers injected only for supported
-        assert raw["provider"]["openadapter"]["options"]["headers"]["x-lattice-provider"] == "openadapter"
-        assert raw["provider"]["ollama-cloud"]["options"]["headers"]["x-lattice-provider"] == "ollama-cloud"
+        assert (
+            raw["provider"]["openadapter"]["options"]["headers"]["x-lattice-provider"]
+            == "openadapter"
+        )
+        assert (
+            raw["provider"]["ollama-cloud"]["options"]["headers"]["x-lattice-provider"]
+            == "ollama-cloud"
+        )
         assert "headers" not in raw["provider"]["groq"]["options"]
         assert "headers" not in raw["provider"]["mistral"]["options"]
         # State records skipped
@@ -264,14 +265,18 @@ class TestCursorIntegration:
             second = integration.patch(dry_run=False)
         assert "already routed" in second.message.lower()
 
-    def test_patch_multiple_providers(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_multiple_providers(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         config_path = tmp_path / "settings.json"
         config_path.write_text(
-            json.dumps({
-                "cursor.openai.baseUrl": "https://api.openai.com/v1",
-                "cursor.anthropic.baseUrl": "https://api.anthropic.com",
-                "cursor.gemini.baseUrl": "https://generativelanguage.googleapis.com",
-            })
+            json.dumps(
+                {
+                    "cursor.openai.baseUrl": "https://api.openai.com/v1",
+                    "cursor.anthropic.baseUrl": "https://api.anthropic.com",
+                    "cursor.gemini.baseUrl": "https://generativelanguage.googleapis.com",
+                }
+            )
         )
         integration = CursorIntegration(lattice_config)
         with patch.object(integration, "_config_path", return_value=config_path):
@@ -291,7 +296,9 @@ class TestCursorIntegration:
         assert raw2["cursor.anthropic.baseUrl"] == "https://api.anthropic.com"
         assert raw2["cursor.gemini.baseUrl"] == "https://generativelanguage.googleapis.com"
 
-    def test_create_settings_from_scratch(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_create_settings_from_scratch(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """If Cursor has never been customised, settings.json doesn't exist.
         LATTICE should create it and inject the proxy URL."""
         config_path = tmp_path / "Cursor" / "User" / "settings.json"
@@ -311,7 +318,9 @@ class TestCursorIntegration:
             "cursor.gemini.baseUrl",
         ]
 
-    def test_created_keys_removed_on_unpatch(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_created_keys_removed_on_unpatch(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """Keys that LATTICE created (didn't exist before) must be deleted on unpatch."""
         # Start with ONLY an unrelated key
         config_path = tmp_path / "settings.json"
@@ -337,13 +346,17 @@ class TestCursorIntegration:
         # Unrelated key preserved
         assert raw2["editor.fontSize"] == 14
 
-    def test_baseurl_variant_normalization(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_baseurl_variant_normalization(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """If settings has baseURL (PascalCase), normalize to baseUrl (camelCase)."""
         config_path = tmp_path / "settings.json"
         config_path.write_text(
-            json.dumps({
-                "cursor.openai.baseURL": "https://api.openai.com/v1",
-            })
+            json.dumps(
+                {
+                    "cursor.openai.baseURL": "https://api.openai.com/v1",
+                }
+            )
         )
         integration = CursorIntegration(lattice_config)
         with patch.object(integration, "_config_path", return_value=config_path):
@@ -361,7 +374,9 @@ class TestCursorIntegration:
         assert raw2["cursor.openai.baseUrl"] == "https://api.openai.com/v1"
         assert "cursor.openai.baseURL" not in raw2
 
-    def test_dry_run_no_changes(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_dry_run_no_changes(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """dry_run=True must not write anything."""
         config_path = tmp_path / "settings.json"
         config_path.write_text(json.dumps({"cursor.openai.baseUrl": "https://api.openai.com/v1"}))
@@ -376,7 +391,9 @@ class TestCursorIntegration:
         assert raw["cursor.openai.baseUrl"] == "https://api.openai.com/v1"
         assert "_lattice_wrapped" not in raw
 
-    def test_unpatch_from_backup_when_marker_missing(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_unpatch_from_backup_when_marker_missing(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """If marker is missing but backup exists, restore from backup."""
         config_path = tmp_path / "settings.json"
         config_path.write_text(json.dumps({"cursor.openai.baseUrl": "https://api.openai.com/v1"}))
@@ -407,7 +424,9 @@ class TestCursorIntegration:
 
 
 class TestClaudeCodeIntegration:
-    def test_patch_creates_env_file(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_creates_env_file(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         integration = ClaudeCodeIntegration(lattice_config)
         env_path = tmp_path / "claude.env"
         with patch.object(integration, "_env_file", return_value=env_path):
@@ -415,7 +434,9 @@ class TestClaudeCodeIntegration:
         assert result.patched is True
         assert "source" in result.message.lower()
 
-    def test_unpatch_removes_env_file(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_unpatch_removes_env_file(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         integration = ClaudeCodeIntegration(lattice_config)
         env_path = tmp_path / "claude.env"
         env_path.write_text("OPENAI_BASE_URL=...")
@@ -444,27 +465,35 @@ class TestClaudeCodeIntegration:
 
 
 class TestCodexIntegration:
-    def test_patch_creates_env_file(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_creates_env_file(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         integration = CodexIntegration(lattice_config)
         env_path = tmp_path / "codex.env"
         state_path = tmp_path / "codex_state.json"
         with (
             patch.object(integration, "_env_file", return_value=env_path),
             patch.object(integration, "_state_path", return_value=state_path),
-            patch.object(integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"),
+            patch.object(
+                integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"
+            ),
         ):
             result = integration.patch()
         assert result.patched is True
         assert "source" in result.message.lower()
 
-    def test_wrap_and_unwrap_roundtrip(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_wrap_and_unwrap_roundtrip(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         integration = CodexIntegration(lattice_config)
         env_path = tmp_path / "codex.env"
         state_path = tmp_path / "codex_state.json"
         with (
             patch.object(integration, "_env_file", return_value=env_path),
             patch.object(integration, "_state_path", return_value=state_path),
-            patch.object(integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"),
+            patch.object(
+                integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"
+            ),
         ):
             wrap_result = integration.patch()
             assert wrap_result.patched is True
@@ -472,7 +501,9 @@ class TestCodexIntegration:
             assert unwrap_result.patched is False
             assert not env_path.exists()
 
-    def test_patch_top_level_openai_base_url(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_top_level_openai_base_url(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """Top-level openai_base_url is patched and restored."""
         config_path = tmp_path / "config.toml"
         config_path.write_text('openai_base_url = "https://api.openai.com/v1"\n')
@@ -500,7 +531,9 @@ class TestCodexIntegration:
             integration.unpatch()
         assert 'openai_base_url = "https://api.openai.com/v1"' in config_path.read_text()
 
-    def test_patch_sets_openai_base_url_when_missing(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_sets_openai_base_url_when_missing(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """If openai_base_url is absent, it is created."""
         config_path = tmp_path / "config.toml"
         config_path.write_text('model = "gpt-4o"\n')
@@ -525,7 +558,9 @@ class TestCodexIntegration:
             integration.unpatch()
         assert "openai_base_url" not in config_path.read_text()
 
-    def test_patch_model_providers(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_model_providers(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """[model_providers.*].base_url is patched for ALL custom providers."""
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -591,7 +626,9 @@ class TestCodexIntegration:
         assert 'openai_base_url = "https://us.api.openai.com/v1"' in text
         assert 'openai_base_url = "https://eu.api.openai.com/v1"' in text
 
-    def test_patch_model_provider_reference(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_model_provider_reference(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """If model_provider references a custom provider, that provider is patched."""
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -623,7 +660,9 @@ class TestCodexIntegration:
         text = config_path.read_text()
         assert 'base_url = "https://proxy.example.com"' in text
 
-    def test_patch_oss_provider(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_oss_provider(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """oss_provider references are tracked and the provider base_url patched."""
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -654,7 +693,9 @@ class TestCodexIntegration:
         text = config_path.read_text()
         assert 'base_url = "http://localhost:11434/v1"' in text
 
-    def test_patch_project_level_config(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_project_level_config(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """Project-level .codex/config.toml is discovered and patched."""
         project_dir = tmp_path / "myproject"
         codex_dir = project_dir / ".codex"
@@ -668,7 +709,9 @@ class TestCodexIntegration:
         with (
             patch.object(integration, "_env_file", return_value=env_path),
             patch.object(integration, "_state_path", return_value=state_path),
-            patch.object(integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"),
+            patch.object(
+                integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"
+            ),
             patch("pathlib.Path.cwd", return_value=project_dir),
         ):
             integration.patch()
@@ -687,7 +730,9 @@ class TestCodexIntegration:
         with (
             patch.object(integration, "_env_file", return_value=env_path),
             patch.object(integration, "_state_path", return_value=state_path),
-            patch.object(integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"),
+            patch.object(
+                integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"
+            ),
         ):
             integration.patch()
         content = env_path.read_text()
@@ -695,7 +740,9 @@ class TestCodexIntegration:
         assert 'export HTTPS_PROXY="http://corp-proxy:8080"' in content
         assert 'export http_proxy="http://corp-proxy:8080"' in content
 
-    def test_patch_message_contains_oauth_warning(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_patch_message_contains_oauth_warning(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """Patch message warns about OAuth logout."""
         integration = CodexIntegration(lattice_config)
         env_path = tmp_path / "codex.env"
@@ -703,13 +750,17 @@ class TestCodexIntegration:
         with (
             patch.object(integration, "_env_file", return_value=env_path),
             patch.object(integration, "_state_path", return_value=state_path),
-            patch.object(integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"),
+            patch.object(
+                integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"
+            ),
         ):
             result = integration.patch()
         assert "codex /logout" in result.message
         assert "OAuth" in result.message
 
-    def test_unpatch_with_no_state_is_clean(self, tmp_path: pathlib.Path, lattice_config: LatticeConfig) -> None:
+    def test_unpatch_with_no_state_is_clean(
+        self, tmp_path: pathlib.Path, lattice_config: LatticeConfig
+    ) -> None:
         """Unpatch without state file just removes env file gracefully."""
         integration = CodexIntegration(lattice_config)
         env_path = tmp_path / "codex.env"

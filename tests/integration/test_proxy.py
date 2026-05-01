@@ -241,7 +241,10 @@ class TestProxyRoundTrip:
 
         monkeypatch.setattr(DirectHTTPProvider, "completion", _raise)
 
-        payload = {"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Timeout test"}]}
+        payload = {
+            "model": "openai/gpt-4",
+            "messages": [{"role": "user", "content": "Timeout test"}],
+        }
         response = test_client.post("/v1/chat/completions", json=payload)
         assert response.status_code == 504
         data = response.json()
@@ -327,9 +330,7 @@ class TestProxyRoundTrip:
         data = response.json()
         assert "error" in data
 
-    def test_provider_502(
-        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_provider_502(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
         from lattice.providers.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
@@ -354,7 +355,10 @@ class TestProxyRoundTrip:
 
         monkeypatch.setattr(DirectHTTPProvider, "completion", _raise)
 
-        payload = {"model": "openai/gpt-4", "messages": [{"role": "user", "content": "generic error test"}]}
+        payload = {
+            "model": "openai/gpt-4",
+            "messages": [{"role": "user", "content": "generic error test"}],
+        }
         response = test_client.post("/v1/chat/completions", json=payload)
         assert response.status_code == 502
         data = response.json()
@@ -369,7 +373,9 @@ class TestProxyRoundTrip:
 class TestStreaming:
     """SSE streaming through the proxy."""
 
-    def test_streaming_request(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_streaming_request(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Streaming flag → SSE response with normalized chunks."""
         from lattice.providers.transport import DirectHTTPProvider
 
@@ -390,6 +396,7 @@ class TestStreaming:
         body = response.read()
         assert b"Hello " in body
         assert b"world!" in body
+
 
 # =============================================================================
 # Session handling
@@ -684,9 +691,7 @@ class TestAnthropicMessagesEndpoint:
                 return True
 
         class _MockClient:
-            async def request(
-                self, _method: str, _url: str, **kwargs: Any
-            ) -> _MockResponse:
+            async def request(self, _method: str, _url: str, **kwargs: Any) -> _MockResponse:
                 # Verify the raw body is forwarded unchanged
                 body = kwargs.get("content", b"")
                 parsed = json.loads(body)
@@ -743,6 +748,7 @@ class TestAnthropicMessagesEndpoint:
                 async def _gen() -> AsyncGenerator[str, None]:
                     for chunk in self._chunks:
                         yield chunk
+
                 return _gen()
 
             async def __aenter__(self) -> _MockResponse:
@@ -752,9 +758,7 @@ class TestAnthropicMessagesEndpoint:
                 pass
 
         class _MockClient:
-            def stream(
-                self, _method: str, _url: str, **_kwargs: Any
-            ) -> _MockResponse:
+            def stream(self, _method: str, _url: str, **_kwargs: Any) -> _MockResponse:
                 return _MockResponse()
 
             async def aclose(self) -> None:

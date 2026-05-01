@@ -239,10 +239,7 @@ class TestRedisIntegrationSerialization:
         assert result.manifest.segments[0].type.value == "system"
 
     async def test_large_session(self, store):
-        messages = [
-            Message(role="user", content=f"Message {i}" * 100)
-            for i in range(100)
-        ]
+        messages = [Message(role="user", content=f"Message {i}" * 100) for i in range(100)]
         sess = Session(
             session_id="sess-large",
             created_at=time.time(),

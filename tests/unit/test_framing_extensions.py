@@ -28,9 +28,7 @@ def test_priority_mask_extract() -> None:
 
 def test_connection_migrate_frame() -> None:
     framer = BinaryFramer()
-    frame = framer.encode_connection_migrate(
-        "sess-1", {"ip": "10.0.0.2", "network": "cellular"}
-    )
+    frame = framer.encode_connection_migrate("sess-1", {"ip": "10.0.0.2", "network": "cellular"})
     assert frame.frame_type == FrameType.CONNECTION_MIGRATE
     session_id, client_info = framer.decode_connection_migrate(frame)
     assert session_id == "sess-1"

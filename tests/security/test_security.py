@@ -20,6 +20,7 @@ from lattice.protocol.segments import build_system_segment
 # Session fixation
 # =============================================================================
 
+
 class TestSessionFixation:
     @pytest.mark.asyncio
     async def test_reject_predictable_session_id(self):
@@ -42,10 +43,7 @@ class TestSessionFixation:
         store = MemorySessionStore()
         mgr = SessionManager(store)
 
-        ids = [
-            (await mgr.create_session("openai", "gpt-4", [])).session_id
-            for _ in range(5)
-        ]
+        ids = [(await mgr.create_session("openai", "gpt-4", [])).session_id for _ in range(5)]
         # All unique
         assert len(set(ids)) == 5
         # No common prefix beyond lattice-
@@ -78,6 +76,7 @@ class TestSessionFixation:
 # Origin validation
 # =============================================================================
 
+
 class TestOriginValidation:
     def test_local_origin_detection(self):
         """Local origin detection works for 127.0.0.1 and localhost."""
@@ -98,6 +97,7 @@ class TestOriginValidation:
 # =============================================================================
 # Manifest tamper detection
 # =============================================================================
+
 
 class TestManifestTamper:
     def test_anchor_hash_changes_on_modification(self):
@@ -131,6 +131,7 @@ class TestManifestTamper:
 # =============================================================================
 # Resume token security
 # =============================================================================
+
 
 class TestResumeTokenSecurity:
     def test_token_expiration(self):

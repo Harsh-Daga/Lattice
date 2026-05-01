@@ -15,11 +15,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-import pathlib
 import time
-from typing import Any
-
-import pytest
 
 from lattice.core.tunnel_sidecar import (
     HTTPProxyServer,
@@ -29,7 +25,6 @@ from lattice.core.tunnel_sidecar import (
     TunnelState,
     WebSocketTunnel,
 )
-
 
 # =============================================================================
 # ReplayBuffer

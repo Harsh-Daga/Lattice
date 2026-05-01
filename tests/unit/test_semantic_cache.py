@@ -314,6 +314,7 @@ class TestSSEChunks:
             if '"content":' in chunk:
                 data = chunk.removeprefix("data: ").strip()
                 import json
+
                 payload = json.loads(data)
                 content_parts.append(payload["choices"][0]["delta"]["content"])
         assert "".join(content_parts) == "Hello world"
@@ -451,10 +452,12 @@ class TestStructuredApproximateCache:
         )
         code = DummyRequest(
             model="gpt-4",
-            messages=[{
-                "role": "user",
-                "content": "Here is some code:\n```python\nprint('hello')\n```\nWhat does this do?",
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Here is some code:\n```python\nprint('hello')\n```\nWhat does this do?",
+                }
+            ],
         )
         key = compute_cache_key(plain)
         await cache.set(key, CachedResponse(content="Use sorted(list)."), plain)

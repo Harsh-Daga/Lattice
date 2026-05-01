@@ -92,9 +92,11 @@ class TestRedisSessionStore:
         assert result is False
 
     async def test_keys(self, store, mock_redis_client):
-        mock_redis_client.scan = AsyncMock(side_effect=[
-            (0, ["lattice:session:sess-1", "lattice:session:sess-2"]),
-        ])
+        mock_redis_client.scan = AsyncMock(
+            side_effect=[
+                (0, ["lattice:session:sess-1", "lattice:session:sess-2"]),
+            ]
+        )
         result = await store.keys()
         assert result == ["sess-1", "sess-2"]
 
@@ -108,9 +110,11 @@ class TestRedisSessionStore:
             messages=[],
         )
         # First scan returns key, second returns nothing
-        mock_redis_client.scan = AsyncMock(side_effect=[
-            (0, ["lattice:session:sess-old"]),
-        ])
+        mock_redis_client.scan = AsyncMock(
+            side_effect=[
+                (0, ["lattice:session:sess-old"]),
+            ]
+        )
         mock_redis_client.get = AsyncMock(return_value=json.dumps(old.to_dict()))
         mock_redis_client.delete = AsyncMock(return_value=1)
         count = await store.expire(3600)
@@ -128,6 +132,7 @@ class TestRedisStoreLifecycle:
 
         # Patch redis.from_url to return our mock
         import lattice.core.store as store_mod
+
         orig_redis = store_mod.redis
         store_mod.redis = MagicMock()
         store_mod.redis.from_url = MagicMock(return_value=mock_redis_client)

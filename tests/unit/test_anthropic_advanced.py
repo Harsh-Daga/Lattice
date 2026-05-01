@@ -40,31 +40,36 @@ class TestSystemBlocks:
         assert body["system"][0]["cache_control"]["type"] == "ephemeral"
 
     def test_none_system_omitted(self, adapter: AnthropicAdapter) -> None:
-        body = adapter.serialize_request(
-            Request(messages=[], model="claude-3-5-haiku")
-        )
+        body = adapter.serialize_request(Request(messages=[], model="claude-3-5-haiku"))
         assert "system" not in body
 
 
 class ToolAnnotation:
     """Tests for _annotate_tools, _build_system_blocks, _build_output_schema_tool"""
+
     pass  # placeholder
 
 
 class TestToolAnnotation:
     def test_cache_control(self, adapter: AnthropicAdapter) -> None:
         tools = [{"name": "sum", "description": "Add", "input_schema": {}}]
-        out = adapter._annotate_tools(tools, cache_control=True, defer_loading=False, allowed_callers=False)
+        out = adapter._annotate_tools(
+            tools, cache_control=True, defer_loading=False, allowed_callers=False
+        )
         assert out[0]["cache_control"]["type"] == "ephemeral"
 
     def test_defer_loading(self, adapter: AnthropicAdapter) -> None:
         tools = [{"name": "sum", "description": "Add", "input_schema": {}}]
-        out = adapter._annotate_tools(tools, cache_control=False, defer_loading=True, allowed_callers=False)
+        out = adapter._annotate_tools(
+            tools, cache_control=False, defer_loading=True, allowed_callers=False
+        )
         assert out[0]["deferred_loading"] is True
 
     def test_allowed_callers(self, adapter: AnthropicAdapter) -> None:
         tools = [{"name": "sum", "description": "Add", "input_schema": {}}]
-        out = adapter._annotate_tools(tools, cache_control=False, defer_loading=False, allowed_callers=True)
+        out = adapter._annotate_tools(
+            tools, cache_control=False, defer_loading=False, allowed_callers=True
+        )
         assert out[0]["allowed_callers"] == ["user", "assistant"]
 
     def test_combined_annotations(self, adapter: AnthropicAdapter) -> None:
@@ -77,8 +82,17 @@ class TestToolAnnotation:
         assert "allowed_callers" in out[0]
 
     def test_existing_cache_control_preserved(self, adapter: AnthropicAdapter) -> None:
-        tools = [{"name": "sum", "description": "Add", "input_schema": {}, "cache_control": {"type": "persistent"}}]
-        out = adapter._annotate_tools(tools, cache_control=True, defer_loading=False, allowed_callers=False)
+        tools = [
+            {
+                "name": "sum",
+                "description": "Add",
+                "input_schema": {},
+                "cache_control": {"type": "persistent"},
+            }
+        ]
+        out = adapter._annotate_tools(
+            tools, cache_control=True, defer_loading=False, allowed_callers=False
+        )
         assert out[0]["cache_control"]["type"] == "persistent"
 
 

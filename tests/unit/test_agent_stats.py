@@ -292,7 +292,7 @@ class TestAgentStatsCollector:
         )
         prom = collector._metrics.prometheus_output()
         assert "lattice_agent_requests_total" in prom
-        assert "agent=\"claude\"" in prom
+        assert 'agent="claude"' in prom
         assert "lattice_agent_cached_tokens" in prom
         assert "lattice_agent_cache_hits_total" in prom
         assert "lattice_agent_speculative_hits_total" in prom

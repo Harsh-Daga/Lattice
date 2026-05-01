@@ -321,10 +321,18 @@ class TestCustomPricing:
 class TestAggregation:
     def test_aggregate_multiple(self) -> None:
         estimates = [
-            CostEstimate(prompt_cost_usd=1.0, completion_cost_usd=2.0,
-                         cached_savings_usd=0.5, total_cost_usd=3.0),
-            CostEstimate(prompt_cost_usd=3.0, completion_cost_usd=4.0,
-                         cached_savings_usd=1.0, total_cost_usd=7.0),
+            CostEstimate(
+                prompt_cost_usd=1.0,
+                completion_cost_usd=2.0,
+                cached_savings_usd=0.5,
+                total_cost_usd=3.0,
+            ),
+            CostEstimate(
+                prompt_cost_usd=3.0,
+                completion_cost_usd=4.0,
+                cached_savings_usd=1.0,
+                total_cost_usd=7.0,
+            ),
         ]
         agg = CostEstimator.aggregate(estimates)
         assert agg.prompt_cost_usd == 4.0

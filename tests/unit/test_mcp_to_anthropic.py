@@ -86,9 +86,7 @@ class TestIsMCPTool:
 
     def test_non_string_url_ignored(self) -> None:
         assert not is_mcp_tool({"name": "x", "url": 123})
-        assert not is_mcp_tool(
-            {"type": "function", "function": {"name": "x", "url": None}}
-        )
+        assert not is_mcp_tool({"type": "function", "function": {"name": "x", "url": None}})
         assert not is_mcp_tool(
             {"type": "function", "function": {"name": "x", "metadata": {"url": 456}}}
         )

@@ -21,6 +21,7 @@ from lattice.transforms.delta_encode import DeltaEncoder, DeltaType
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 async def encoder() -> DeltaEncoder:
     store = MemorySessionStore()
@@ -34,6 +35,7 @@ async def encoder() -> DeltaEncoder:
 # =============================================================================
 # Delta Classification
 # =============================================================================
+
 
 class TestDeltaClassification:
     def test_append(self) -> None:
@@ -66,7 +68,7 @@ class TestDeltaClassification:
         ]
         new = [
             Message(role="user", content="A"),  # common prefix
-            Message(role="user", content="C"),   # skipped B
+            Message(role="user", content="C"),  # skipped B
             Message(role="assistant", content="D"),
             Message(role="user", content="E"),
         ]
@@ -98,6 +100,7 @@ class TestDeltaClassification:
 # Messages Equal
 # =============================================================================
 
+
 class TestMessagesEqual:
     def test_same(self) -> None:
         a = Message(role="user", content="hello")
@@ -123,6 +126,7 @@ class TestMessagesEqual:
 # =============================================================================
 # Session Reconstruction (via encoder.process)
 # =============================================================================
+
 
 class TestSessionReconstruction:
     @pytest.mark.asyncio
@@ -198,7 +202,9 @@ class TestSessionReconstruction:
         result = await encoder.process(new_req, ctx)
         modified = unwrap(result)
         assert modified == new_req  # unchanged
-        assert ctx.metrics["transforms"]["delta_encoder"]["delta_type"] == "session_not_found_fallback"
+        assert (
+            ctx.metrics["transforms"]["delta_encoder"]["delta_type"] == "session_not_found_fallback"
+        )
 
     @pytest.mark.asyncio
     async def test_metadata_preserved(self, encoder: DeltaEncoder) -> None:

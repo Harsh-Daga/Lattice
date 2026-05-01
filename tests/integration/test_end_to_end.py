@@ -76,7 +76,9 @@ class TestProxyEndToEnd:
             _fake_completion,
         )
 
-    def test_batching_single_request(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_batching_single_request(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A single non-streaming request is handled correctly (batching attempted)."""
         self._patch_completion(
             monkeypatch,
@@ -99,7 +101,9 @@ class TestProxyEndToEnd:
         assert data["choices"][0]["message"]["content"] == "Hello!"
         assert data["usage"]["total_tokens"] == 7
 
-    def test_speculative_miss(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_speculative_miss(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Speculative execution misses and falls back to real response."""
         call_count = 0
 
@@ -115,6 +119,7 @@ class TestProxyEndToEnd:
             )
 
         import lattice.providers.transport as _lpt
+
         monkeypatch.setattr(
             _lpt.DirectHTTPProvider,
             "completion",
@@ -131,7 +136,9 @@ class TestProxyEndToEnd:
         assert data["choices"][0]["message"]["content"] == "Real response."
         assert call_count == 1
 
-    def test_tier_classifier_reasoning(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_tier_classifier_reasoning(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Complex reasoning request is handled without model fallback."""
 
         async def _fake_completion(*_args: Any, **_kwargs: Any) -> Response:
@@ -167,7 +174,9 @@ class TestProxyEndToEnd:
         )
         assert resp.status_code == 200
 
-    def test_tier_classifier_simple(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_tier_classifier_simple(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Short simple request is handled without model fallback."""
 
         async def _fake_completion(*_args: Any, **_kwargs: Any) -> Response:
@@ -322,7 +331,9 @@ class TestAgentIntegrationEndToEnd:
         with (
             patch.object(integration, "_env_file", return_value=env_path),
             patch.object(integration, "_state_path", return_value=state_path),
-            patch.object(integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"),
+            patch.object(
+                integration, "_codex_user_config", return_value=tmp_path / "nonexistent.toml"
+            ),
         ):
             result = integration.patch()
             assert result.patched is True
@@ -341,10 +352,12 @@ class TestAgentIntegrationEndToEnd:
         )
         config_path = tmp_path / "settings.json"
         config_path.write_text(
-            json.dumps({
-                "cursor.openai.baseUrl": "https://api.openai.com/v1",
-                "cursor.anthropic.baseUrl": "https://api.anthropic.com",
-            })
+            json.dumps(
+                {
+                    "cursor.openai.baseUrl": "https://api.openai.com/v1",
+                    "cursor.anthropic.baseUrl": "https://api.anthropic.com",
+                }
+            )
         )
         integration = CursorIntegration(config)
         with patch.object(integration, "_config_path", return_value=config_path):
@@ -369,12 +382,14 @@ class TestAgentIntegrationEndToEnd:
         config_path = tmp_path / "opencode.json"
         state_path = tmp_path / "opencode_state.json"
         config_path.write_text(
-            json.dumps({
-                "provider": {
-                    "openai": {"options": {"baseURL": "https://api.openai.com/v1"}},
-                    "anthropic": {"options": {"baseURL": "https://api.anthropic.com"}},
+            json.dumps(
+                {
+                    "provider": {
+                        "openai": {"options": {"baseURL": "https://api.openai.com/v1"}},
+                        "anthropic": {"options": {"baseURL": "https://api.anthropic.com"}},
+                    }
                 }
-            })
+            )
         )
         integration = OpenCodeIntegration(config)
         with (
@@ -391,7 +406,9 @@ class TestAgentIntegrationEndToEnd:
             assert restored.patched is False
             raw2 = json.loads(config_path.read_text())
             assert raw2["provider"]["openai"]["options"]["baseURL"] == "https://api.openai.com/v1"
-            assert raw2["provider"]["anthropic"]["options"]["baseURL"] == "https://api.anthropic.com"
+            assert (
+                raw2["provider"]["anthropic"]["options"]["baseURL"] == "https://api.anthropic.com"
+            )
 
     def test_wrap_agent_api(self, tmp_path: pathlib.Path) -> None:
         config = LatticeConfig(proxy_host="127.0.0.1", proxy_port=8787)
@@ -495,7 +512,9 @@ class TestResponsesAPIPassthrough:
             assert resp.status_code == 200
             assert resp.json()["deleted"] is True
 
-    def test_responses_websocket(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_responses_websocket(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Bidirectional WebSocket relay to upstream Responses API."""
 
         class FakeUpstreamWS:
@@ -523,7 +542,9 @@ class TestResponsesAPIPassthrough:
 
         monkeypatch.setattr("websockets.connect", _fake_connect)
 
-        with test_client.websocket_connect("/v1/responses", headers={"authorization": "Bearer test"}) as ws:
+        with test_client.websocket_connect(
+            "/v1/responses", headers={"authorization": "Bearer test"}
+        ) as ws:
             ws.send_text('{"type": "test"}')
             # Wait for the relay to forward and for upstream to respond
             msg = ws.receive_text()

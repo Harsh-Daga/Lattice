@@ -30,10 +30,21 @@ import enum
 import re
 from typing import Any
 
-from lattice.core.context import TransformContext
+from lattice.core.context import (
+    METADATA_KEY_PROTECTED_SPANS,
+    METADATA_KEY_RISK_SCORE,
+    METADATA_KEY_SCHEDULE,
+    METADATA_KEY_SIG,
+    METADATA_KEY_SIG_SUMMARY,
+    METADATA_KEY_TASK_CLASSIFICATION,
+    TransformContext,
+)
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
+from lattice.core.scheduler import decide_schedule
+from lattice.core.semantic_graph import SemanticImportanceGraph, SemanticSpan
+from lattice.core.task_classifier import classify_task
 from lattice.core.transport import Request, Response
 from lattice.utils.validation import SemanticRiskScore, compute_risk_score
 
@@ -107,9 +118,57 @@ class ContentProfiler(ReversibleSyncTransform):
     def process(
         self, request: Request, context: TransformContext
     ) -> Result[Request, TransformError]:
-        """Profile request content, compute risk, and set strategy metadata."""
+        """Profile request content, compute risk, build SIG, and set strategy."""
         if not self.enable_adaptive:
             return Ok(request)
+
+        profile = self._classify(request)
+        strategy = self._select_strategy(profile, request)
+        risk_score = self._compute_risk(request)
+
+        # Build SIG — Semantic Importance Graph
+        sig = _build_importance_graph(request)
+        task = classify_task(request)
+
+        # Build scheduler decision from SIG + RATS + risk
+        transform_names = [
+            t for t in strategy if isinstance(strategy.get(t), bool) and strategy.get(t) is True
+        ]
+        schedule = decide_schedule(
+            transform_names=list(transform_names),
+            task=task,
+            risk=risk_score,
+            protected_span_count=sig.protected_count,
+            total_budget_ms=task.budget_ms,
+        )
+
+        # Store in context for downstream transforms
+        state = context.get_transform_state(self.name)
+        state["profile"] = profile.value
+        state["strategy"] = strategy
+        state["risk_score"] = risk_score.to_dict()
+        state["task_class"] = task.to_dict()
+        state["protected_spans"] = sig.protected_span_ids
+
+        context.record_metric(self.name, "profile", profile.value)
+        context.record_metric(self.name, "total_tokens", request.token_estimate)
+        context.record_metric(self.name, "risk_score", risk_score.total)
+        context.record_metric(self.name, "risk_level", risk_score.level)
+        context.record_metric(self.name, "sig_total_spans", sig.total_spans)
+        context.record_metric(self.name, "sig_protected", sig.protected_count)
+        context.record_metric(self.name, "task_class", task.task_class.value)
+
+        # Set canonical metadata keys
+        request.metadata["_lattice_profile"] = profile.value
+        request.metadata["_lattice_strategy"] = strategy
+        request.metadata[METADATA_KEY_RISK_SCORE] = risk_score.to_dict()
+        request.metadata[METADATA_KEY_SIG] = sig.to_dict()
+        request.metadata[METADATA_KEY_SIG_SUMMARY] = sig.summary()
+        request.metadata[METADATA_KEY_PROTECTED_SPANS] = sig.protected_span_ids
+        request.metadata[METADATA_KEY_TASK_CLASSIFICATION] = task.to_dict()
+        request.metadata[METADATA_KEY_SCHEDULE] = schedule.to_dict()
+
+        return Ok(request)
 
         profile = self._classify(request)
         strategy = self._select_strategy(profile, request)
@@ -370,3 +429,250 @@ class ContentProfiler(ReversibleSyncTransform):
 
         # MIXED
         return base
+
+
+# =============================================================================
+# SIG: Semantic Importance Graph builder
+# =============================================================================
+
+
+def _build_importance_graph(request: Request) -> SemanticImportanceGraph:
+    """Build a semantic importance graph from a request.
+
+    Steps:
+    1. Segment text into spans by structure boundaries
+    2. Extract features per span (frequency, entities, position, etc.)
+    3. Compute importance scores
+    4. Derive protected spans
+    """
+    text = "\n".join(msg.content or "" for msg in request.messages)
+    if not text.strip():
+        return SemanticImportanceGraph(total_spans=0)
+
+    spans = _segment_spans(text)
+    _extract_features(spans, text, request)
+    _compute_importance(spans)
+    _derive_protected(spans)
+
+    importance_values = [s.importance for s in spans]
+    avg_importance = sum(importance_values) / len(importance_values) if importance_values else 0.0
+
+    return SemanticImportanceGraph(
+        spans=spans,
+        total_spans=len(spans),
+        protected_count=sum(1 for s in spans if s.protected),
+        average_importance=round(avg_importance, 2),
+    )
+
+
+def _segment_spans(text: str) -> list[SemanticSpan]:
+    """Split text into spans by structure boundaries.
+
+    Boundaries: code fences, JSON blocks, markdown tables, diff headers,
+    log lines, and sentences.
+    """
+    spans: list[SemanticSpan] = []
+    pos = 0
+
+    # Split by code fences first
+    parts = re.split(r"(`{3}[\s\S]*?`{3})", text)
+    for part in parts:
+        if part.startswith("```"):
+            spans.append(
+                SemanticSpan(
+                    span_id=len(spans),
+                    text=part,
+                    start_char=pos,
+                    end_char=pos + len(part),
+                    structure_type="code",
+                )
+            )
+        elif part.strip():
+            # Split non-code by major boundaries
+            sub_spans = _segment_structured(part, pos)
+            spans.extend(sub_spans)
+        pos += len(part)
+
+    # Deduplicate span IDs
+    for i, s in enumerate(spans):
+        s.span_id = i
+
+    return spans
+
+
+def _segment_structured(text: str, offset: int) -> list[SemanticSpan]:
+    """Segment non-code text into structured spans."""
+    spans: list[SemanticSpan] = []
+    pos = 0
+
+    # Split by JSON blocks
+    parts = re.split(r"(\{[\s\S]*?\}|\[[\s\S]*?\])", text)
+    for part in parts:
+        stripped = part.strip()
+        if not stripped:
+            pos += len(part)
+            continue
+        if stripped.startswith("{") or stripped.startswith("["):
+            spans.append(
+                SemanticSpan(
+                    span_id=0,
+                    text=part,
+                    start_char=offset + pos,
+                    end_char=offset + pos + len(part),
+                    structure_type="json",
+                )
+            )
+        elif stripped.startswith("|"):
+            spans.append(
+                SemanticSpan(
+                    span_id=0,
+                    text=part,
+                    start_char=offset + pos,
+                    end_char=offset + pos + len(part),
+                    structure_type="table",
+                )
+            )
+        else:
+            # Split by sentence
+            sentences = re.split(r"((?<=[.!?])\s+)", stripped)
+            for sent in sentences:
+                if sent.strip():
+                    spans.append(
+                        SemanticSpan(
+                            span_id=0,
+                            text=sent,
+                            start_char=offset + pos,
+                            end_char=offset + pos + len(sent),
+                            structure_type="narrative",
+                        )
+                    )
+                    pos += len(sent)
+        pos += len(part)
+
+    return spans
+
+
+def _extract_features(
+    spans: list[SemanticSpan],
+    full_text: str,
+    request: Request,
+) -> None:
+    """Extract per-span features: frequency, entities, position, signals."""
+    total_spans = len(spans)
+    if total_spans == 0:
+        return
+
+    for i, span in enumerate(spans):
+        # Frequency: count occurrences of this span's text
+        span.frequency = max(1.0, full_text.count(span.text) or 1.0)
+
+        # Position weight: first and last spans get a bonus
+        if i == 0:
+            span.position_weight = 1.0
+        elif i == total_spans - 1:
+            span.position_weight = 0.8
+        elif i < total_spans * 0.2:
+            span.position_weight = 0.6
+        else:
+            span.position_weight = 0.4
+
+        # Entity density: count UUIDs, numbers, URLs in the span
+        span_text = span.text
+        uuids = len(
+            re.findall(
+                r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
+                span_text,
+                re.IGNORECASE,
+            )
+        )
+        numbers = len(re.findall(r"\b\d+(?:\.\d+)?\b", span_text))
+        urls = len(re.findall(r"https?://[^\s)]+", span_text, re.IGNORECASE))
+        span.entity_density = min(
+            (uuids * 3 + numbers * 0.5 + urls * 2) / max(len(span_text.split()), 1), 1.0
+        )
+
+        # Dependency score: check if this span is referenced later
+        if i < total_spans - 1:
+            later_text = " ".join(s.text for s in spans[i + 1 :])
+            # Simple check: do words from this span appear in later spans
+            span_words = set(span.text.lower().split()) - {
+                "the",
+                "a",
+                "an",
+                "is",
+                "are",
+                "was",
+                "were",
+                "to",
+                "of",
+                "in",
+                "for",
+                "and",
+                "or",
+            }
+            if span_words:
+                appearing = sum(1 for w in span_words if w in later_text.lower())
+                span.dependency_score = min(appearing / len(span_words), 1.0)
+
+        # Task relevance: does the span contain task-carrying content
+        task_indicators = [
+            "error",
+            "failure",
+            "root cause",
+            "mitigation",
+            "debug",
+            "fix",
+            "investigate",
+            "analyze",
+            "compare",
+            "trend",
+            "conclusion",
+        ]
+        span.dependency_score += sum(0.1 for ti in task_indicators if ti in span_text.lower())
+
+        # Reasoning signal: explicit reasoning markers
+        reasoning_markers = [
+            "because",
+            "therefore",
+            "thus",
+            "hence",
+            "since",
+            "if",
+            "then",
+            "else",
+            "consequently",
+        ]
+        span.reasoning_signal = any(m in span_text.lower() for m in reasoning_markers)
+
+
+def _compute_importance(spans: list[SemanticSpan]) -> None:
+    """Compute importance score per span.
+
+    Formula: 0.25*frequency + 0.20*dependency + 0.20*entity_density
+           + 0.20*task_relevance + 0.15*position
+    """
+    max_freq = max((s.frequency for s in spans), default=1.0)
+    for span in spans:
+        freq_norm = span.frequency / max_freq if max_freq > 0 else 0.0
+        score = (
+            0.25 * freq_norm
+            + 0.20 * span.dependency_score
+            + 0.20 * span.entity_density
+            + 0.20 * span.task_relevance
+            + 0.15 * span.position_weight
+        )
+        # Boost for reasoning signals
+        if span.reasoning_signal:
+            score *= 1.5
+        span.importance = min(round(score * 100, 1), 100.0)
+
+
+def _derive_protected(spans: list[SemanticSpan], threshold: float = 40.0) -> None:
+    """Mark spans above threshold as protected.
+
+    Also protect spans with reasoning signals or high entity density.
+    """
+    for span in spans:
+        span.protected = (
+            span.importance >= threshold or span.reasoning_signal or span.entity_density >= 0.5
+        )

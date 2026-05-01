@@ -75,7 +75,9 @@ class TestInitialization:
 class TestShouldRun:
     """High-level should_run decisions."""
 
-    def test_disabled_by_config(self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext) -> None:
+    def test_disabled_by_config(
+        self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext
+    ) -> None:
         """Transform disabled in config → Skip."""
         policy.config.transform_reference_sub = False
         result = policy.should_run("reference_sub", simple_request, context)
@@ -95,14 +97,18 @@ class TestShouldRun:
         result = policy.should_run("reference_sub", req, context)
         assert isinstance(result, Allow)
 
-    def test_disabled_by_header(self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext) -> None:
+    def test_disabled_by_header(
+        self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext
+    ) -> None:
         """Per-request header disabling transform."""
         context.session_state["x_lattice_disable_transforms"] = "reference_sub,tool_filter"
         result = policy.should_run("reference_sub", simple_request, context)
         assert isinstance(result, Skip)
         assert result.reason == "disabled_by_header"
 
-    def test_disabled_all_by_header(self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext) -> None:
+    def test_disabled_all_by_header(
+        self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext
+    ) -> None:
         """Header value 'all' disables every transform."""
         context.session_state["x_lattice_disable_transforms"] = "all"
         result = policy.should_run("reference_sub", simple_request, context)
@@ -130,7 +136,8 @@ class TestRequestLimits:
         req = Request(
             messages=[
                 Message(role="user", content="This is a very long message with many tokens in it.")
-            ] * 20
+            ]
+            * 20
         )
         result = p.check_request_limits(req)
         assert isinstance(result, Reject)
@@ -145,7 +152,9 @@ class TestRequestLimits:
 class TestBudgetEnforcement:
     """Per-request token budget checks."""
 
-    def test_no_budget_allowed(self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext) -> None:
+    def test_no_budget_allowed(
+        self, policy: OptimizationPolicy, simple_request: Request, context: TransformContext
+    ) -> None:
         """No budget configured → always allow."""
         result = policy._check_budget(simple_request, context)
         assert isinstance(result, Allow)

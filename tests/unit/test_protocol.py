@@ -55,6 +55,7 @@ from lattice.protocol.segments import (
 # ContentPart tests
 # =============================================================================
 
+
 class TestTextPart:
     def test_roundtrip(self) -> None:
         part = TextPart(text="hello")
@@ -144,6 +145,7 @@ class TestContentHelpers:
 # Segment tests
 # =============================================================================
 
+
 class TestSegment:
     def test_build_segment_computes_hash(self) -> None:
         seg = build_segment(SegmentType.SYSTEM, [TextPart(text="hello")])
@@ -182,6 +184,7 @@ class TestSegment:
 # =============================================================================
 # Manifest tests
 # =============================================================================
+
 
 class TestManifest:
     def test_build_manifest_computes_anchor_hash(self) -> None:
@@ -314,6 +317,7 @@ class TestComputeAnchorHash:
 # =============================================================================
 # Cache planner tests
 # =============================================================================
+
 
 class TestOpenAICachePlanner:
     def test_stable_prefix_order(self) -> None:

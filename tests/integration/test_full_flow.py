@@ -3,7 +3,6 @@
 These tests validate end-to-end behavior across proxy, SDK, and transport layers.
 """
 
-
 from typing import Any
 
 import pytest
@@ -23,6 +22,7 @@ from lattice.transforms.speculative import SpeculativeExecutor
 # =============================================================================
 # Session failover
 # =============================================================================
+
 
 class TestSessionFailover:
     @pytest.mark.asyncio
@@ -82,6 +82,7 @@ class TestSessionFailover:
 # Cache planner integration
 # =============================================================================
 
+
 class TestCachePlannerIntegration:
     def test_openai_cache_breakpoint(self):
         from lattice.protocol.cache_planner import OpenAICachePlanner
@@ -89,10 +90,13 @@ class TestCachePlannerIntegration:
         from lattice.protocol.segments import build_system_segment, build_tools_segment
 
         planner = OpenAICachePlanner()
-        manifest = build_manifest("s1", [
-            build_system_segment("You are helpful."),
-            build_tools_segment([{"name": "search"}]),
-        ])
+        manifest = build_manifest(
+            "s1",
+            [
+                build_system_segment("You are helpful."),
+                build_tools_segment([{"name": "search"}]),
+            ],
+        )
         plan = planner.plan(manifest)
         assert len(plan.breakpoints) > 0
         assert plan.expected_cached_tokens > 0
@@ -107,14 +111,17 @@ class TestCachePlannerIntegration:
 
         planner = AnthropicCachePlanner()
         # Create manifest with many segments
-        manifest = build_manifest("s1", [
-            build_tools_segment([{"name": "t1"}]),
-            build_system_segment("sys1"),
-            build_system_segment("sys2"),
-            build_system_segment("sys3"),
-            build_system_segment("sys4"),
-            build_system_segment("sys5"),
-        ])
+        manifest = build_manifest(
+            "s1",
+            [
+                build_tools_segment([{"name": "t1"}]),
+                build_system_segment("sys1"),
+                build_system_segment("sys2"),
+                build_system_segment("sys3"),
+                build_system_segment("sys4"),
+                build_system_segment("sys5"),
+            ],
+        )
         plan = planner.plan(manifest)
         assert len(plan.breakpoints) <= planner.MAX_BREAKPOINTS
 
@@ -122,6 +129,7 @@ class TestCachePlannerIntegration:
 # =============================================================================
 # Batching integration
 # =============================================================================
+
 
 class TestBatchingIntegration:
     @pytest.mark.asyncio
@@ -131,9 +139,12 @@ class TestBatchingIntegration:
 
         async def dummy_caller(batched: BatchedRequest) -> Any:
             from lattice.transforms.batching import BatchedResponse
+
             return BatchedResponse(
-                choices=[{"index": i, "message": {"content": f"resp{i}"}, "finish_reason": "stop"}
-                         for i in range(len(batched.messages))],
+                choices=[
+                    {"index": i, "message": {"content": f"resp{i}"}, "finish_reason": "stop"}
+                    for i in range(len(batched.messages))
+                ],
                 usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
                 model="gpt-4",
             )
@@ -142,6 +153,7 @@ class TestBatchingIntegration:
 
         req = Request(messages=[Message(role="user", content="hi")])
         from lattice.core.context import TransformContext
+
         ctx = TransformContext(request_id="1", provider="openai", model="gpt-4")
 
         # Single request should still work (timeout flush)
@@ -152,6 +164,7 @@ class TestBatchingIntegration:
     async def test_batching_eligible_non_streaming(self):
         """Non-streaming requests are batchable."""
         from lattice.transforms.batching import BatchKey
+
         req = Request(messages=[Message(role="user", content="hi")], stream=False)
         key = BatchKey.from_request(req)
         assert key.stream is False
@@ -164,6 +177,7 @@ class TestBatchingIntegration:
 # =============================================================================
 # Speculation integration
 # =============================================================================
+
 
 class TestSpeculationIntegration:
     def test_speculation_never_worsens_tail_latency(self):
@@ -200,6 +214,7 @@ class TestSpeculationIntegration:
 # Fallback chain
 # =============================================================================
 
+
 class TestFallbackChain:
     def test_no_model_fallback(self):
         """LATTICE does not route between models."""
@@ -211,6 +226,7 @@ class TestFallbackChain:
 # =============================================================================
 # Capability-driven routing
 # =============================================================================
+
 
 class TestCapabilityDrivenRouting:
     def test_provider_supports_caching(self):
@@ -229,6 +245,7 @@ class TestCapabilityDrivenRouting:
 # =============================================================================
 # Router integration
 # =============================================================================
+
 
 class TestRouterIntegration:
     def test_tier_classifier_routing(self):

@@ -23,6 +23,7 @@ from lattice.core.result import (
 # Ok
 # =============================================================================
 
+
 class TestOk:
     """Tests for the Ok variant."""
 
@@ -79,6 +80,7 @@ class TestOk:
 # Err
 # =============================================================================
 
+
 class TestErr:
     """Tests for the Err variant."""
 
@@ -130,6 +132,7 @@ class TestErr:
 # Standalone functions
 # =============================================================================
 
+
 class TestFunctions:
     """Tests for convenience functions."""
 
@@ -146,6 +149,7 @@ class TestFunctions:
 # Never type
 # =============================================================================
 
+
 class TestNever:
     """Tests for the bottom type."""
 
@@ -159,16 +163,14 @@ class TestNever:
 # Chaining
 # =============================================================================
 
+
 class TestChaining:
     """Tests for chaining multiple Results."""
 
     def test_ok_chain(self) -> None:
         """Ok + map + and_then produces final value."""
         result = (
-            Ok[int, str](5)
-            .map(lambda x: x + 1)
-            .and_then(lambda x: Ok(x * 2))
-            .map(lambda x: str(x))
+            Ok[int, str](5).map(lambda x: x + 1).and_then(lambda x: Ok(x * 2)).map(lambda x: str(x))
         )
         assert unwrap(result) == "12"
 
@@ -186,6 +188,7 @@ class TestChaining:
 # =============================================================================
 # repr
 # =============================================================================
+
 
 class TestRepr:
     """Tests for human-readable repr."""

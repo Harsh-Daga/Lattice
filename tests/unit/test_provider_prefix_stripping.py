@@ -3,6 +3,7 @@
 This prevents bugs like `ollama-cloud/kimi-k2.6:cloud` being sent to the
 provider as `ollama-cloud/kimi-k2.6:cloud` instead of `kimi-k2.6:cloud`.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -48,9 +49,7 @@ class TestProviderPrefixStripping:
                     # prefix (i.e., its own name). Adapters may inherit _PREFIXES
                     # from a parent for strip-only purposes.
                     if prefix == name.lower():
-                        failures.append(
-                            f"{name}: supports('{model}') returned False"
-                        )
+                        failures.append(f"{name}: supports('{model}') returned False")
                     continue
 
                 mapped = adapter.map_model_name(model)

@@ -37,9 +37,11 @@ from lattice.utils.token_count import TiktokenCounter
 
 class _FakeSessionManager:
     """Stub for DeltaEncoder that doesn't need async."""
+
     class _FakeStore:
         _sessions: dict[str, Any] = {}
         _ttl_seconds = 3600
+
     store = _FakeStore()
 
 
@@ -69,8 +71,13 @@ def make_tool_output_prompt() -> tuple[list[dict[str, Any]], int]:
         "status": "success",
         "data": {
             "employees": [
-                {"id": i, "name": f"Employee {i}", "department": "Engineering",
-                 "salary": 100000 + i * 1000, "email": f"emp{i}@company.com"}
+                {
+                    "id": i,
+                    "name": f"Employee {i}",
+                    "department": "Engineering",
+                    "salary": 100000 + i * 1000,
+                    "email": f"emp{i}@company.com",
+                }
                 for i in range(50)
             ],
             "metadata": {"total": 50, "page": 1, "page_size": 50},
@@ -100,6 +107,7 @@ def make_combined_prompt() -> tuple[list[dict[str, Any]], int]:
 # Helper: run pipeline and measure savings
 # =============================================================================
 
+
 def run_pipeline(
     content: str,
     pipeline: CompressorPipeline,
@@ -118,8 +126,10 @@ def run_pipeline(
     tokens_before = counter.count(content)
 
     import asyncio
+
     result = asyncio.run(pipeline.process(request, context))
     from lattice.core.result import unwrap
+
     compressed = unwrap(result)
 
     tokens_after = counter.count(compressed.messages[0].content)
@@ -139,15 +149,19 @@ class TestReferenceSubstitutionBenchmark:
         pipeline = CompressorPipeline(config=config)
         pipeline.register(ReferenceSubstitution())
 
-        raw_content = "Please analyze these transaction IDs: 550e8400-e29b-41d4-a716-446655440000, " \
-                        "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+        raw_content = (
+            "Please analyze these transaction IDs: 550e8400-e29b-41d4-a716-446655440000, "
+            "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+        )
         _, _, before, after = run_pipeline(raw_content, pipeline)
 
         # 2 UUIDs × ~36 chars = ~72 chars → replaced with <ref_1>, <ref_2> (~16 chars)
         # Token reduction should be meaningful
         savings = before - after
         ratio = savings / max(before, 1)
-        print(f"\n[ReferenceSubstitution] UUID test: {before} → {after} tokens (saved {savings}, {ratio:.1%})")
+        print(
+            f"\n[ReferenceSubstitution] UUID test: {before} → {after} tokens (saved {savings}, {ratio:.1%})"
+        )
         assert savings > 0, "Must save tokens on UUID-heavy input"
         assert ratio > 0.05, f"Expected >5% savings, got {ratio:.1%}"
 
@@ -161,16 +175,25 @@ class TestToolOutputFilterBenchmark:
         pipeline.register(ToolOutputFilter())
 
         # Bare JSON array (no markdown wrapper) — ToolOutputFilter expects this
-        raw_content = json.dumps([
-            {"id": i, "data": "x" * 500, "metadata": {"created_at": "2024-01-01", "internal": True}}
-            for i in range(100)
-        ], indent=2)
+        raw_content = json.dumps(
+            [
+                {
+                    "id": i,
+                    "data": "x" * 500,
+                    "metadata": {"created_at": "2024-01-01", "internal": True},
+                }
+                for i in range(100)
+            ],
+            indent=2,
+        )
         _, _, before, after = run_pipeline(raw_content, pipeline, role="tool")
 
         # ToolOutputFilter removes metadata, truncates arrays, compacts JSON
         savings = before - after
         ratio = savings / max(before, 1)
-        print(f"\n[ToolOutputFilter] JSON test: {before} → {after} tokens (saved {savings}, {ratio:.1%})")
+        print(
+            f"\n[ToolOutputFilter] JSON test: {before} → {after} tokens (saved {savings}, {ratio:.1%})"
+        )
         assert savings > 0, "Must save tokens on large JSON input"
         assert ratio > 0.01, f"Expected >1% savings, got {ratio:.1%}"
 
@@ -198,13 +221,16 @@ class TestPrefixOptimizerBenchmark:
         import asyncio
 
         from lattice.core.result import unwrap
+
         result = asyncio.run(pipeline.process(request, context))
         compressed = unwrap(result)
 
         tokens_after = sum(counter.count(m.content) for m in compressed.messages)
         savings = tokens_before - tokens_after
         ratio = savings / max(tokens_before, 1)
-        print(f"\n[PrefixOptimizer] Prefix test: {tokens_before} → {tokens_after} tokens (saved {savings}, {ratio:.1%})")
+        print(
+            f"\n[PrefixOptimizer] Prefix test: {tokens_before} → {tokens_after} tokens (saved {savings}, {ratio:.1%})"
+        )
         assert savings >= 0
 
 
@@ -227,18 +253,23 @@ class TestFullPipelineBenchmark:
             "f47ac10b-58cc-4372-a567-0e02b2c3d479",
             "c9bf9e57-1685-4c89-bafb-ff5af830be8a",
         ]
-        json_data = [{"id": i, "name": f"Emp{i}", "salary": 100000 + i * 1000,
-                      "metadata": {"created_at": "2024-01-01", "internal": True}}
-                     for i in range(50)]
-        content = (
-            f"Transactions: {', '.join(uuids)}\n"
-            + json.dumps(json_data, indent=2)
-        )
+        json_data = [
+            {
+                "id": i,
+                "name": f"Emp{i}",
+                "salary": 100000 + i * 1000,
+                "metadata": {"created_at": "2024-01-01", "internal": True},
+            }
+            for i in range(50)
+        ]
+        content = f"Transactions: {', '.join(uuids)}\n" + json.dumps(json_data, indent=2)
         _, _, before, after = run_pipeline(content, pipeline)
 
         savings = before - after
         ratio = savings / max(before, 1)
-        print(f"\n[FullPipeline] Combined test: {before} → {after} tokens (saved {savings}, {ratio:.1%})")
+        print(
+            f"\n[FullPipeline] Combined test: {before} → {after} tokens (saved {savings}, {ratio:.1%})"
+        )
         assert savings > 0, "Full pipeline must save tokens on compressible input"
 
 
@@ -263,10 +294,13 @@ class TestEndToEndRoundTrip:
             )
             provider = DirectHTTPProvider()
             import asyncio
-            resp = asyncio.run(provider.completion(
-                model="ollama/llama3",
-                messages=[{"role": "user", "content": "Hello"}],
-            ))
+
+            resp = asyncio.run(
+                provider.completion(
+                    model="ollama/llama3",
+                    messages=[{"role": "user", "content": "Hello"}],
+                )
+            )
             assert resp.content == "Hello back"
             assert route.called
 

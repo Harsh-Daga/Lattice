@@ -20,6 +20,7 @@ from lattice.protocol.resume import (
 # ReplayWindow
 # =============================================================================
 
+
 class TestReplayWindow:
     def test_append_and_replay(self) -> None:
         window = ReplayWindow(capacity=10)
@@ -74,6 +75,7 @@ class TestReplayWindow:
 # ResumeTokenManager
 # =============================================================================
 
+
 class TestResumeTokenManager:
     def test_create_and_validate(self) -> None:
         mgr = ResumeTokenManager(secret="test_secret")
@@ -109,6 +111,7 @@ class TestResumeTokenManager:
 # =============================================================================
 # StreamManager
 # =============================================================================
+
 
 class TestStreamManager:
     def test_create_stream(self) -> None:

@@ -202,9 +202,10 @@ class TestToolUseStreaming:
                 },
             }
         )
-        assert r2.chunks[0]["choices"][0]["delta"]["tool_calls"][0]["function"][
-            "arguments"
-        ] == ', "b": 2}'
+        assert (
+            r2.chunks[0]["choices"][0]["delta"]["tool_calls"][0]["function"]["arguments"]
+            == ', "b": 2}'
+        )
 
     def test_tool_use_stop(self) -> None:
         sm = AnthropicStreamState(model="claude")

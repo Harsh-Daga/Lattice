@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import dataclasses
 
-
 from lattice.protocol.framing import FrameFlags
 from lattice.protocol.reliability import ReliabilityMode, SelectiveReliability
 
@@ -53,9 +52,7 @@ class TestSelectiveReliability:
     def test_combined_flags_high_wins(self) -> None:
         """If both HIGH and MEDIUM are set, HIGH logic applies."""
         sr = SelectiveReliability(max_retries=2)
-        frame = _FakeFrame(
-            flags=FrameFlags.CRITICALITY_HIGH | FrameFlags.CRITICALITY_MEDIUM
-        )
+        frame = _FakeFrame(flags=FrameFlags.CRITICALITY_HIGH | FrameFlags.CRITICALITY_MEDIUM)
         assert sr.should_retransmit(frame, attempt=0) is True
         assert sr.should_retransmit(frame, attempt=1) is True
         assert sr.should_retransmit(frame, attempt=2) is False

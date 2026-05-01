@@ -25,6 +25,7 @@ from lattice.transforms.format_conv import DataShape, FormatConverter
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def converter() -> FormatConverter:
     return FormatConverter(min_tabular_rows=2, key_uniformity_threshold=0.8)
@@ -42,6 +43,7 @@ def pipeline() -> CompressorPipeline:
 # =============================================================================
 # Shape Detection
 # =============================================================================
+
 
 class TestShapeDetection:
     """Test _detect_shape with every shape type."""
@@ -64,8 +66,10 @@ class TestShapeDetection:
     def test_tabular_mixed_keys_below_threshold(self, converter: FormatConverter) -> None:
         """80% threshold: 4 rows match, 1 row differs → still tabular."""
         data = [
-            {"a": 1, "b": 2}, {"a": 3, "b": 4},
-            {"a": 5, "b": 6}, {"a": 7, "b": 8},
+            {"a": 1, "b": 2},
+            {"a": 3, "b": 4},
+            {"a": 5, "b": 6},
+            {"a": 7, "b": 8},
             {"a": 9, "c": 10},  # differs
         ]
         assert converter._detect_shape(data) == DataShape.TABULAR
@@ -73,8 +77,10 @@ class TestShapeDetection:
     def test_tabular_mixed_keys_above_threshold(self, converter: FormatConverter) -> None:
         """Below threshold: only 50% match → irregular."""
         data = [
-            {"a": 1, "b": 2}, {"a": 3, "c": 4},
-            {"x": 5, "y": 6}, {"x": 7, "y": 8},
+            {"a": 1, "b": 2},
+            {"a": 3, "c": 4},
+            {"x": 5, "y": 6},
+            {"x": 7, "y": 8},
         ]
         assert converter._detect_shape(data) == DataShape.IRREGULAR
 
@@ -82,7 +88,7 @@ class TestShapeDetection:
         """Rows missing optional field → still tabular if uniformity > 0.8."""
         data = [
             {"id": 1, "name": "Alice", "email": "a@e"},
-            {"id": 2, "name": "Bob"},    # missing email
+            {"id": 2, "name": "Bob"},  # missing email
             {"id": 3, "name": "Carol", "email": "c@e"},
         ]
         assert converter._detect_shape(data) == DataShape.TABULAR
@@ -138,6 +144,7 @@ class TestShapeDetection:
 # CSV Conversion
 # =============================================================================
 
+
 class TestCSVConversion:
     """Test CSV conversion with RFC 4180 edge cases."""
 
@@ -155,13 +162,17 @@ class TestCSVConversion:
         data = [{"name": "Alice, Bob", "age": 30}]
         result = converter._to_csv(data)
         # Keys are sorted alphabetically: age, name
-        assert "\"Alice, Bob\",30" in result or result == 'age,name\n30,"Alice, Bob"\n' or "\"Alice, Bob\"" in result
+        assert (
+            '"Alice, Bob",30' in result
+            or result == 'age,name\n30,"Alice, Bob"\n'
+            or '"Alice, Bob"' in result
+        )
 
     def test_quote_in_field_doubled(self, converter: FormatConverter) -> None:
         """RFC 4180: field containing quote must double the quote."""
-        data = [{"quote": "She said \"hello\"", "blank": ""}]
+        data = [{"quote": 'She said "hello"', "blank": ""}]
         result = converter._to_csv(data)
-        assert '"She said ""hello""",' in result or "\"She said \"\"hello\"\"\"" in result
+        assert '"She said ""hello""",' in result or '"She said ""hello"""' in result
 
     def test_newline_in_field(self, converter: FormatConverter) -> None:
         """Multiline fields should be wrapped in quotes."""
@@ -183,7 +194,7 @@ class TestCSVConversion:
         result = converter._to_csv(data)
         lines = result.strip().split("\n")
         # Null should be empty string
-        assert lines[1] == "Alice," or lines[1] == ',Alice'  # depending on key order
+        assert lines[1] == "Alice," or lines[1] == ",Alice"  # depending on key order
 
     def test_nested_json_in_field(self, converter: FormatConverter) -> None:
         """Complex fields serialized as JSON within CSV."""
@@ -218,6 +229,7 @@ class TestCSVConversion:
 # =============================================================================
 # YAML Conversion
 # =============================================================================
+
 
 class TestYAMLConversion:
     """Test YAML conversion with nested structures."""
@@ -279,6 +291,7 @@ class TestYAMLConversion:
 # FormatConverter E2E
 # =============================================================================
 
+
 class TestFormatConverterE2E:
     """End-to-end tests with real pipeline."""
 
@@ -286,9 +299,7 @@ class TestFormatConverterE2E:
     async def test_message_with_table(self, pipeline: CompressorPipeline) -> None:
         """Table in message → converted to CSV."""
         table = json.dumps([{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}])
-        request = Request(
-            messages=[Message(role="user", content=table)]
-        )
+        request = Request(messages=[Message(role="user", content=table)])
         context = TransformContext()
         result = await pipeline.process(request, context)
         modified = unwrap(result)
@@ -301,9 +312,7 @@ class TestFormatConverterE2E:
     async def test_message_with_config(self, pipeline: CompressorPipeline) -> None:
         """Nested config in message → converted to YAML."""
         config = json.dumps({"db": {"host": "localhost", "port": 5432}})
-        request = Request(
-            messages=[Message(role="user", content=config)]
-        )
+        request = Request(messages=[Message(role="user", content=config)])
         context = TransformContext()
         result = await pipeline.process(request, context)
         modified = unwrap(result)
@@ -318,9 +327,7 @@ class TestFormatConverterE2E:
     @pytest.mark.asyncio
     async def test_non_json_unchanged(self, pipeline: CompressorPipeline) -> None:
         """Plain text → not modified."""
-        request = Request(
-            messages=[Message(role="user", content="Hello, world.")]
-        )
+        request = Request(messages=[Message(role="user", content="Hello, world.")])
         context = TransformContext()
         result = await pipeline.process(request, context)
         modified = unwrap(result)
@@ -331,9 +338,7 @@ class TestFormatConverterE2E:
     async def test_irregular_json_unchanged(self, pipeline: CompressorPipeline) -> None:
         """Mixed-key JSON (not tabular) → not converted."""
         data = json.dumps([{"a": 1, "b": 2}, {"x": 3, "y": 4}])
-        request = Request(
-            messages=[Message(role="user", content=data)]
-        )
+        request = Request(messages=[Message(role="user", content=data)])
         context = TransformContext()
         result = await pipeline.process(request, context)
         modified = unwrap(result)
@@ -344,9 +349,7 @@ class TestFormatConverterE2E:
     @pytest.mark.asyncio
     async def test_invalid_json_unchanged(self, pipeline: CompressorPipeline) -> None:
         """Invalid JSON → not modified."""
-        request = Request(
-            messages=[Message(role="user", content='{"broken": json}')]
-        )
+        request = Request(messages=[Message(role="user", content='{"broken": json}')])
         context = TransformContext()
         result = await pipeline.process(request, context)
         modified = unwrap(result)
@@ -357,9 +360,7 @@ class TestFormatConverterE2E:
     async def test_metrics_populated(self, pipeline: CompressorPipeline) -> None:
         """Metrics track conversion savings."""
         table = json.dumps([{"id": i, "name": f"user_{i}"} for i in range(50)])
-        request = Request(
-            messages=[Message(role="user", content=table)]
-        )
+        request = Request(messages=[Message(role="user", content=table)])
         context = TransformContext()
         await pipeline.process(request, context)
 
@@ -371,12 +372,14 @@ class TestFormatConverterE2E:
     @pytest.mark.asyncio
     async def test_single_key_dict_wrapping_list(self, pipeline: CompressorPipeline) -> None:
         """Common API pattern: {'employees': [{...}, {...}]} → extract and convert."""
-        data = json.dumps({
-            "employees": [
-                {"id": i, "name": f"Emp_{i}", "dept": "Eng", "salary": 100000 + i * 1000}
-                for i in range(50)
-            ]
-        })
+        data = json.dumps(
+            {
+                "employees": [
+                    {"id": i, "name": f"Emp_{i}", "dept": "Eng", "salary": 100000 + i * 1000}
+                    for i in range(50)
+                ]
+            }
+        )
         request = Request(messages=[Message(role="user", content=data)])
         context = TransformContext()
         result = await pipeline.process(request, context)
@@ -388,7 +391,9 @@ class TestFormatConverterE2E:
         assert '"employees"' not in content  # wrapper key gone
 
     @pytest.mark.asyncio
-    async def test_single_key_dict_config_converted_to_yaml(self, pipeline: CompressorPipeline) -> None:
+    async def test_single_key_dict_config_converted_to_yaml(
+        self, pipeline: CompressorPipeline
+    ) -> None:
         """Single-key dict with nested config inner data → converted to YAML."""
         data = json.dumps({"config": {"host": "localhost", "port": 5432}})
         request = Request(messages=[Message(role="user", content=data)])
@@ -406,6 +411,7 @@ class TestFormatConverterE2E:
 # =============================================================================
 # Round-trip validation
 # =============================================================================
+
 
 class TestRoundTrip:
     """Validate that conversions are lossless."""
@@ -451,6 +457,7 @@ class TestRoundTrip:
 # CSV serialize/parse
 # =============================================================================
 
+
 class TestCSVValueHandling:
     """Test value serialization edge cases."""
 
@@ -483,7 +490,7 @@ class TestCSVValueHandling:
         assert converter._parse_csv_value("3.14") == 3.14
 
     def test_parse_json(self, converter: FormatConverter) -> None:
-        result = converter._parse_csv_value('[1, 2, 3]')
+        result = converter._parse_csv_value("[1, 2, 3]")
         assert result == [1, 2, 3]
 
     def test_parse_json_nested(self, converter: FormatConverter) -> None:
@@ -494,6 +501,7 @@ class TestCSVValueHandling:
 # =============================================================================
 # Performance
 # =============================================================================
+
 
 class TestPerformance:
     """Performance regression tests."""

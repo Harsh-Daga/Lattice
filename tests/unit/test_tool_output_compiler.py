@@ -37,6 +37,7 @@ from lattice.transforms.tool_filter import ToolOutputFilter
 # ContentProfiler — new profile detection
 # =============================================================================
 
+
 class TestContentProfilerNewProfiles:
     """ContentProfiler correctly classifies specialized content types."""
 
@@ -109,10 +110,7 @@ class TestContentProfilerNewProfiles:
         """Grep results are classified as GREP_OUTPUT."""
         # Generate many grep lines to overwhelm any incidental narrative score
         # Use _ instead of . in filenames to avoid triggering sentence split on dots
-        grep_lines = [
-            f"src/a_py:{i}:def func_{i}():"
-            for i in range(1, 51)
-        ]
+        grep_lines = [f"src/a_py:{i}:def func_{i}():" for i in range(1, 51)]
         grep = "\n".join(grep_lines)
         profiler = ContentProfiler(short_threshold_tokens=5)
         profile = profiler._classify(self._make_request(grep))
@@ -138,11 +136,13 @@ class TestContentProfilerNewProfiles:
 
     def test_mcp_output_detection(self) -> None:
         """MCP tool results with is_error are classified as MCP_OUTPUT."""
-        mcp = json.dumps({
-            "tool_call_id": "call_123",
-            "is_error": False,
-            "content": "File contents here with some additional text to make it longer"
-        })
+        mcp = json.dumps(
+            {
+                "tool_call_id": "call_123",
+                "is_error": False,
+                "content": "File contents here with some additional text to make it longer",
+            }
+        )
         profiler = ContentProfiler(short_threshold_tokens=5)
         profile = profiler._classify(self._make_request(mcp))
         assert profile == ContentProfile.MCP_OUTPUT
@@ -183,33 +183,40 @@ class TestContentProfilerNewProfiles:
 # ToolOutputFilter — schema projection and summarization
 # =============================================================================
 
+
 class TestToolOutputFilterSchemaAware:
     """ToolOutputFilter keeps schema-referenced fields and identity fields."""
 
     def test_schema_aware_projection(self) -> None:
         """Only schema fields + identity fields are kept."""
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "get_user",
-                "parameters": {
-                    "properties": {
-                        "id": {"type": "string"},
-                        "name": {"type": "string"},
-                    }
-                }
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_user",
+                    "parameters": {
+                        "properties": {
+                            "id": {"type": "string"},
+                            "name": {"type": "string"},
+                        }
+                    },
+                },
             }
-        }]
+        ]
         request = Request(
-            messages=[Message(
-                role="tool",
-                content=json.dumps({
-                    "id": "123",
-                    "name": "Alice",
-                    "created_at": "2024-01-01",
-                    "internal_secret": "abc",
-                }),
-            )],
+            messages=[
+                Message(
+                    role="tool",
+                    content=json.dumps(
+                        {
+                            "id": "123",
+                            "name": "Alice",
+                            "created_at": "2024-01-01",
+                            "internal_secret": "abc",
+                        }
+                    ),
+                )
+            ],
             tools=tools,
         )
         filt = ToolOutputFilter()
@@ -223,16 +230,20 @@ class TestToolOutputFilterSchemaAware:
     def test_identity_fields_always_preserved(self) -> None:
         """id, name, type, status, error, result are always preserved."""
         request = Request(
-            messages=[Message(
-                role="tool",
-                content=json.dumps({
-                    "id": "123",
-                    "status": "ok",
-                    "error": None,
-                    "result": 42,
-                    "metadata": {"extra": "data"},
-                }),
-            )],
+            messages=[
+                Message(
+                    role="tool",
+                    content=json.dumps(
+                        {
+                            "id": "123",
+                            "status": "ok",
+                            "error": None,
+                            "result": 42,
+                            "metadata": {"extra": "data"},
+                        }
+                    ),
+                )
+            ],
             tools=[],
         )
         filt = ToolOutputFilter()
@@ -246,10 +257,12 @@ class TestToolOutputFilterSchemaAware:
         """Very large outputs are summarized with statistics."""
         rows = [{"id": i, "value": i * 10} for i in range(200)]
         request = Request(
-            messages=[Message(
-                role="tool",
-                content=json.dumps(rows),
-            )],
+            messages=[
+                Message(
+                    role="tool",
+                    content=json.dumps(rows),
+                )
+            ],
         )
         filt = ToolOutputFilter(summarize_threshold_tokens=10)
         result = unwrap(filt.process(request, TransformContext()))
@@ -271,10 +284,12 @@ class TestToolOutputFilterSchemaAware:
     def test_tool_role_required(self) -> None:
         """User messages without tool_call_id or is_tool_output are skipped."""
         request = Request(
-            messages=[Message(
-                role="user",
-                content=json.dumps({"id": "123", "noise": "xxx"}),
-            )],
+            messages=[
+                Message(
+                    role="user",
+                    content=json.dumps({"id": "123", "noise": "xxx"}),
+                )
+            ],
         )
         filt = ToolOutputFilter()
         result = unwrap(filt.process(request, TransformContext()))
@@ -283,12 +298,14 @@ class TestToolOutputFilterSchemaAware:
 
     def test_no_savings_skips_mutation(self) -> None:
         """ToolOutputFilter leaves content unchanged when filtering would expand it."""
-        content = json.dumps({
-            "id": "123",
-            "name": "Alice",
-            "created_at": "2024-01-01",
-            "internal_secret": "abc",
-        })
+        content = json.dumps(
+            {
+                "id": "123",
+                "name": "Alice",
+                "created_at": "2024-01-01",
+                "internal_secret": "abc",
+            }
+        )
         request = Request(
             messages=[Message(role="tool", content=content)],
         )
@@ -300,6 +317,7 @@ class TestToolOutputFilterSchemaAware:
 # =============================================================================
 # FormatConverter — structured content safety
 # =============================================================================
+
 
 class TestFormatConverterSafety:
     """FormatConverter never corrupts JSON or code blocks."""
@@ -343,11 +361,13 @@ class TestFormatConverterSafety:
     def test_tool_calls_message_skipped(self) -> None:
         """Messages with tool_calls are never modified."""
         request = Request(
-            messages=[Message(
-                role="assistant",
-                content="Using tool...",
-                tool_calls=[{"id": "1", "function": {"name": "foo", "arguments": "{}"}}],
-            )],
+            messages=[
+                Message(
+                    role="assistant",
+                    content="Using tool...",
+                    tool_calls=[{"id": "1", "function": {"name": "foo", "arguments": "{}"}}],
+                )
+            ],
         )
         conv = FormatConverter()
         result = unwrap(conv.process(request, TransformContext()))
@@ -357,6 +377,7 @@ class TestFormatConverterSafety:
 # =============================================================================
 # OutputCleanup — code block preservation
 # =============================================================================
+
 
 class TestOutputCleanupCodeBlockSafety:
     """OutputCleanup never modifies content inside fenced code blocks."""
@@ -401,6 +422,7 @@ class TestOutputCleanupCodeBlockSafety:
 # =============================================================================
 # MessageDeduplicator — tool message preservation
 # =============================================================================
+
 
 class TestMessageDeduplicatorToolSafety:
     """MessageDeduplicator never removes tool messages."""
@@ -455,6 +477,7 @@ class TestMessageDeduplicatorToolSafety:
 # Cross-transform safety pipeline
 # =============================================================================
 
+
 class TestCrossTransformSafety:
     """Full pipeline never corrupts structured content."""
 
@@ -491,15 +514,14 @@ class TestCrossTransformSafety:
         pipeline.register(OutputCleanup())
 
         request = Request(
-            messages=[Message(
-                role="user",
-                content=(
-                    "```python\n"
-                    "x = '550e8400-e29b-41d4-a716-446655440000'\n"
-                    "print(x)\n"
-                    "```"
-                ),
-            )],
+            messages=[
+                Message(
+                    role="user",
+                    content=(
+                        "```python\nx = '550e8400-e29b-41d4-a716-446655440000'\nprint(x)\n```"
+                    ),
+                )
+            ],
         )
         context = TransformContext()
         result = await pipeline.process(request, context)
@@ -534,12 +556,16 @@ class TestCrossTransformSafety:
         unwrap(result)
 
         assert "content_profiler" in context.metrics["transforms"]
-        assert "tool_filter" in context.metrics["transforms"] or "message_dedup" in context.metrics["transforms"]
+        assert (
+            "tool_filter" in context.metrics["transforms"]
+            or "message_dedup" in context.metrics["transforms"]
+        )
 
 
 # =============================================================================
 # ToolOutputFilter — structure-aware projection (Phase 5)
 # =============================================================================
+
 
 class TestToolOutputFilterStructureAware:
     """ToolOutputFilter applies structure-aware compression."""
@@ -654,15 +680,17 @@ class TestToolOutputFilterStructureAware:
 
     def test_mcp_output_projection(self) -> None:
         """MCP tool result filters safely."""
-        mcp = json.dumps({
-            "tool_call_id": "call_123",
-            "is_error": False,
-            "content": "File contents here",
-            "type": "text",
-            "tool": "read_file",
-            "internal_blob": "should_be_removed",
-            "_private": "also_removed",
-        })
+        mcp = json.dumps(
+            {
+                "tool_call_id": "call_123",
+                "is_error": False,
+                "content": "File contents here",
+                "type": "text",
+                "tool": "read_file",
+                "internal_blob": "should_be_removed",
+                "_private": "also_removed",
+            }
+        )
         filt = ToolOutputFilter()
         request = Request(
             messages=[Message(role="tool", content=mcp)],
@@ -679,6 +707,7 @@ class TestToolOutputFilterStructureAware:
 # =============================================================================
 # FormatConverter — new content type handling (Phase 5)
 # =============================================================================
+
 
 class TestFormatConverterNewTypes:
     """FormatConverter handles diffs and logs."""
@@ -710,6 +739,7 @@ class TestFormatConverterNewTypes:
 # =============================================================================
 # ToolOutputFilter — code block safety inside tool output (Phase 5)
 # =============================================================================
+
 
 class TestToolOutputFilterCodeBlockSafety:
     """Fenced code blocks inside tool output stay intact."""

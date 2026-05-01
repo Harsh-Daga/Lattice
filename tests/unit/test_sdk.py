@@ -66,7 +66,9 @@ class TestCompress:
             mode="aggressive",
         )
         # Aggressive mode should include lossy transforms
-        assert any(t in result.transforms_applied for t in ("rate_distortion", "hierarchical_summary"))
+        assert any(
+            t in result.transforms_applied for t in ("rate_distortion", "hierarchical_summary")
+        )
 
     def test_compress_request_includes_runtime_metadata(self, client: LatticeClient) -> None:
         request = client.compress_request(
@@ -95,10 +97,14 @@ class TestProxyClient:
         body = {
             "model": "openai/gpt-4o",
             "session_id": session_id,
-            "messages": [{"role": "user", "content": "repeat_this_custom_key repeat_this_custom_key"}],
+            "messages": [
+                {"role": "user", "content": "repeat_this_custom_key repeat_this_custom_key"}
+            ],
         }
 
-        async def _fake_post(url: str, content: bytes | None = None, headers: dict[str, str] | None = None, **_kwargs):
+        async def _fake_post(
+            url: str, content: bytes | None = None, headers: dict[str, str] | None = None, **_kwargs
+        ):
             assert url.endswith("/lattice/gateway")
             assert content is not None
             assert headers and headers["x-lattice-session-id"] == session_id

@@ -1,6 +1,5 @@
 """Tests for provider capabilities database."""
 
-
 from lattice.providers.capabilities import (
     CacheMode,
     CacheSemantics,

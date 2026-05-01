@@ -46,13 +46,18 @@ async def test_run_trace_replay_summary() -> None:
             category="reference_substitution",
             messages=[
                 {"role": "system", "content": "Debug transaction failures."},
-                {"role": "user", "content": "Transactions failed: 550e8400-e29b-41d4-a716-446655440000"},
+                {
+                    "role": "user",
+                    "content": "Transactions failed: 550e8400-e29b-41d4-a716-446655440000",
+                },
             ],
             reference_response="Duplicate UUIDs caused a conflict.",
             optimized_response="Duplicate UUIDs caused a conflict.",
         )
     ]
-    report = await run_trace_replay(traces, model="gpt-4", provider="openai", iterations=1, warmup=0)
+    report = await run_trace_replay(
+        traces, model="gpt-4", provider="openai", iterations=1, warmup=0
+    )
     assert report.total_scenarios == 1
     assert report.passed_scenarios == 1
     assert report.total_token_savings >= 0
@@ -72,7 +77,9 @@ async def test_trace_replay_outputs(tmp_path: Path) -> None:
             optimized_response="hello",
         )
     ]
-    report = await run_trace_replay(traces, model="gpt-4", provider="openai", iterations=1, warmup=0)
+    report = await run_trace_replay(
+        traces, model="gpt-4", provider="openai", iterations=1, warmup=0
+    )
     json_path = tmp_path / "report.json"
     md_path = tmp_path / "report.md"
     _write_outputs(report, output_json=str(json_path), output_md=str(md_path))
@@ -143,7 +150,9 @@ def test_replay_detects_quality_regression() -> None:
             )
         ],
     )
-    categories = _classify_failure(baseline, degraded, quality_threshold=0.05, latency_threshold=1.5)
+    categories = _classify_failure(
+        baseline, degraded, quality_threshold=0.05, latency_threshold=1.5
+    )
     assert FailureCategory.QUALITY_DROP in categories
 
 
@@ -181,7 +190,13 @@ def test_replay_detects_latency_regression() -> None:
 
 def test_failure_categories_present() -> None:
     from benchmarks.evals.replay import FailureCategory, _classify_failure
-    from benchmarks.framework.types import BenchmarkReport, LatencyMeasurement, QualityMeasurement, ScenarioResult, TokenMeasurement
+    from benchmarks.framework.types import (
+        BenchmarkReport,
+        LatencyMeasurement,
+        QualityMeasurement,
+        ScenarioResult,
+        TokenMeasurement,
+    )
 
     baseline = BenchmarkReport(
         runner_name="baseline",
@@ -230,14 +245,17 @@ async def test_governance_report_pass_fail(tmp_path: Path) -> None:
 
     trace_path = tmp_path / "traces.jsonl"
     trace_path.write_text(
-        json.dumps({
-            "trace_id": "t1",
-            "scenario": "test",
-            "category": "test",
-            "messages": [{"role": "user", "content": "hello world"}],
-            "reference_response": "hello",
-            "optimized_response": "hello",
-        }) + "\n",
+        json.dumps(
+            {
+                "trace_id": "t1",
+                "scenario": "test",
+                "category": "test",
+                "messages": [{"role": "user", "content": "hello world"}],
+                "reference_response": "hello",
+                "optimized_response": "hello",
+            }
+        )
+        + "\n",
         encoding="utf-8",
     )
     report = await run_replay_governance(
@@ -389,7 +407,9 @@ async def test_degraded_path_multiple_issues() -> None:
         ],
     )
 
-    categories = _classify_failure(baseline, degraded, quality_threshold=0.05, latency_threshold=1.5)
+    categories = _classify_failure(
+        baseline, degraded, quality_threshold=0.05, latency_threshold=1.5
+    )
     values = {c.value for c in categories}
 
     assert FailureCategory.QUALITY_DROP.value in values
@@ -413,7 +433,9 @@ async def test_degraded_path_multiple_issues() -> None:
             )
         ],
     )
-    cache_categories = _classify_failure(baseline, cache_degraded, quality_threshold=0.05, latency_threshold=1.5)
+    cache_categories = _classify_failure(
+        baseline, cache_degraded, quality_threshold=0.05, latency_threshold=1.5
+    )
     cache_values = {c.value for c in cache_categories}
     assert FailureCategory.CACHE_MISS.value in cache_values
 
@@ -535,7 +557,7 @@ async def test_semantic_cache_maintenance_tracked_in_stats() -> None:
 
 def test_transport_outcome_headers_and_categories_consistent() -> None:
     """Headers and downgrade categories should agree on the same state."""
-    from lattice.core.telemetry import DowngradeCategory, TransportOutcome
+    from lattice.core.telemetry import TransportOutcome
 
     to = TransportOutcome(
         framing="json",
@@ -587,9 +609,9 @@ def test_transport_outcome_precedence_over_canonical() -> None:
     headers = build_routing_headers(
         "gpt-4",
         transport_outcome=outcome,
-        framing="json",          # explicit override
-        delta_mode="bypassed",   # explicit override
-        http_version="http/1.1", # explicit override
+        framing="json",  # explicit override
+        delta_mode="bypassed",  # explicit override
+        http_version="http/1.1",  # explicit override
     )
     assert headers["x-lattice-framing"] == "json"
     assert headers["x-lattice-delta"] == "bypassed"

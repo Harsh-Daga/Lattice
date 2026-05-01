@@ -10,10 +10,10 @@ from lattice.transforms.context_selector import (
     SubmodularContextSelector,
 )
 
-
 # =============================================================================
 # SubmodularContextSelector
 # =============================================================================
+
 
 def test_selector_noop_when_no_docs() -> None:
     transform = SubmodularContextSelector(token_budget=100)
@@ -44,8 +44,14 @@ def test_selector_selects_high_relevance_docs() -> None:
     request = Request(
         messages=[
             Message(role="system", content="You are a helpful assistant."),
-            Message(role="assistant", content="Python is a programming language with dynamic typing and garbage collection."),
-            Message(role="assistant", content="The capital of France is Paris, located on the Seine river."),
+            Message(
+                role="assistant",
+                content="Python is a programming language with dynamic typing and garbage collection.",
+            ),
+            Message(
+                role="assistant",
+                content="The capital of France is Paris, located on the Seine river.",
+            ),
             Message(role="user", content="Tell me about Paris tourism and landmarks."),
         ]
     )
@@ -89,7 +95,9 @@ def test_selector_diversity_bonus() -> None:
     request = Request(
         messages=[
             Message(role="system", content="Be concise."),
-            Message(role="assistant", content="Paris museums include the Louvre and Musée d'Orsay."),
+            Message(
+                role="assistant", content="Paris museums include the Louvre and Musée d'Orsay."
+            ),
             Message(role="assistant", content="Paris cuisine features croissants and escargot."),
             Message(role="user", content="What should I know about Paris?"),
         ]
@@ -112,6 +120,7 @@ def test_selector_reverse_is_noop() -> None:
 # =============================================================================
 # InformationTheoreticSelector
 # =============================================================================
+
 
 def test_information_selector_extends_base() -> None:
     transform = InformationTheoreticSelector(token_budget=50)

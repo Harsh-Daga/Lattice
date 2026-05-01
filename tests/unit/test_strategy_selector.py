@@ -13,6 +13,7 @@ from lattice.transforms.strategy_selector import StrategySelector, _ArmState
 # _ArmState unit tests
 # =============================================================================
 
+
 class TestArmState:
     """Test the per-arm LinUCB state machine."""
 
@@ -44,8 +45,8 @@ class TestArmState:
         assert s.cum_reward == 1.0
         assert s.A[0][0] == 2.0  # 1 + 1*1
         assert s.A[0][1] == 2.0  # 0 + 1*2
-        assert s.b[0] == 1.0    # 0 + 1*1
-        assert s.b[1] == 2.0    # 0 + 1*2
+        assert s.b[0] == 1.0  # 0 + 1*1
+        assert s.b[1] == 2.0  # 0 + 1*2
 
     def test_theta_after_one_update(self) -> None:
         s = _ArmState.zero(dim=1, lambda_reg=1.0)
@@ -100,6 +101,7 @@ class TestArmState:
 # =============================================================================
 # StrategySelector unit tests
 # =============================================================================
+
 
 class TestStrategySelectorInit:
     def test_default_init(self) -> None:
@@ -165,11 +167,7 @@ class TestFeatureExtraction:
 
     def test_extract_code_fraction(self) -> None:
         sel = StrategySelector()
-        req = Request(
-            messages=[
-                Message(role=Role.USER, content="```python\nx = 5\n```")
-            ]
-        )
+        req = Request(messages=[Message(role=Role.USER, content="```python\nx = 5\n```")])
         ctx = TransformContext(request_id="r1")
         features = sel._extract_features(req, ctx)
         assert features[3] > 0.0  # code fraction
@@ -187,7 +185,12 @@ class TestProcess:
     def test_selects_arm(self) -> None:
         sel = StrategySelector()
         req = Request(
-            messages=[Message(role=Role.USER, content="this is a somewhat longer test message so that the token estimate is large enough to avoid the short-circuit path and trigger algorithmic arm selection.")],
+            messages=[
+                Message(
+                    role=Role.USER,
+                    content="this is a somewhat longer test message so that the token estimate is large enough to avoid the short-circuit path and trigger algorithmic arm selection.",
+                )
+            ],
             metadata={},
         )
         ctx = TransformContext(request_id="r1")
@@ -201,7 +204,12 @@ class TestProcess:
     def test_sets_strategy_flags(self) -> None:
         sel = StrategySelector()
         req = Request(
-            messages=[Message(role=Role.USER, content="a bit longer message to avoid the short-circuit path where nothing is selected.")],
+            messages=[
+                Message(
+                    role=Role.USER,
+                    content="a bit longer message to avoid the short-circuit path where nothing is selected.",
+                )
+            ],
             metadata={},
         )
         ctx = TransformContext(request_id="r1")
@@ -296,7 +304,7 @@ class TestProcess:
         )
         sel.process(req, ctx)
         sel.update_reward(ctx, reward=-0.5)  # should clip to 0
-        sel.update_reward(ctx, reward=1.5)   # should clip to 1
+        sel.update_reward(ctx, reward=1.5)  # should clip to 1
 
         bandit = ctx.get_transform_state(sel.name)["bandit"]
         assert bandit["arms"]["full"]["cum_reward"] == 1.0  # 0 + 1
@@ -310,6 +318,7 @@ class TestProcess:
 
     def test_reverse_is_noop(self) -> None:
         from lattice.core.transport import Response
+
         sel = StrategySelector()
         resp = Response(content="hello")
         ctx = TransformContext(request_id="r1")
@@ -404,7 +413,7 @@ class TestFeatureHelpers:
         assert d <= 1.0
 
     def test_estimate_table_density_json(self) -> None:
-        text = "[{\"a\":1}, {\"b\":2}]"
+        text = '[{"a":1}, {"b":2}]'
         d = StrategySelector._estimate_table_density(text)
         assert d >= 0.0
 

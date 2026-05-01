@@ -16,7 +16,7 @@ import asyncio
 
 import pytest
 
-from lattice.core.batch_accumulator import BatchAccumulator, BatchResult
+from lattice.core.batch_accumulator import BatchAccumulator
 
 
 class TestBatchAccumulator:

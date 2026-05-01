@@ -20,6 +20,7 @@ from lattice.protocol.content import TextPart
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 async def store() -> MemorySessionStore:
     s = MemorySessionStore(ttl_seconds=3600)
@@ -36,6 +37,7 @@ async def session_manager(store: MemorySessionStore) -> SessionManager:
 # =============================================================================
 # Session creation
 # =============================================================================
+
 
 class TestCreateSession:
     @pytest.mark.asyncio
@@ -65,6 +67,7 @@ class TestCreateSession:
         assert session.manifest is not None
         # Manifest should have a tools segment
         from lattice.protocol.segments import SegmentType
+
         tools_seg = session.manifest.get_segment(SegmentType.TOOLS)
         assert tools_seg is not None
 
@@ -85,6 +88,7 @@ class TestCreateSession:
 # =============================================================================
 # Session get_or_create
 # =============================================================================
+
 
 class TestGetOrCreateSession:
     @pytest.mark.asyncio
@@ -128,6 +132,7 @@ class TestGetOrCreateSession:
 # =============================================================================
 # Session update
 # =============================================================================
+
 
 class TestUpdateSession:
     @pytest.mark.asyncio
@@ -179,6 +184,7 @@ class TestUpdateSession:
 # CAS / optimistic concurrency
 # =============================================================================
 
+
 class TestOptimisticConcurrency:
     @pytest.mark.asyncio
     async def test_set_fails_on_version_conflict(self, store: MemorySessionStore) -> None:
@@ -228,6 +234,7 @@ class TestOptimisticConcurrency:
 # Session delta computation
 # =============================================================================
 
+
 class TestComputeDelta:
     @pytest.mark.asyncio
     async def test_all_new_when_no_session(self, session_manager: SessionManager) -> None:
@@ -270,10 +277,12 @@ class TestComputeDelta:
 # Session expiry
 # =============================================================================
 
+
 class TestSessionExpiry:
     @pytest.mark.asyncio
     async def test_expired_session_removed(self, store: MemorySessionStore) -> None:
         import time
+
         session = Session(
             session_id="sess_exp",
             created_at=0.0,
@@ -303,6 +312,7 @@ class TestSessionExpiry:
 # =============================================================================
 # Session serialization
 # =============================================================================
+
 
 class TestSessionSerialization:
     def test_roundtrip_with_manifest(self) -> None:

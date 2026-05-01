@@ -246,9 +246,7 @@ class TestToolResultMerging:
                 Message(
                     role="assistant",
                     content="",
-                    tool_calls=[
-                        {"id": "c1", "type": "function", "function": {"name": "a"}}
-                    ],
+                    tool_calls=[{"id": "c1", "type": "function", "function": {"name": "a"}}],
                 ),
                 Message(role="tool", content="result1", tool_call_id="c1"),
                 Message(role="tool", content="result2", tool_call_id="c2"),
@@ -278,9 +276,7 @@ class TestToolResultMerging:
                 Message(
                     role="assistant",
                     content="",
-                    tool_calls=[
-                        {"id": "c1", "type": "function", "function": {"name": "a"}}
-                    ],
+                    tool_calls=[{"id": "c1", "type": "function", "function": {"name": "a"}}],
                 ),
                 Message(role="tool", content="result", tool_call_id="c1"),
                 Message(role="user", content="Thanks"),
@@ -471,9 +467,7 @@ class TestStreaming:
         # stop thinking
         sm.process({"type": "content_block_stop"})
         # start text block
-        sm.process(
-            {"type": "content_block_start", "content_block": {"type": "text"}}
-        )
+        sm.process({"type": "content_block_start", "content_block": {"type": "text"}})
         # now text delta should be emitted
         r3 = sm.process(
             {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "Hello"}}

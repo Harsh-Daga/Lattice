@@ -35,7 +35,9 @@ class _PassthroughPipeline:
 
 
 class _FakeProvider:
-    async def completion(self, model: str, messages: list[dict[str, Any]], **_kwargs: Any) -> Response:
+    async def completion(
+        self, model: str, messages: list[dict[str, Any]], **_kwargs: Any
+    ) -> Response:
         assert messages
         return Response(content="pong", model=model, usage={"total_tokens": 1})
 
@@ -95,7 +97,9 @@ async def test_gateway_binary_request_roundtrip() -> None:
     )
     body = {"model": "openai/gpt-4o", "messages": [{"role": "user", "content": "hi"}]}
     raw_in = framer.encode_request(json.dumps(body).encode("utf-8"))[0].to_bytes()
-    raw_out, meta = await gateway.handle_request(raw_in, headers={}, client_info=ClientConnectionInfo())
+    raw_out, meta = await gateway.handle_request(
+        raw_in, headers={}, client_info=ClientConnectionInfo()
+    )
     out_frame = framer.decode_frame(raw_out)
     assert out_frame.frame_type == FrameType.RESPONSE
     payload = json.loads(out_frame.payload.decode("utf-8"))
@@ -130,7 +134,9 @@ async def test_gateway_dictionary_wire_roundtrip() -> None:
     }
     codec = DictionaryCodec(session_id=session.session_id)
     raw_json = json.dumps(body, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    raw_in = framer.encode_request(codec.compress(raw_json), flags=FrameFlags.DICT_COMPRESSED)[0].to_bytes()
+    raw_in = framer.encode_request(codec.compress(raw_json), flags=FrameFlags.DICT_COMPRESSED)[
+        0
+    ].to_bytes()
     raw_out, meta = await gateway.handle_request(
         raw_in,
         headers={"x-lattice-session-id": session.session_id},
@@ -168,7 +174,9 @@ async def test_gateway_format_detection() -> None:
     assert json_meta.get("x-lattice-framing") == "json"
 
     bin_in = framer.encode_request(json.dumps(json_body).encode("utf-8"))[0].to_bytes()
-    bin_out, bin_meta = await gateway.handle_request(bin_in, headers={}, client_info=ClientConnectionInfo())
+    bin_out, bin_meta = await gateway.handle_request(
+        bin_in, headers={}, client_info=ClientConnectionInfo()
+    )
     assert framer.decode_frame(bin_out).frame_type == FrameType.RESPONSE
     assert bin_meta.get("x-lattice-framing") == "native"
 

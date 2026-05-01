@@ -168,11 +168,15 @@ class TestBloomFilter:
     def test_merge_different_size_fails(self) -> None:
         bf1 = BloomFilter(size=10_000)
         bf2 = BloomFilter(size=5_000)
-        with pytest.raises(ValueError, match="Cannot merge Bloom filters with different parameters"):
+        with pytest.raises(
+            ValueError, match="Cannot merge Bloom filters with different parameters"
+        ):
             bf1.merge(bf2)
 
     def test_merge_different_num_hashes_fails(self) -> None:
         bf1 = BloomFilter(num_hashes=4)
         bf2 = BloomFilter(num_hashes=3)
-        with pytest.raises(ValueError, match="Cannot merge Bloom filters with different parameters"):
+        with pytest.raises(
+            ValueError, match="Cannot merge Bloom filters with different parameters"
+        ):
             bf1.merge(bf2)

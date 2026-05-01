@@ -91,9 +91,7 @@ class TestSanitizeJsonSchema:
             "properties": {
                 "address": {
                     "type": "object",
-                    "properties": {
-                        "zip": {"type": "string", "minLength": 5, "maxLength": 10}
-                    },
+                    "properties": {"zip": {"type": "string", "minLength": 5, "maxLength": 10}},
                 }
             },
         }
@@ -108,9 +106,7 @@ class TestSanitizeJsonSchema:
             "type": "array",
             "items": {
                 "type": "object",
-                "properties": {
-                    "id": {"type": "integer", "minimum": 0}
-                },
+                "properties": {"id": {"type": "integer", "minimum": 0}},
             },
         }
         out = sanitize_json_schema(schema)
@@ -123,12 +119,8 @@ class TestSanitizeJsonSchema:
                 {"type": "string", "minLength": 1},
                 {"type": "integer", "minimum": 0},
             ],
-            "oneOf": [
-                {"type": "boolean"}
-            ],
-            "allOf": [
-                {"type": "object", "additionalProperties": False}
-            ],
+            "oneOf": [{"type": "boolean"}],
+            "allOf": [{"type": "object", "additionalProperties": False}],
         }
         out = sanitize_json_schema(schema)
         assert "minLength" not in out["anyOf"][0]
@@ -139,9 +131,7 @@ class TestSanitizeJsonSchema:
     def test_ref_dropped(self) -> None:
         schema: dict[str, Any] = {
             "type": "object",
-            "properties": {
-                "link": {"$ref": "#/definitions/Node"}
-            },
+            "properties": {"link": {"$ref": "#/definitions/Node"}},
         }
         out = sanitize_json_schema(schema)
         assert "$ref" not in out["properties"]["link"]
@@ -161,9 +151,7 @@ class TestSanitizeJsonSchema:
     def test_inject_disabled(self) -> None:
         schema: dict[str, Any] = {
             "type": "object",
-            "properties": {
-                "x": {"type": "integer", "minimum": 0}
-            },
+            "properties": {"x": {"type": "integer", "minimum": 0}},
         }
         out = sanitize_json_schema(schema, inject_descriptions=False)
         assert "description" not in out["properties"]["x"]
@@ -187,9 +175,7 @@ class TestSanitizeJsonSchema:
     def test_all_unsupported_keys_stripped(self, bad_key: str) -> None:
         schema: dict[str, Any] = {
             "type": "object",
-            "properties": {
-                "p": {"type": "string", bad_key: "whatever"}
-            },
+            "properties": {"p": {"type": "string", bad_key: "whatever"}},
         }
         out = sanitize_json_schema(schema, inject_descriptions=False)
         assert bad_key not in out["properties"]["p"]
@@ -233,9 +219,7 @@ class TestSanitizeToolDefinitions:
                 "description": "Get weather",
                 "input_schema": {
                     "type": "object",
-                    "properties": {
-                        "city": {"type": "string", "pattern": "^[a-zA-Z ]+$"}
-                    },
+                    "properties": {"city": {"type": "string", "pattern": "^[a-zA-Z ]+$"}},
                 },
             }
         ]

@@ -1,6 +1,7 @@
 """Unit tests for cache arbitrage optimizer."""
 
 from __future__ import annotations
+from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
@@ -361,9 +362,9 @@ def test_anthropic_breakpoint_limit_respected() -> None:
 
 
 def test_injected_manifest_is_preferred() -> None:
+    from lattice.protocol.content import TextPart
     from lattice.protocol.manifest import build_manifest
     from lattice.protocol.segments import SegmentType, build_segment
-    from lattice.protocol.content import TextPart
 
     transform = CacheArbitrageOptimizer()
     injected_manifest = build_manifest(
@@ -390,9 +391,9 @@ def test_injected_manifest_is_preferred() -> None:
 
 
 def test_dict_manifest_deserializes_correctly() -> None:
+    from lattice.protocol.content import TextPart
     from lattice.protocol.manifest import build_manifest
     from lattice.protocol.segments import SegmentType, build_segment
-    from lattice.protocol.content import TextPart
 
     transform = CacheArbitrageOptimizer()
     injected_manifest = build_manifest(
@@ -492,7 +493,7 @@ def test_no_dead_code_path_in_process() -> None:
     # The second `return Ok` should be the last logical statement in the method body
     # (not followed by any unreachable code)
     last_return_idx = source.rindex("return Ok(request)")
-    rest = source[last_return_idx + len("return Ok(request)"):]
+    rest = source[last_return_idx + len("return Ok(request)") :]
     # After the final return, only the def line of reverse() follows
     assert "def reverse" in rest or rest.strip() == ""
 
@@ -531,9 +532,9 @@ def test_legacy_metadata_matches_normalized_outcome() -> None:
 
 def test_manifest_provenance_no_regression() -> None:
     """Manifest provenance is reported correctly for all cases."""
+    from lattice.protocol.content import TextPart
     from lattice.protocol.manifest import build_manifest
     from lattice.protocol.segments import SegmentType, build_segment
-    from lattice.protocol.content import TextPart
 
     transform = CacheArbitrageOptimizer()
 
@@ -551,10 +552,12 @@ def test_manifest_provenance_no_regression() -> None:
     assert outcome["manifest_source"] == "injected"
 
     # Reconstructed
-    req2 = Request(messages=[
-        Message(role="system", content="System prompt."),
-        Message(role="user", content="Hello."),
-    ])
+    req2 = Request(
+        messages=[
+            Message(role="system", content="System prompt."),
+            Message(role="user", content="Hello."),
+        ]
+    )
     ctx2 = TransformContext(provider="openai")
     result2 = transform.process(req2, ctx2)
     modified2 = unwrap(result2)

@@ -39,7 +39,9 @@ class TestSDKCompressionAPI:
 
     def test_compress_respects_mode_override(self) -> None:
         client = LatticeClient()
-        messages = [{"role": "user", "content": "Hello world, this is a test message for compression."}]
+        messages = [
+            {"role": "user", "content": "Hello world, this is a test message for compression."}
+        ]
         result = client.compress(
             messages=messages,
             model="openai/gpt-4",
@@ -228,7 +230,13 @@ class TestProxySerialization:
                 Message(
                     role="assistant",
                     content="",
-                    tool_calls=[{"id": "call_1", "type": "function", "function": {"name": "foo", "arguments": "{}"}}],
+                    tool_calls=[
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": "foo", "arguments": "{}"},
+                        }
+                    ],
                 )
             ],
             model="gpt-4",
@@ -255,11 +263,13 @@ class TestTransportStreamingMetadata:
 
     def test_completion_stream_accepts_metadata(self) -> None:
         import inspect
+
         sig = inspect.signature(DirectHTTPProvider.completion_stream)
         assert "metadata" in sig.parameters
 
     def test_completion_stream_with_stall_detect_accepts_metadata(self) -> None:
         import inspect
+
         sig = inspect.signature(DirectHTTPProvider.completion_stream_with_stall_detect)
         assert "metadata" in sig.parameters
 
@@ -330,6 +340,7 @@ class TestBatchingSerialization:
         )
 
         from lattice.transforms.batching import BatchingEngine
+
         batched = BatchingEngine._build_batched_request(key, [pending])
         assert batched.metadata.get("tool_choice") == "auto"
         assert batched.metadata.get("stop") == ["END"]

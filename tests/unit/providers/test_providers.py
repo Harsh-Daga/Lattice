@@ -75,6 +75,7 @@ class TestProviderRegistry:
 
     def test_resolve_unknown_raises(self) -> None:
         from lattice.core.errors import ProviderError
+
         reg = ProviderRegistry([OllamaAdapter()])  # no OpenAI fallback
         with pytest.raises(ProviderError):
             reg.resolve("gpt-4")
@@ -178,9 +179,7 @@ class TestOpenAIAdapter:
     def test_deserialize_response_reasoning_field(self) -> None:
         a = OpenAIAdapter()
         data = {
-            "choices": [
-                {"message": {"role": "assistant", "content": "", "reasoning": "I think"}}
-            ],
+            "choices": [{"message": {"role": "assistant", "content": "", "reasoning": "I think"}}],
             "model": "deepseek",
         }
         resp = a.deserialize_response(data)

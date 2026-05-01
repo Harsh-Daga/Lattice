@@ -11,8 +11,8 @@ import pytest
 from lattice.core.errors import ProviderError
 from lattice.gateway.compat import ProviderDetectionError, detect_provider
 from lattice.providers.capabilities import (
-    Capability,
     CacheMode,
+    Capability,
     get_capability_registry,
 )
 from lattice.providers.transport import (
@@ -20,10 +20,10 @@ from lattice.providers.transport import (
     _resolve_provider_name,
 )
 
-
 # =============================================================================
 # Exact provider resolution
 # =============================================================================
+
 
 class TestExactProviderResolution:
     def test_detect_from_model_prefix(self) -> None:
@@ -62,6 +62,7 @@ class TestExactProviderResolution:
 # Missing provider config / base URL
 # =============================================================================
 
+
 class TestMissingProviderConfig:
     def test_missing_base_url_raises(self) -> None:
         provider = DirectHTTPProvider()
@@ -88,9 +89,7 @@ class TestMissingProviderConfig:
         assert base == "https://custom.example.com"
 
     def test_per_provider_base_url_override(self) -> None:
-        provider = DirectHTTPProvider(
-            provider_base_urls={"openai": "https://proxy.example.com"}
-        )
+        provider = DirectHTTPProvider(provider_base_urls={"openai": "https://proxy.example.com"})
         base = provider._resolve_base_url("openai")
         assert base == "https://proxy.example.com"
 
@@ -98,6 +97,7 @@ class TestMissingProviderConfig:
 # =============================================================================
 # ollama vs ollama-cloud distinction
 # =============================================================================
+
 
 class TestOllamaDistinction:
     def test_ollama_local_base_url(self) -> None:
@@ -124,6 +124,7 @@ class TestOllamaDistinction:
 # =============================================================================
 # Capability registry coverage
 # =============================================================================
+
 
 class TestCapabilityRegistry:
     def test_openai_capabilities(self) -> None:
@@ -174,10 +175,11 @@ class TestCapabilityRegistry:
 # Adapter purity
 # =============================================================================
 
+
 class TestAdapterPurity:
     def test_adapters_do_not_mutate_input(self) -> None:
-        from lattice.providers.openai import OpenAIAdapter
         from lattice.core.transport import Message, Request
+        from lattice.providers.openai import OpenAIAdapter
 
         adapter = OpenAIAdapter()
         original = Request(
@@ -190,8 +192,8 @@ class TestAdapterPurity:
         assert original.model == "gpt-4"
 
     def test_adapter_supports_check(self) -> None:
-        from lattice.providers.openai import OpenAIAdapter
         from lattice.providers.anthropic import AnthropicAdapter
+        from lattice.providers.openai import OpenAIAdapter
 
         openai = OpenAIAdapter()
         anthropic = AnthropicAdapter()

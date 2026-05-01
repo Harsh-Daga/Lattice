@@ -2,6 +2,17 @@
 
 TransformContext is the single mutable scratchpad that carries state
 across the transform pipeline. Each request gets a fresh context.
+
+Standardized metadata keys (canonical):
+  _lattice_sig — Full Semantic Importance Graph from SIG
+  _lattice_sig_summary — Compact summary for transport
+  _lattice_protected_spans — Span IDs that must not be mutated
+  _lattice_task_classification — Task classification from RATS
+  _lattice_schedule — SchedulerDecision from RATS
+  _lattice_risk_score — SemanticRiskScore from content_profiler
+  _lattice_safety_decision — SafetyDecision from PSG
+  _lattice_validation — ValidationOutcome from MILV
+  _lattice_rollback_reason — Why a transform was rolled back
 """
 
 from __future__ import annotations
@@ -10,6 +21,28 @@ import dataclasses
 import time
 import uuid
 from typing import Any
+
+# Canonical metadata keys — single source of truth
+METADATA_KEY_SIG = "_lattice_sig"
+METADATA_KEY_SIG_SUMMARY = "_lattice_sig_summary"
+METADATA_KEY_PROTECTED_SPANS = "_lattice_protected_spans"
+METADATA_KEY_TASK_CLASSIFICATION = "_lattice_task_classification"
+METADATA_KEY_SCHEDULE = "_lattice_schedule"
+METADATA_KEY_RISK_SCORE = "_lattice_risk_score"
+METADATA_KEY_SAFETY_DECISION = "_lattice_safety_decision"
+METADATA_KEY_VALIDATION = "_lattice_validation"
+METADATA_KEY_ROLLBACK_REASON = "_lattice_rollback_reason"
+
+# Legacy → canonical key mapping (one-time forward)
+_LEGACY_KEYS: dict[str, str] = {
+    "_cache_arbitrage": "_lattice_cache_arbitrage",
+    "_cache_arbitrage_outcome": "_lattice_cache_arbitrage_outcome",
+    "_lattice_profile": "_lattice_profile",
+    "_lattice_strategy": "_lattice_strategy",
+    "_lattice_runtime": "_lattice_runtime",
+    "_lattice_runtime_contract": "_lattice_runtime_contract",
+    "_lattice_runtime_budget": "_lattice_runtime_budget",
+}
 
 
 @dataclasses.dataclass(slots=True)

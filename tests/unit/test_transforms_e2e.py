@@ -28,6 +28,7 @@ from lattice.transforms.tool_filter import ToolOutputFilter
 # Pipeline fixture
 # =============================================================================
 
+
 @pytest.fixture
 def pipeline() -> CompressorPipeline:
     """Build a pipeline with all Phase 0 transforms."""
@@ -43,6 +44,7 @@ def pipeline() -> CompressorPipeline:
 # =============================================================================
 # Reference Substitution
 # =============================================================================
+
 
 class TestReferenceSubstitution:
     """Comprehensive tests for the reversible reference substitution."""
@@ -65,7 +67,12 @@ class TestReferenceSubstitution:
 
         assert "ref_1" in modified.messages[0].content
         assert "550e8400" not in modified.messages[0].content
-        assert context.transforms_applied == ["prefix_optimizer", "reference_sub", "tool_filter", "output_cleanup"]
+        assert context.transforms_applied == [
+            "prefix_optimizer",
+            "reference_sub",
+            "tool_filter",
+            "output_cleanup",
+        ]
 
     @pytest.mark.asyncio
     async def test_reversible_round_trip(self, pipeline: CompressorPipeline) -> None:
@@ -112,9 +119,7 @@ class TestReferenceSubstitution:
     @pytest.mark.asyncio
     async def test_no_uuid_no_change(self, pipeline: CompressorPipeline) -> None:
         """Text without UUIDs is unchanged."""
-        request = Request(
-            messages=[Message(role="user", content="Hello, world.")]
-        )
+        request = Request(messages=[Message(role="user", content="Hello, world.")])
         context = TransformContext()
         result = await pipeline.process(request, context)
         modified = unwrap(result)
@@ -128,7 +133,7 @@ class TestReferenceSubstitution:
             messages=[
                 Message(
                     role="user",
-                    content=" " .join(["550e8400-e29b-41d4-a716-446655440000"] * 10),
+                    content=" ".join(["550e8400-e29b-41d4-a716-446655440000"] * 10),
                 )
             ]
         )
@@ -148,6 +153,7 @@ class TestReferenceSubstitution:
 # Tool Output Filter
 # =============================================================================
 
+
 class TestToolOutputFilter:
     """Comprehensive tests for tool output filtering."""
 
@@ -158,7 +164,7 @@ class TestToolOutputFilter:
             messages=[
                 Message(
                     role="tool",
-                    content='''[
+                    content="""[
                         {
                             "id": "abc",
                             "name": "test",
@@ -166,7 +172,7 @@ class TestToolOutputFilter:
                             "metadata": {"source": "db"},
                             "logs": ["processing"]
                         }
-                    ]''',
+                    ]""",
                 )
             ]
         )
@@ -184,9 +190,7 @@ class TestToolOutputFilter:
     @pytest.mark.asyncio
     async def test_non_json_unchanged(self, pipeline: CompressorPipeline) -> None:
         """Non-JSON text is not modified."""
-        request = Request(
-            messages=[Message(role="user", content="The logs show processing.")]
-        )
+        request = Request(messages=[Message(role="user", content="The logs show processing.")])
         context = TransformContext()
         result = await pipeline.process(request, context)
         modified = unwrap(result)
@@ -196,8 +200,12 @@ class TestToolOutputFilter:
     @pytest.mark.asyncio
     async def test_token_reduction_tool_output(self, pipeline: CompressorPipeline) -> None:
         """Tool output filtering saves tokens."""
-        items = [{"id": i, "name": f"item_{i}", "created_at": "2024-01-01", "metadata": {"x": i}} for i in range(100)]
+        items = [
+            {"id": i, "name": f"item_{i}", "created_at": "2024-01-01", "metadata": {"x": i}}
+            for i in range(100)
+        ]
         import json
+
         json_text = json.dumps(items, indent=2)
         request = Request(messages=[Message(role="tool", content=json_text)])
         context = TransformContext()
@@ -214,6 +222,7 @@ class TestToolOutputFilter:
 # =============================================================================
 # Prefix Optimizer
 # =============================================================================
+
 
 class TestPrefixOptimizer:
     """Comprehensive tests for prefix optimization."""
@@ -274,6 +283,7 @@ class TestPrefixOptimizer:
             ]
         )
         from lattice.transforms.prefix_opt import PrefixOptimizer
+
         PrefixOptimizer()
         ctx1 = TransformContext(session_id="sess_2")
         r1 = await pipeline.process(req1, ctx1)
@@ -287,9 +297,7 @@ class TestPrefixOptimizer:
                 Message(role="user", content="Goodbye"),
             ]
         )
-        shared_session_state: dict[str, Any] = {
-            "prefix_optimizer": {"prefix_hash": actual_hash}
-        }
+        shared_session_state: dict[str, Any] = {"prefix_optimizer": {"prefix_hash": actual_hash}}
         ctx2 = TransformContext(
             session_id="sess_2",
             session_state=shared_session_state.copy(),
@@ -305,6 +313,7 @@ class TestPrefixOptimizer:
 # Performance Benchmarks
 # =============================================================================
 
+
 class TestPerformance:
     """Regression tests for performance budgets."""
 
@@ -314,7 +323,9 @@ class TestPerformance:
         request = Request(
             messages=[
                 Message(role="system", content="You are a helpful assistant."),
-                Message(role="user", content=f"UUID: {'550e8400-e29b-41d4-a716-446655440000 ' * 100}"),
+                Message(
+                    role="user", content=f"UUID: {'550e8400-e29b-41d4-a716-446655440000 ' * 100}"
+                ),
             ]
         )
         context = TransformContext()
@@ -340,13 +351,15 @@ class TestPerformance:
         # Synthetic: 100 tool outputs with debug fields and 50 UUIDs
         tool_outputs = []
         for i in range(50):
-            tool_outputs.append({
-                "id": f"550e8400-e29b-41d4-a716-44665544{i:04d}",
-                "name": f"item_{i}",
-                "created_at": "2024-01-01T00:00:00Z",
-                "metadata": {"source": "db", "version": "1.0"},
-                "logs": ["processing", "completed"],
-            })
+            tool_outputs.append(
+                {
+                    "id": f"550e8400-e29b-41d4-a716-44665544{i:04d}",
+                    "name": f"item_{i}",
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "metadata": {"source": "db", "version": "1.0"},
+                    "logs": ["processing", "completed"],
+                }
+            )
 
         request = Request(
             messages=[
@@ -370,6 +383,7 @@ class TestPerformance:
 # Pipeline Orchestration
 # =============================================================================
 
+
 class TestPipeline:
     """Tests for pipeline orchestration itself."""
 
@@ -378,7 +392,7 @@ class TestPipeline:
         """Transforms apply in priority order (ascending)."""
         config = LatticeConfig()
         p = CompressorPipeline(config=config)
-        p.register(PrefixOptimizer())   # priority 10
+        p.register(PrefixOptimizer())  # priority 10
         p.register(ReferenceSubstitution())  # priority 20
         p.register(ToolOutputFilter())  # priority 30
 
@@ -410,11 +424,14 @@ class TestPipeline:
     @pytest.mark.asyncio
     async def test_graceful_degradation(self) -> None:
         """Transform failure with graceful_degradation=True continues processing."""
+
         class BrokenTransform:
             """A transform that always fails."""
+
             name = "broken"
             priority = 15
             enabled = True
+
             def process(self, _request, _context):
                 raise AssertionError("Kaboom")
 
@@ -449,6 +466,7 @@ class TestPipeline:
     @pytest.mark.asyncio
     async def test_runtime_budget_skips_remaining_transforms(self) -> None:
         """Runtime contract latency budget stops optional transform spend."""
+
         class SlowReferenceSub(ReferenceSubstitution):
             priority = 10
 

@@ -102,6 +102,9 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 # E402 mid-file import block is intentional for circular-dep avoidance
 "src/lattice/core/tunnel_sidecar.py" = ["E402"]
+# Pre-existing unused vars in test fixtures
+"tests/unit/test_tunnel_sidecar.py" = ["F841"]
+"tests/unit/test_cache_arbitrage.py" = ["F821"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

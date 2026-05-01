@@ -109,6 +109,7 @@ class TestCompletionRetry:
 
         # Patch sleep so test runs instantly
         import asyncio
+
         orig_sleep = asyncio.sleep
         asyncio.sleep = AsyncMock()  # type: ignore[assignment]
         try:
@@ -146,6 +147,7 @@ class TestCompletionRetry:
         p.pool._clients = {("openai", "https://api.openai.com"): FakeClient()}
 
         import asyncio
+
         orig_sleep = asyncio.sleep
         asyncio.sleep = AsyncMock()  # type: ignore[assignment]
         try:
@@ -254,15 +256,16 @@ class TestCompletionStreamWithStallDetect:
         fake_client.stream = MagicMock(return_value=FakeResp())
         p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
 
-        chunks = [c async for c in p.completion_stream_with_stall_detect(
-            model="openai/gpt-4",
-            messages=[{"role": "user", "content": "hi"}],
-        )]
+        chunks = [
+            c
+            async for c in p.completion_stream_with_stall_detect(
+                model="openai/gpt-4",
+                messages=[{"role": "user", "content": "hi"}],
+            )
+        ]
         assert any("Fast" in str(c) for c in chunks)
 
-    async def test_stall_detector_can_trigger_timeout(
-        self, provider: DirectHTTPProvider
-    ) -> None:
+    async def test_stall_detector_can_trigger_timeout(self, provider: DirectHTTPProvider) -> None:
         p = provider
         p.stall_detector.is_stalled = MagicMock(return_value=True)  # type: ignore[method-assign]
 
@@ -388,9 +391,7 @@ class TestCompletionStream:
         assert args[0] == "openai"
         assert args[3] == 200
 
-    async def test_cancelled_stream_releases_tacc_slot(
-        self, provider: DirectHTTPProvider
-    ) -> None:
+    async def test_cancelled_stream_releases_tacc_slot(self, provider: DirectHTTPProvider) -> None:
         import asyncio
 
         p = provider

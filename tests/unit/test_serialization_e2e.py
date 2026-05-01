@@ -9,8 +9,6 @@ Verifies that data flows correctly through the entire pipeline:
 
 from __future__ import annotations
 
-import pytest
-
 from lattice.core.serialization import (
     message_from_dict,
     message_to_dict,
@@ -222,7 +220,9 @@ class TestResponseSerialization:
     """Response → OpenAI dict."""
 
     def test_basic_response(self) -> None:
-        resp = Response(content="Hello", model="gpt-4", usage={"prompt_tokens": 10, "completion_tokens": 5})
+        resp = Response(
+            content="Hello", model="gpt-4", usage={"prompt_tokens": 10, "completion_tokens": 5}
+        )
         d = response_to_dict(resp, request_model="gpt-4")
         assert d["choices"][0]["message"]["content"] == "Hello"
         assert d["model"] == "gpt-4"
@@ -241,7 +241,9 @@ class TestResponseSerialization:
     def test_tool_calls_preserved(self) -> None:
         resp = Response(
             content="",
-            tool_calls=[{"id": "call_1", "type": "function", "function": {"name": "foo", "arguments": "{}"}}],
+            tool_calls=[
+                {"id": "call_1", "type": "function", "function": {"name": "foo", "arguments": "{}"}}
+            ],
         )
         d = response_to_dict(resp)
         assert d["choices"][0]["message"]["tool_calls"] == resp.tool_calls
@@ -288,7 +290,17 @@ class TestDirectHTTPProviderBuildRequest:
         req = DirectHTTPProvider._build_request(
             model="gpt-4",
             messages=[
-                {"role": "assistant", "content": "", "tool_calls": [{"id": "call_1", "type": "function", "function": {"name": "foo", "arguments": "{}"}}]},
+                {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": "foo", "arguments": "{}"},
+                        }
+                    ],
+                },
                 {"role": "tool", "content": "42", "tool_call_id": "call_1"},
             ],
         )
@@ -352,7 +364,11 @@ class TestSDKCompressPreservesMultimodal:
                 "role": "assistant",
                 "content": "",
                 "tool_calls": [
-                    {"id": "call_1", "type": "function", "function": {"name": "get_weather", "arguments": "{}"}}
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {"name": "get_weather", "arguments": "{}"},
+                    }
                 ],
             },
             {"role": "tool", "content": "Sunny", "tool_call_id": "call_1"},
@@ -378,7 +394,9 @@ class TestOpenAIAdapterSerialization:
         msg = Message(role="user", content="")
         msg.content_parts = [
             TextPart(text="What's this?"),
-            ImagePart(source=ImageSource(type=ImageSourceType.URL, data="https://example.com/img.jpg")),
+            ImagePart(
+                source=ImageSource(type=ImageSourceType.URL, data="https://example.com/img.jpg")
+            ),
         ]
         req = Request(messages=[msg], model="gpt-4o")
         body = adapter.serialize_request(req)
@@ -405,7 +423,13 @@ class TestOpenAIAdapterSerialization:
                 Message(
                     role="assistant",
                     content="",
-                    tool_calls=[{"id": "call_1", "type": "function", "function": {"name": "foo", "arguments": "{}"}}],
+                    tool_calls=[
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": "foo", "arguments": "{}"},
+                        }
+                    ],
                 )
             ],
             model="gpt-4",

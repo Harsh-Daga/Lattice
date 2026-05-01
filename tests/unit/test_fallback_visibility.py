@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -90,8 +89,8 @@ class TestBuildRoutingHeadersFallbackFields:
         headers = build_routing_headers(
             "gpt-4",
             transport_outcome=outcome,
-            framing="json",           # explicit override
-            delta_mode="bypassed",    # explicit override
+            framing="json",  # explicit override
+            delta_mode="bypassed",  # explicit override
             http_version="http/1.1",  # explicit override
         )
         assert headers["x-lattice-framing"] == "json"
@@ -358,7 +357,6 @@ class TestStatsExposesOperatorSurface:
 
     def test_stats_exposes_maintenance_when_configured(self) -> None:
         from lattice.core.config import LatticeConfig
-        from lattice.core.maintenance import MaintenanceCoordinator, MaintenanceResult
         from lattice.proxy.server import create_app
 
         config = LatticeConfig(

@@ -8,7 +8,6 @@ from lattice.core.config import LatticeConfig
 from lattice.core.semantic_cache import (
     CachedResponse,
     ContentClass,
-    InMemoryCacheBackend,
     RedisCacheBackend,
     SemanticCache,
     compute_cache_key,
@@ -58,6 +57,7 @@ class TestRedisCacheBackend:
         await backend.set("key3", resp, ttl=1)
         assert await backend.get("key3") is not None
         import asyncio
+
         await asyncio.sleep(1.5)
         assert await backend.get("key3") is None
 

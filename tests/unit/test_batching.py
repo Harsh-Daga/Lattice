@@ -31,6 +31,7 @@ from lattice.transforms.batching import (
 # BatchKey
 # =============================================================================
 
+
 class TestBatchKey:
     def test_from_request_no_tools(self) -> None:
         req = Request(model="gpt-4", temperature=0.7, messages=[Message(role="user", content="hi")])
@@ -67,6 +68,7 @@ class TestBatchKey:
 # BatchingEngine
 # =============================================================================
 
+
 class TestBatchingEngine:
     """Tests for BatchingEngine core logic."""
 
@@ -75,7 +77,11 @@ class TestBatchingEngine:
         async def fake_caller(batched: BatchedRequest) -> BatchedResponse:
             return BatchedResponse(
                 choices=[
-                    {"index": i, "message": {"role": "assistant", "content": f"resp_{i}"}, "finish_reason": "stop"}
+                    {
+                        "index": i,
+                        "message": {"role": "assistant", "content": f"resp_{i}"},
+                        "finish_reason": "stop",
+                    }
                     for i in range(len(batched.messages))
                 ],
                 usage={"prompt_tokens": 10, "completion_tokens": 5},
@@ -95,10 +101,7 @@ class TestBatchingEngine:
     @pytest.mark.asyncio
     async def test_batch_fills_and_dispatches(self, engine: BatchingEngine) -> None:
         """Multiple requests fill the batch and get individual responses."""
-        reqs = [
-            Request(messages=[Message(role="user", content=f"msg_{i}")])
-            for i in range(3)
-        ]
+        reqs = [Request(messages=[Message(role="user", content=f"msg_{i}")]) for i in range(3)]
         ctxs = [TransformContext() for _ in range(3)]
         tasks = [asyncio.create_task(engine.submit(reqs[i], ctxs[i])) for i in range(3)]
         results = await asyncio.gather(*tasks)
@@ -117,14 +120,12 @@ class TestBatchingEngine:
     @pytest.mark.asyncio
     async def test_provider_error_fails_all(self) -> None:
         """If provider fails, all pending futures raise."""
+
         async def fail_caller(_batched: BatchedRequest) -> BatchedResponse:
             raise RuntimeError("provider down")
 
         engine = BatchingEngine(max_batch_size=2, max_wait_ms=5.0, provider_caller=fail_caller)
-        reqs = [
-            Request(messages=[Message(role="user", content=f"msg_{i}")])
-            for i in range(2)
-        ]
+        reqs = [Request(messages=[Message(role="user", content=f"msg_{i}")]) for i in range(2)]
         ctxs = [TransformContext() for _ in range(2)]
         tasks = [asyncio.create_task(engine.submit(reqs[i], ctxs[i])) for i in range(2)]
         for task in tasks:
@@ -134,9 +135,16 @@ class TestBatchingEngine:
     @pytest.mark.asyncio
     async def test_shutdown_flushes_pending(self) -> None:
         """Shutdown flushes all pending requests."""
+
         async def fake_caller(_batched: BatchedRequest) -> BatchedResponse:
             return BatchedResponse(
-                choices=[{"index": 0, "message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}],
+                choices=[
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "ok"},
+                        "finish_reason": "stop",
+                    }
+                ],
                 usage={},
                 model="gpt-4",
             )
@@ -189,7 +197,13 @@ class TestBatchingEngine:
         async def counting_caller(_batched: BatchedRequest) -> BatchedResponse:
             responses.append("call")
             return BatchedResponse(
-                choices=[{"index": 0, "message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}],
+                choices=[
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "ok"},
+                        "finish_reason": "stop",
+                    }
+                ],
                 usage={},
                 model="gpt-4",
             )
@@ -223,6 +237,7 @@ class TestBatchingEngine:
 # =============================================================================
 # BatchingTransform (pipeline integration)
 # =============================================================================
+
 
 class TestBatchingTransform:
     """Tests for the pipeline-friendly BatchingTransform."""

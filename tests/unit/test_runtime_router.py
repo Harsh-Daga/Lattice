@@ -1,6 +1,5 @@
 """Tests for runtime router."""
 
-
 from lattice.core.context import TransformContext
 from lattice.core.policy import OptimizationPolicy, Skip
 from lattice.core.transport import Message, Request
@@ -39,7 +38,8 @@ class TestRuntimeRouter:
             messages=[
                 Message(
                     role="user",
-                    content="Prove the theorem step by step using formal logic and deduction. " * 200,
+                    content="Prove the theorem step by step using formal logic and deduction. "
+                    * 200,
                 )
             ],
             tools=[{"function": {"name": "prover"}}],
@@ -50,17 +50,13 @@ class TestRuntimeRouter:
 
     def test_depth_score(self):
         router = RuntimeRouter()
-        req = Request(
-            messages=[Message(role="user", content=f"msg{i}") for i in range(12)]
-        )
+        req = Request(messages=[Message(role="user", content=f"msg{i}") for i in range(12)])
         decision = router.classify(req)
         assert decision.features["depth"] == 10
 
     def test_code_score(self):
         router = RuntimeRouter()
-        req = Request(
-            messages=[Message(role="user", content="def foo(): pass" * 100)]
-        )
+        req = Request(messages=[Message(role="user", content="def foo(): pass" * 100)])
         decision = router.classify(req)
         assert decision.features["code"] > 0
 
@@ -112,9 +108,7 @@ class TestRuntimeRouter:
             reasoning_keywords=["custom_reasoning_kw"],
             code_indicators=["custom_code_kw"],
         )
-        req = Request(
-            messages=[Message(role="user", content="custom_reasoning_kw custom_code_kw")]
-        )
+        req = Request(messages=[Message(role="user", content="custom_reasoning_kw custom_code_kw")])
         decision = router.classify(req)
         assert decision.features["reasoning"] > 0
         assert decision.features["code"] > 0

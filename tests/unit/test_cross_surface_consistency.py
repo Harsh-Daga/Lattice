@@ -16,17 +16,16 @@ import pytest
 from lattice.client import LatticeClient
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.pipeline_factory import build_default_pipeline
 from lattice.core.result import unwrap
 from lattice.core.serialization import message_from_dict, message_to_dict
 from lattice.core.transport import Request
 from lattice.integrations.mcp import LatticeMCPTools
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def sample_messages() -> list[dict[str, Any]]:
@@ -47,7 +46,10 @@ def config() -> LatticeConfig:
 # Surface implementations
 # =============================================================================
 
-async def _run_direct_pipeline(messages: list[dict[str, Any]], config: LatticeConfig) -> dict[str, Any]:
+
+async def _run_direct_pipeline(
+    messages: list[dict[str, Any]], config: LatticeConfig
+) -> dict[str, Any]:
     """Simulate the proxy surface: direct pipeline.process()."""
     pipeline = build_default_pipeline(config)
     request = Request(messages=[message_from_dict(m) for m in messages], model="gpt-4")
@@ -69,6 +71,7 @@ async def _run_sdk_client(messages: list[dict[str, Any]], config: LatticeConfig)
     # compress() is sync and calls asyncio.run internally;
     # use to_thread to avoid 'cannot be called from a running event loop'
     import asyncio
+
     result = await asyncio.to_thread(client.compress, messages=messages, model="openai/gpt-4")
     return {
         "messages": result.compressed_messages,
@@ -85,7 +88,10 @@ async def _run_mcp_tool(messages: list[dict[str, Any]], config: LatticeConfig) -
     tools.config = config
     tools.pipeline = build_default_pipeline(config)
     import asyncio
-    result = await asyncio.to_thread(tools.lattice_compress, messages=messages, model="openai/gpt-4")
+
+    result = await asyncio.to_thread(
+        tools.lattice_compress, messages=messages, model="openai/gpt-4"
+    )
     return {
         "messages": result["compressed_messages"],
         "tokens_before": result["tokens_before"],
@@ -99,11 +105,14 @@ async def _run_mcp_tool(messages: list[dict[str, Any]], config: LatticeConfig) -
 # Consistency tests
 # =============================================================================
 
+
 class TestCrossSurfaceCompression:
     """All surfaces produce the same compressed output for the same input."""
 
     @pytest.mark.asyncio
-    async def test_proxy_vs_sdk_same_output(self, sample_messages: list[dict[str, Any]], config: LatticeConfig) -> None:
+    async def test_proxy_vs_sdk_same_output(
+        self, sample_messages: list[dict[str, Any]], config: LatticeConfig
+    ) -> None:
         """Direct pipeline and SDK client produce identical compressed messages."""
         proxy_result = await _run_direct_pipeline(sample_messages, config)
         sdk_result = await _run_sdk_client(sample_messages, config)
@@ -118,7 +127,9 @@ class TestCrossSurfaceCompression:
         assert proxy_result["tokens_after"] == sdk_result["tokens_after"]
 
     @pytest.mark.asyncio
-    async def test_proxy_vs_mcp_same_output(self, sample_messages: list[dict[str, Any]], config: LatticeConfig) -> None:
+    async def test_proxy_vs_mcp_same_output(
+        self, sample_messages: list[dict[str, Any]], config: LatticeConfig
+    ) -> None:
         """Direct pipeline and MCP tool produce identical compressed messages."""
         proxy_result = await _run_direct_pipeline(sample_messages, config)
         mcp_result = await _run_mcp_tool(sample_messages, config)
@@ -131,7 +142,9 @@ class TestCrossSurfaceCompression:
         assert proxy_result["tokens_after"] == mcp_result["tokens_after"]
 
     @pytest.mark.asyncio
-    async def test_sdk_vs_mcp_same_output(self, sample_messages: list[dict[str, Any]], config: LatticeConfig) -> None:
+    async def test_sdk_vs_mcp_same_output(
+        self, sample_messages: list[dict[str, Any]], config: LatticeConfig
+    ) -> None:
         """SDK client and MCP tool produce identical compressed messages."""
         sdk_result = await _run_sdk_client(sample_messages, config)
         mcp_result = await _run_mcp_tool(sample_messages, config)
@@ -171,7 +184,9 @@ class TestCrossSurfaceModeConsistency:
     """Compression mode behaves the same across all surfaces."""
 
     @pytest.mark.asyncio
-    async def test_safe_mode_produces_same_reduction(self, sample_messages: list[dict[str, Any]]) -> None:
+    async def test_safe_mode_produces_same_reduction(
+        self, sample_messages: list[dict[str, Any]]
+    ) -> None:
         """Safe mode yields identical reduction ratios across surfaces."""
         config = LatticeConfig(compression_mode="safe")
 
@@ -188,7 +203,9 @@ class TestCrossSurfaceModeConsistency:
         assert proxy_ratio == pytest.approx(mcp_ratio, abs=0.01)
 
     @pytest.mark.asyncio
-    async def test_aggressive_mode_produces_same_reduction(self, sample_messages: list[dict[str, Any]]) -> None:
+    async def test_aggressive_mode_produces_same_reduction(
+        self, sample_messages: list[dict[str, Any]]
+    ) -> None:
         """Aggressive mode yields identical reduction ratios across surfaces."""
         config = LatticeConfig(compression_mode="aggressive")
 
@@ -208,27 +225,41 @@ class TestCrossSurfaceIdempotence:
     """Running compression twice on the same input yields the same output."""
 
     @pytest.mark.asyncio
-    async def test_sdk_idempotent(self, sample_messages: list[dict[str, Any]], config: LatticeConfig) -> None:
+    async def test_sdk_idempotent(
+        self, sample_messages: list[dict[str, Any]], config: LatticeConfig
+    ) -> None:
         """LatticeClient.compress is idempotent."""
         client = LatticeClient(config=config)
         import asyncio
-        result1 = await asyncio.to_thread(client.compress, messages=sample_messages, model="openai/gpt-4")
-        result2 = await asyncio.to_thread(client.compress, messages=result1.compressed_messages, model="openai/gpt-4")
+
+        result1 = await asyncio.to_thread(
+            client.compress, messages=sample_messages, model="openai/gpt-4"
+        )
+        result2 = await asyncio.to_thread(
+            client.compress, messages=result1.compressed_messages, model="openai/gpt-4"
+        )
 
         contents1 = [m.get("content", "") for m in result1.compressed_messages]
         contents2 = [m.get("content", "") for m in result2.compressed_messages]
         assert contents1 == contents2
 
     @pytest.mark.asyncio
-    async def test_mcp_idempotent(self, sample_messages: list[dict[str, Any]], config: LatticeConfig) -> None:
+    async def test_mcp_idempotent(
+        self, sample_messages: list[dict[str, Any]], config: LatticeConfig
+    ) -> None:
         """LatticeMCPTools.lattice_compress is idempotent."""
         tools = LatticeMCPTools()
         tools.config = config
         tools.pipeline = build_default_pipeline(config)
 
         import asyncio
-        result1 = await asyncio.to_thread(tools.lattice_compress, messages=sample_messages, model="openai/gpt-4")
-        result2 = await asyncio.to_thread(tools.lattice_compress, messages=result1["compressed_messages"], model="openai/gpt-4")
+
+        result1 = await asyncio.to_thread(
+            tools.lattice_compress, messages=sample_messages, model="openai/gpt-4"
+        )
+        result2 = await asyncio.to_thread(
+            tools.lattice_compress, messages=result1["compressed_messages"], model="openai/gpt-4"
+        )
 
         contents1 = [m.get("content", "") for m in result1["compressed_messages"]]
         contents2 = [m.get("content", "") for m in result2["compressed_messages"]]

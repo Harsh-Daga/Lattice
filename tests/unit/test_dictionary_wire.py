@@ -15,7 +15,6 @@ Covers:
 from __future__ import annotations
 
 import json
-import struct
 
 import pytest
 
@@ -28,7 +27,6 @@ from lattice.protocol.dictionary_codec import (
 )
 from lattice.protocol.dictionary_static import STATIC_COUNT, STATIC_REVERSE, static_entry
 from lattice.protocol.framing import FrameFlags
-
 
 # =============================================================================
 # Varint
@@ -427,8 +425,7 @@ class TestStress:
     def test_large_json(self) -> None:
         """Compress and decompress a large JSON payload."""
         messages = [
-            {"role": "user", "content": f"Message number {i} with some text."}
-            for i in range(100)
+            {"role": "user", "content": f"Message number {i} with some text."} for i in range(100)
         ]
         data = json.dumps({"model": "gpt-4", "messages": messages}).encode("utf-8")
         codec = DictionaryCodec()
@@ -438,8 +435,7 @@ class TestStress:
     def test_sse_lines(self) -> None:
         """Compress typical SSE stream data."""
         lines = b"\n\n".join(
-            b'data: {"choices":[{"delta":{"content":"hello "}}]}'
-            for _ in range(50)
+            b'data: {"choices":[{"delta":{"content":"hello "}}]}' for _ in range(50)
         )
         codec = DictionaryCodec()
         compressed = codec.compress(lines)

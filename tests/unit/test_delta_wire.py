@@ -8,7 +8,6 @@ from lattice.core.delta_wire import (
     delta_wire_bytes,
 )
 
-
 SAMPLE_MESSAGES = [
     {"role": "system", "content": "You are a helpful assistant."},
     {"role": "user", "content": "Hello!"},
@@ -19,9 +18,7 @@ NEW_MESSAGES = [{"role": "user", "content": "How are you?"}]
 
 
 def test_delta_wire_bytes() -> None:
-    full_bytes, delta_bytes = delta_wire_bytes(
-        SAMPLE_MESSAGES, NEW_MESSAGES, "sess_abc", 3
-    )
+    full_bytes, delta_bytes = delta_wire_bytes(SAMPLE_MESSAGES, NEW_MESSAGES, "sess_abc", 3)
     assert full_bytes > 0
     assert delta_bytes > 0
     assert delta_bytes < full_bytes

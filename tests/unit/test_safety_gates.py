@@ -7,8 +7,6 @@ If a transform expands context too much, the test fails.
 
 from __future__ import annotations
 
-import pytest
-
 from benchmarks.framework.types import QualityMeasurement, TaskEquivalenceScore
 from lattice.core.config import LatticeConfig
 from lattice.core.transport import Message, Request
@@ -60,7 +58,9 @@ class TestTaskEquivalenceScoring:
         assert te.composite < 1.0
 
     def test_harmful_drift_penalizes(self) -> None:
-        te = TaskEquivalenceScore(harmful_drift=0.5, entity_preservation=0.7, constraint_preservation=0.7)
+        te = TaskEquivalenceScore(
+            harmful_drift=0.5, entity_preservation=0.7, constraint_preservation=0.7
+        )
         assert te.composite < 0.85
         assert te.passed is False  # drift + entity loss pulls composite below 0.85
 
@@ -91,34 +91,51 @@ class TestSemanticRiskScoring:
         assert score.level == "LOW"
 
     def test_high_risk_strict_instructions(self) -> None:
-        req = Request(messages=[Message(
-            role="user",
-            content="Do not change the format. You must preserve exactly the JSON output.",
-        )])
+        req = Request(
+            messages=[
+                Message(
+                    role="user",
+                    content="Do not change the format. You must preserve exactly the JSON output.",
+                )
+            ]
+        )
         score = compute_risk_score(req)
         assert score.total >= 10.0
 
     def test_high_risk_code_blocks(self) -> None:
-        req = Request(messages=[Message(
-            role="user",
-            content="```python\ndef foo():\n    pass\n```\nDo not change this code. Keep exactly the format.",
-        )])
+        req = Request(
+            messages=[
+                Message(
+                    role="user",
+                    content="```python\ndef foo():\n    pass\n```\nDo not change this code. Keep exactly the format.",
+                )
+            ]
+        )
         score = compute_risk_score(req)
         assert score.strict_instructions >= 3.0
         # Code blocks alone don't trigger structured output; strict instructions do
 
     def test_high_risk_sensitive_domain(self) -> None:
-        req = Request(messages=[Message(
-            role="user", content="This medical diagnosis must be accurate. Financial account numbers are confidential.",
-        )])
+        req = Request(
+            messages=[
+                Message(
+                    role="user",
+                    content="This medical diagnosis must be accurate. Financial account numbers are confidential.",
+                )
+            ]
+        )
         score = compute_risk_score(req)
         assert score.sensitive_domain >= 5.0
 
     def test_high_risk_reasoning_heavy(self) -> None:
-        req = Request(messages=[Message(
-            role="user",
-            content="Reason step by step. Think carefully about why the system failed. Explain why and deduce the root cause.",
-        )])
+        req = Request(
+            messages=[
+                Message(
+                    role="user",
+                    content="Reason step by step. Think carefully about why the system failed. Explain why and deduce the root cause.",
+                )
+            ]
+        )
         score = compute_risk_score(req)
         assert score.reasoning_heavy >= 10.0
 
@@ -132,7 +149,13 @@ class TestTransformSafetyBuckets:
     """Every transform has a safety bucket assignment."""
 
     def test_safe_transforms(self) -> None:
-        for name in ("tool_filter", "prefix_optimizer", "output_cleanup", "content_profiler", "cache_arbitrage"):
+        for name in (
+            "tool_filter",
+            "prefix_optimizer",
+            "output_cleanup",
+            "content_profiler",
+            "cache_arbitrage",
+        ):
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.SAFE, name
 
     def test_conditional_transforms(self) -> None:
@@ -144,7 +167,10 @@ class TestTransformSafetyBuckets:
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.DANGEROUS, name
 
     def test_unknown_transform_defaults_to_conditional(self) -> None:
-        assert get_transform_safety_bucket("nonexistent_transform") == TransformSafetyBucket.CONDITIONAL
+        assert (
+            get_transform_safety_bucket("nonexistent_transform")
+            == TransformSafetyBucket.CONDITIONAL
+        )
 
     def test_alias_prefix_opt_maps_to_safe(self) -> None:
         assert get_transform_safety_bucket("prefix_opt") == TransformSafetyBucket.SAFE
@@ -153,16 +179,26 @@ class TestTransformSafetyBuckets:
         assert get_transform_safety_bucket("tool_output_filter") == TransformSafetyBucket.SAFE
 
     def test_alias_message_deduplicator_maps_to_conditional(self) -> None:
-        assert get_transform_safety_bucket("message_deduplicator") == TransformSafetyBucket.CONDITIONAL
+        assert (
+            get_transform_safety_bucket("message_deduplicator") == TransformSafetyBucket.CONDITIONAL
+        )
 
     def test_alias_dictionary_compressor_maps_to_conditional(self) -> None:
-        assert get_transform_safety_bucket("dictionary_compressor") == TransformSafetyBucket.CONDITIONAL
+        assert (
+            get_transform_safety_bucket("dictionary_compressor")
+            == TransformSafetyBucket.CONDITIONAL
+        )
 
     def test_alias_grammar_compressor_maps_to_conditional(self) -> None:
-        assert get_transform_safety_bucket("grammar_compressor") == TransformSafetyBucket.CONDITIONAL
+        assert (
+            get_transform_safety_bucket("grammar_compressor") == TransformSafetyBucket.CONDITIONAL
+        )
 
     def test_alias_hierarchical_summarizer_maps_to_dangerous(self) -> None:
-        assert get_transform_safety_bucket("hierarchical_summarizer") == TransformSafetyBucket.DANGEROUS
+        assert (
+            get_transform_safety_bucket("hierarchical_summarizer")
+            == TransformSafetyBucket.DANGEROUS
+        )
 
 
 class TestRiskGatingBehavior:
@@ -175,7 +211,9 @@ class TestRiskGatingBehavior:
         assert reason == "safe_transform"
 
     def test_conditional_blocked_at_high_risk(self) -> None:
-        risk = SemanticRiskScore(strict_instructions=30, sensitive_domain=20, high_stakes_entities=15)
+        risk = SemanticRiskScore(
+            strict_instructions=30, sensitive_domain=20, high_stakes_entities=15
+        )
         assert risk.total > 60
         allowed, reason = transform_allowed_at_risk("semantic_compress", risk)
         assert allowed is False
@@ -188,7 +226,9 @@ class TestRiskGatingBehavior:
         assert allowed is True
 
     def test_dangerous_blocked_at_medium_risk(self) -> None:
-        risk = SemanticRiskScore(sensitive_domain=10, high_stakes_entities=15, strict_instructions=10)
+        risk = SemanticRiskScore(
+            sensitive_domain=10, high_stakes_entities=15, strict_instructions=10
+        )
         assert risk.level in ("MEDIUM", "HIGH")
         allowed, reason = transform_allowed_at_risk("structural_fingerprint", risk)
         assert allowed is False
@@ -213,17 +253,19 @@ class TestScenarioSafetyExpectations:
     """Every scenario has explicit safety expectations."""
 
     def test_all_scenarios_have_safety_expectations(self) -> None:
-        from benchmarks.scenarios.prompts import ALL_SCENARIOS, _SCENARIO_SAFETY
+        from benchmarks.scenarios.prompts import _SCENARIO_SAFETY, ALL_SCENARIOS
 
         for scenario in ALL_SCENARIOS:
             safety = _SCENARIO_SAFETY.get(scenario.name, {})
             assert "safe_transforms" in safety, f"{scenario.name} missing safe_transforms"
             assert "forbidden_transforms" in safety, f"{scenario.name} missing forbidden_transforms"
-            assert "required_answer_properties" in safety, f"{scenario.name} missing required_answer_properties"
+            assert "required_answer_properties" in safety, (
+                f"{scenario.name} missing required_answer_properties"
+            )
             assert "judge_rubric" in safety, f"{scenario.name} missing judge_rubric"
 
     def test_forbidden_transforms_never_in_safe_list(self) -> None:
-        from benchmarks.scenarios.prompts import ALL_SCENARIOS, _SCENARIO_SAFETY
+        from benchmarks.scenarios.prompts import _SCENARIO_SAFETY, ALL_SCENARIOS
 
         for scenario in ALL_SCENARIOS:
             safety = _SCENARIO_SAFETY.get(scenario.name, {})
@@ -254,8 +296,10 @@ class TestScenarioSafetyExpectations:
         # Reasoning-heavy: structural_fingerprint must be forbidden
         assert "structural_fingerprint" in safety.get("forbidden_transforms", [])
         # Must preserve reasoning
-        assert any("reasoning" in p.lower() or "mitigation" in p.lower()
-                   for p in safety.get("required_answer_properties", []))
+        assert any(
+            "reasoning" in p.lower() or "mitigation" in p.lower()
+            for p in safety.get("required_answer_properties", [])
+        )
 
 
 class TestEntityPreservation:

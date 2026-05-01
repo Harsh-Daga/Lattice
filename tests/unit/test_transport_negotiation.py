@@ -126,9 +126,7 @@ class TestDeltaWireNegotiationOutcome:
             base_sequence=3,
             anchor_version=7,
         )
-        outcome = encoder.encode_negotiation_outcome(
-            accepted=True, fallback_reason=""
-        )
+        outcome = encoder.encode_negotiation_outcome(accepted=True, fallback_reason="")
         assert outcome["delta_accepted"] is True
         assert outcome["delta_fallback_reason"] == ""
         assert outcome["anchor_version"] == 7

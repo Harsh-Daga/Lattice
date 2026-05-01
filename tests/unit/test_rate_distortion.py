@@ -31,11 +31,7 @@ def test_rate_distortion_preserves_question_under_tight_budget() -> None:
 
 def test_rate_distortion_removes_low_value_under_relaxed_budget() -> None:
     transform = RateDistortionCompressor(distortion_budget=0.03, max_input_tokens=1)
-    text = (
-        "Fluff one. "
-        "Fluff two. "
-        "Critical summary because this is important and required."
-    )
+    text = "Fluff one. Fluff two. Critical summary because this is important and required."
     request = Request(messages=[Message(role="user", content=text)])
     result = transform.process(request, TransformContext())
     modified = unwrap(result)
