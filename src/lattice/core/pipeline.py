@@ -93,6 +93,15 @@ class CompressorPipeline:
             "hierarchical_summary",
         }
     )
+    _irreversible_transforms: frozenset[str] = frozenset(
+        {
+            "message_dedup",
+            "rate_distortion",
+            "semantic_compress",
+            "structural_fingerprint",
+            "hierarchical_summary",
+        }
+    )
 
     def __init__(
         self,
@@ -371,30 +380,52 @@ class CompressorPipeline:
                         max_ratio=max_ratio,
                     )
                     context.record_metric(transform.name, "expansion_aborted", True)
-                    context.record_metric(
-                        transform.name, "expansion_ratio", round(expansion_ratio, 2)
-                    )
-                    if self.config.graceful_degradation:
-                        working = backup.copy()
-                        continue
-                    return Err(
-                        TransformError(
-                            transform=transform.name,
-                            code="PIPELINE_EXPANSION_VIOLATION",
-                            message=(
-                                f"Transform expanded tokens {expansion_ratio:.1f}x "
-                                f"(max {max_ratio}x)"
-                            ),
-                            detail={
-                                "tokens_before": tokens_before,
-                                "tokens_after": working_tokens,
-                                "expansion_ratio": round(expansion_ratio, 2),
-                                "max_ratio": max_ratio,
-                            },
-                        )
-                    )
-                context.record_metric(transform.name, "expansion_ratio", round(expansion_ratio, 2))
+                    context.record_metric(transform.name, "expansion_ratio", round(expansion_ratio, 2))
+                    working = backup.copy()
+                    continue
             # ---- End expansion guardrail ----
+
+            # ---- PSG safety check ----
+            # Entity/format checks only for irreversible transforms that
+            # genuinely discard content. Reversible transforms (reference_sub,
+            # dictionary_compress, grammar_compress) store referent mappings.
+            if transform.name in self._irreversible_transforms:
+                from lattice.core.guardrails import (
+                    check_entity_preservation,
+                    check_format_preservation,
+                )
+
+                protected_spans: list[int] = working.metadata.get("_lattice_protected_spans", [])
+                if protected_spans:
+                    text_before = "\n".join(m.content for m in backup.messages)
+                    text_after = "\n".join(m.content for m in working.messages)
+                    entity_decision = check_entity_preservation(text_before, text_after)
+                    if entity_decision.action.value == "rollback":
+                        self._log.warning(
+                            "transform_entity_loss_rollback",
+                            request_id=context.request_id,
+                            transform=transform.name,
+                            reason=entity_decision.reason,
+                        )
+                        context.record_metric(transform.name, "safety_rollback", True)
+                        context.record_metric(transform.name, "rollback_reason", entity_decision.reason)
+                        working = backup.copy()
+                        if self.config.graceful_degradation:
+                            continue
+                    fmt_decision = check_format_preservation(text_before, text_after)
+                    if fmt_decision.action.value == "rollback":
+                        self._log.warning(
+                            "transform_format_loss_rollback",
+                            request_id=context.request_id,
+                            transform=transform.name,
+                            reason=fmt_decision.reason,
+                        )
+                        context.record_metric(transform.name, "safety_rollback", True)
+                        context.record_metric(transform.name, "rollback_reason", fmt_decision.reason)
+                        working = backup.copy()
+                        if self.config.graceful_degradation:
+                            continue
+            # ---- End PSG safety check ----
 
             backup = working.copy()
             context.mark_transform_applied(transform.name)

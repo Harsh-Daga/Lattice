@@ -21,7 +21,9 @@ from __future__ import annotations
 import itertools
 import re
 
-from lattice.core.context import TransformContext
+from lattice.core.context import (
+    TransformContext,
+)
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result

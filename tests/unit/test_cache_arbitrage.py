@@ -1,6 +1,7 @@
 """Unit tests for cache arbitrage optimizer."""
 
 from __future__ import annotations
+
 from typing import Any
 
 from lattice.core.context import TransformContext
