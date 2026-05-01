@@ -185,17 +185,11 @@ def evaluate_response(
 ) -> QualityMeasurement:
     """Evaluate quality of optimized response vs baseline.
 
-    Args:
-        baseline_response: Response from uncompressed request.
-        optimized_response: Response from compressed request.
-        expect_json: Whether responses should contain JSON.
-        json_schema: Optional JSON schema for validation.
-        baseline_tool_calls: Tool calls from baseline response.
-        optimized_tool_calls: Tool calls from optimized response.
-        pass_threshold: Minimum semantic similarity to pass.
-
-    Returns:
-        QualityMeasurement with all metrics.
+    This is a compatibility bridge for local feature evals (no provider calls).
+    For real provider validation, use evaluate_task_equivalence_structural()
+    and evaluate_task_equivalence_with_judge() in benchmarks/evals/runner.py.
+    The task-equivalence score synthesized here is derived from semantic
+    similarity — it is NOT an independent task-equivalence measurement.
     """
     semantic = compute_semantic_similarity(baseline_response, optimized_response)
     exact = baseline_response.strip() == optimized_response.strip()

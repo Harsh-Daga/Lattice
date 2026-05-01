@@ -319,8 +319,8 @@ _UNKNOWN_DEFAULT = TransformSafetyBucket.DANGEROUS
 def get_transform_safety_bucket(name: str) -> TransformSafetyBucket:
     """Return the safety bucket for a transform by name.
 
-    Unknown names default to CONDITIONAL — they must prove safety,
-    not assume it.  This prevents alias-based bypass.
+    Unknown names default to DANGEROUS — they must be explicitly registered
+    in the safety map to prove safety. This prevents alias-based bypass.
     """
     return _TRANSFORM_SAFETY_MAP.get(name, _UNKNOWN_DEFAULT)
 

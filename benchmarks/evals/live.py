@@ -174,7 +174,9 @@ async def run_scenario(
             json_schema=scenario.json_schema,
         )
     else:
-        quality = QualityMeasurement(semantic_similarity=1.0)
+        # Dry-run / no comparison available — quality is explicitly unavailable.
+        # A 1.0 placeholder would be misleading as a real quality signal.
+        quality = QualityMeasurement(semantic_similarity=0.0)
 
     usage_summary: dict[str, Any] = {}
     if baseline_usage or optimized_usage:

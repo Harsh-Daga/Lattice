@@ -1745,6 +1745,27 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         if not x_lattice_disable_transforms:
             internal_response = await deps.pipeline.reverse(internal_response, ctx)
 
+        # ---- Production MILV enforcement ----
+        # Check blank-output post-response for flagged high-risk requests.
+        validation_flag = request.metadata.get("_lattice_validation", {})
+        if isinstance(validation_flag, dict) and validation_flag.get("flagged"):
+            resp_text = internal_response.content if internal_response else ""
+            if not resp_text or not resp_text.strip():
+                deps.logger.warning(
+                    "milv_blank_output_detected",
+                    session_id=x_lattice_session_id or "",
+                    reason=validation_flag.get("reason", "unknown"),
+                )
+                deps.metrics.increment("lattice_milv_blank_output_rollback")
+                # Record the actual validation outcome
+                request.metadata["_lattice_validation"] = {
+                    **validation_flag,
+                    "blank_output": True,
+                    "rollback_reason": "blank_output_detected",
+                    "task_equivalence_composite": 0.0,
+                }
+        # ---- End MILV enforcement ----
+
         elapsed_ms = (time.perf_counter() - start_llm) * 1000
         deps.metrics.record_latency("lattice_llm_latency_ms", elapsed_ms)
         response_body = deps.serialize_openai_response(internal_response, compressed_request)
