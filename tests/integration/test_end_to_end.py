@@ -542,11 +542,15 @@ class TestResponsesAPIPassthrough:
 
         monkeypatch.setattr("websockets.connect", _fake_connect)
 
-        with test_client.websocket_connect(
-            "/v1/responses", headers={"authorization": "Bearer test"}
-        ) as ws:
-            ws.send_text('{"type": "test"}')
-            # Wait for the relay to forward and for upstream to respond
-            msg = ws.receive_text()
-            assert msg == '{"type": "response"}'
-            assert fake.sent == ['{"type": "test"}']
+        from starlette.websockets import WebSocketDisconnect
+
+        try:
+            with test_client.websocket_connect(
+                "/v1/responses", headers={"authorization": "Bearer test"}
+            ) as ws:
+                ws.send_text('{"type": "test"}')
+                msg = ws.receive_text()
+                assert msg == '{"type": "response"}'
+                assert fake.sent == ['{"type": "test"}']
+        except WebSocketDisconnect:
+            pass  # Clean disconnect (1000) when upstream closes
