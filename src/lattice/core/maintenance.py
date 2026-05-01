@@ -96,14 +96,13 @@ class MaintenanceCoordinator:
             if now - self._last_run < self.interval_seconds:
                 self.throttled_tick_count += 1
                 return {}
+            self._last_run = now
 
         return await self._run_all()
 
     async def _run_all(self) -> dict[str, MaintenanceResult]:
         """Execute all registered callbacks and update observable state."""
         now = time.monotonic()
-        async with self._lock:
-            self._last_run = now
         self.last_attempt = now
 
         results: dict[str, MaintenanceResult] = {}
@@ -135,7 +134,7 @@ class MaintenanceCoordinator:
         while True:
             await asyncio.sleep(self.interval_seconds)
             try:
-                await self._run_all()
+                await self.tick()
             except asyncio.CancelledError:
                 raise
             except Exception:
