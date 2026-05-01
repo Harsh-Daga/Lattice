@@ -325,9 +325,8 @@ class SubmodularContextSelector(ReversibleSyncTransform):
                 kept.append(i)
         # Tool / tool_call messages (structural; must NEVER be dropped)
         for i, msg in enumerate(request.messages):
-            if i not in kept:
-                if msg.tool_call_id is not None or msg.tool_calls:
-                    kept.append(i)
+            if i not in kept and (msg.tool_call_id is not None or msg.tool_calls):
+                kept.append(i)
 
         return [request.messages[i].copy() for i in kept]
 

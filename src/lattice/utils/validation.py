@@ -201,10 +201,7 @@ def compute_risk_score(request: Request) -> SemanticRiskScore:
         from collections import Counter
         line_counts = Counter(lines)
         repeated_count = sum(c for line, c in line_counts.items() if c >= 3)
-        if repeated_count >= 3:
-            ir_score = min(repeated_count * 2.0, 10.0)
-        else:
-            ir_score = 0.0
+        ir_score = min(repeated_count * 2.0, 10.0) if repeated_count >= 3 else 0.0
     else:
         ir_score = 0.0
 
@@ -344,9 +341,7 @@ def _looks_structured(text: str) -> bool:
         return False
     if stripped.startswith(_STRUCTURED_PREFIXES):
         return True
-    if "\n|" in text or re.search(r"^\s*\|.*\|\s*$", text, re.MULTILINE):
-        return True
-    return False
+    return bool("\n|" in text or re.search(r"^\s*\|.*\|\s*$", text, re.MULTILINE))
 
 
 def _has_high_stakes_entities(text: str) -> bool:
@@ -354,9 +349,7 @@ def _has_high_stakes_entities(text: str) -> bool:
         return True
     if re.search(r"https?://[^\s)]+", text, re.IGNORECASE):
         return True
-    if len(re.findall(r"\b\d+(?:\.\d+)?\b", text)) >= 5:
-        return True
-    return False
+    return len(re.findall(r"\b\d+(?:\.\d+)?\b", text)) >= 5
 
 
 def request_safety_profile(request: Request) -> SafetyProfile:

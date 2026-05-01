@@ -174,7 +174,7 @@ class BloomFilter:
                 "Cannot merge Bloom filters with different parameters"
             )
         merged = BloomFilter(self.size, self.num_hashes)
-        merged._bits = [a or b for a, b in zip(self._bits, other._bits)]
+        merged._bits = [a or b for a, b in zip(self._bits, other._bits, strict=False)]
         return merged
 
     def __repr__(self) -> str:  # pragma: no cover

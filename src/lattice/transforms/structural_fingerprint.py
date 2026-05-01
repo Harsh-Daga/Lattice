@@ -86,10 +86,7 @@ _PROGRESS_PATTERNS = [
 def _is_progress_bar(line: str) -> bool:
     """Detect progress bars, spinners, and loading indicators."""
     stripped = _strip_ansi(line)
-    for pattern in _PROGRESS_PATTERNS:
-        if pattern.match(stripped):
-            return True
-    return False
+    return any(pattern.match(stripped) for pattern in _PROGRESS_PATTERNS)
 
 
 # =============================================================================
@@ -195,10 +192,7 @@ _MULTI_LINE_PATTERNS = [
 def _is_multi_line_pattern_start(line: str) -> bool:
     """Check if a line starts a multi-line pattern."""
     stripped = _strip_ansi(line)
-    for pattern in _MULTI_LINE_PATTERNS:
-        if pattern.match(stripped):
-            return True
-    return False
+    return any(pattern.match(stripped) for pattern in _MULTI_LINE_PATTERNS)
 
 
 # =============================================================================

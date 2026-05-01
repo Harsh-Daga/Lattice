@@ -399,9 +399,7 @@ class HTTPProxyServer:
 
         # Determine if connection should close
         conn = request.headers.get("connection", "").lower()
-        if conn == "close" or request.version == "HTTP/1.0":
-            return True
-        return False
+        return bool(conn == "close" or request.version == "HTTP/1.0")
 
     def _is_streaming_request(self, request: _HTTPRequest) -> bool:
         """Detect if this is a streaming request (SSE)."""
@@ -750,12 +748,10 @@ class SidecarThread:
             self._thread.join(timeout=timeout)
             if self._thread.is_alive() and self._loop is not None:
                 # Forcefully cancel pending tasks
-                try:
+                with contextlib.suppress(RuntimeError):
                     self._loop.call_soon_threadsafe(
                         lambda: [t.cancel() for t in asyncio.all_tasks(self._loop)]
                     )
-                except RuntimeError:
-                    pass
                 self._thread.join(timeout=1.0)
             self._thread = None
 

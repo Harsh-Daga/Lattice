@@ -700,10 +700,9 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
         error_messages: list[str] = []
         seen_errors: set[str] = set()
         for _ts, level, msg in log_lines:
-            if level in ("ERROR", "FATAL", "CRITICAL"):
-                if msg not in seen_errors:
-                    seen_errors.add(msg)
-                    error_messages.append(msg)
+            if level in ("ERROR", "FATAL", "CRITICAL") and msg not in seen_errors:
+                seen_errors.add(msg)
+                error_messages.append(msg)
 
         # Build summary
         result_lines: list[str] = []

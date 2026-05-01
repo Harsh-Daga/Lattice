@@ -241,7 +241,7 @@ class BatchAccumulator:
             ]
 
             # Resolve futures
-            for req, result in zip(batch, results):
+            for req, result in zip(batch, results, strict=False):
                 if not req.callback_future.done():
                     req.callback_future.set_result(result)
 

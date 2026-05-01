@@ -129,10 +129,9 @@ class GrammarCompressor(ReversibleSyncTransform):
                 if len(cell) >= self.min_value_len:
                     cell_counts[cell] = cell_counts.get(cell, 0) + 1
         for cell, count in cell_counts.items():
-            if count >= 2:
-                if cell not in alias_map:
-                    alias_map[cell] = idx
-                    idx += 1
+            if count >= 2 and cell not in alias_map:
+                alias_map[cell] = idx
+                idx += 1
         return alias_map, idx
 
     def process(

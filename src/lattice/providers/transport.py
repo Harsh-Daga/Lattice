@@ -21,6 +21,7 @@ Usage
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -1104,10 +1105,8 @@ class DirectHTTPProvider:
                     "openai-processing-ms"
                 )
                 if ttft_header:
-                    try:
+                    with contextlib.suppress(ValueError):
                         ttft_ms = float(ttft_header)
-                    except ValueError:
-                        pass
                 await self.tacc.record_ttft(provider_name, ttft_ms)
             except httpx.TimeoutException as exc:
                 elapsed_ms = (time.perf_counter() - start) * 1000

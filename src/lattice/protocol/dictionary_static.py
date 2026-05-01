@@ -201,7 +201,7 @@ _STATIC_ENTRIES: tuple[str, ...] = (
 )
 
 # Build lookup tables once at import time
-STATIC_TABLE: dict[int, str] = {i: entry for i, entry in enumerate(_STATIC_ENTRIES)}
+STATIC_TABLE: dict[int, str] = dict(enumerate(_STATIC_ENTRIES))
 STATIC_REVERSE: dict[str, int] = {entry: i for i, entry in enumerate(_STATIC_ENTRIES)}
 STATIC_COUNT = len(_STATIC_ENTRIES)
 

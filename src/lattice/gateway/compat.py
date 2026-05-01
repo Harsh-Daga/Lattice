@@ -2074,7 +2074,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
                     "http_version": deps.provider.pool.get_http_version(provider, base_url),
                     "fallback_reason": deps.provider.pool.get_fallback_reason(provider, base_url),
                 }
-                for (provider, base_url) in deps.provider.pool._clients.keys()
+                for (provider, base_url) in deps.provider.pool._clients
             }
         }
         if hasattr(deps.provider, "stall_detector"):

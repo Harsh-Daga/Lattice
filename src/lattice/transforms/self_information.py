@@ -101,10 +101,7 @@ _PROGRESS_PATTERNS = [
 def _is_progress_bar(line: str) -> bool:
     """Detect progress bars, spinners, and loading indicators."""
     stripped = _strip_ansi(line)
-    for pattern in _PROGRESS_PATTERNS:
-        if pattern.match(stripped):
-            return True
-    return False
+    return any(pattern.match(stripped) for pattern in _PROGRESS_PATTERNS)
 
 
 # =============================================================================
@@ -130,10 +127,7 @@ _TRACE_CONTINUATION_PATTERNS = [
 def _is_trace_start(line: str) -> bool:
     """Check if a line starts a stack trace."""
     stripped = _strip_ansi(line)
-    for pattern in _TRACE_START_PATTERNS:
-        if pattern.match(stripped):
-            return True
-    return False
+    return any(pattern.match(stripped) for pattern in _TRACE_START_PATTERNS)
 
 
 def _is_trace_continuation(line: str) -> bool:
@@ -143,9 +137,7 @@ def _is_trace_continuation(line: str) -> bool:
         if pattern.match(stripped):
             return True
     # Indented lines after a trace start are likely continuations
-    if line.startswith("    ") or line.startswith("\t"):
-        return True
-    return False
+    return bool(line.startswith("    ") or line.startswith("\t"))
 
 
 # =============================================================================
@@ -470,7 +462,7 @@ class SelfInformationScorer(ReversibleSyncTransform):
 
         # Score each line
         scored: list[tuple[int, float, str, str]] = []
-        for i, (line, pattern) in enumerate(zip(lines, patterns)):
+        for i, (line, pattern) in enumerate(zip(lines, patterns, strict=False)):
             if i in preserve_set:
                 score = float("inf")  # Always preserve
             else:
@@ -494,7 +486,7 @@ class SelfInformationScorer(ReversibleSyncTransform):
 
         # Sort by score descending, take top keep_count
         scored_sorted = sorted(scored, key=lambda x: x[1], reverse=True)
-        keep_indices = set(idx for idx, _, _, _ in scored_sorted[:keep_count])
+        keep_indices = {idx for idx, _, _, _ in scored_sorted[:keep_count]}
 
         # Build output with summaries for removed patterns
         result_lines: list[str] = []
