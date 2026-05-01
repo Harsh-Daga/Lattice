@@ -48,6 +48,7 @@ class MaintenanceCoordinator:
     def __init__(self, interval_seconds: float = 60.0) -> None:
         self.interval_seconds = interval_seconds
         self._last_run: float = 0.0
+        self._has_run: bool = False
         self._lock = asyncio.Lock()
         self._callbacks: list[tuple[str, Callable[[], Awaitable[MaintenanceResult]]]] = []
         # Observable state
@@ -93,10 +94,11 @@ class MaintenanceCoordinator:
         """
         now = time.monotonic()
         async with self._lock:
-            if now - self._last_run < self.interval_seconds:
+            if self._has_run and now - self._last_run < self.interval_seconds:
                 self.throttled_tick_count += 1
                 return {}
             self._last_run = now
+            self._has_run = True
 
         return await self._run_all()
 
