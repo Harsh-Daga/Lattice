@@ -441,6 +441,25 @@ class CompressorPipeline:
                     continue
             # ---- End expansion guardrail ----
 
+            # ---- Compression limit guard (REASONING tier) ----
+            task_data = working.metadata.get("_lattice_task_classification", {})
+            tier = task_data.get("execution_tier", "") if isinstance(task_data, dict) else ""
+            if tier in ("REASONING", "REASONING_SAFE") and tokens_before > 0:
+                compression_ratio = (tokens_before - working_tokens) / tokens_before
+                if compression_ratio > 0.10 and transform.name not in ("content_profiler", "runtime_contract"):
+                    self._log.warning(
+                        "transform_compression_limit_exceeded",
+                        request_id=context.request_id,
+                        transform=transform.name,
+                        compression_ratio=round(compression_ratio, 2),
+                        tier=tier,
+                    )
+                    context.record_metric(transform.name, "compression_limited", True)
+                    if self.config.graceful_degradation:
+                        working = backup.copy()
+                        continue
+            # ---- End compression limit guard ----
+
             # ---- PSG safety check ----
             # Entity/format checks only for irreversible transforms that
             # genuinely discard content. Reversible transforms (reference_sub,
@@ -507,8 +526,9 @@ class CompressorPipeline:
             context.mark_transform_applied(transform.name)
 
             # Record metrics
-            context.record_metric(transform.name, "latency_ms", round(elapsed_ms, 3))
+            context.record_metric(transform.name, "tokens_before", tokens_before)
             context.record_metric(transform.name, "tokens_after", working_tokens)
+            context.record_metric(transform.name, "latency_ms", round(elapsed_ms, 3))
 
             self._log.debug(
                 "transform_applied",
@@ -551,6 +571,37 @@ class CompressorPipeline:
             "rollback_reasons": safety_reasons,
         }
         # ---- End PSG explainability ----
+
+        # ---- Reached / Activated / Useful telemetry ----
+        # reached: transform passed all gates (config, policy, risk, scheduler, span veto)
+        # activated: transform changed the request (tokens changed)
+        # useful: activated AND no safety rollback AND tokens saved
+        transforms_reached: list[str] = []
+        transforms_activated: list[str] = []
+        transforms_useful: list[str] = []
+        for t_name, t_metrics in (transforms_metrics.items() if isinstance(transforms_metrics, dict) else {}):
+            if isinstance(t_metrics, dict):
+                tokens_before = t_metrics.get("tokens_before", 0)
+                tokens_after = t_metrics.get("tokens_after", 0)
+                changed = tokens_before != tokens_after and tokens_after > 0
+                has_safety_issue = t_metrics.get("safety_rollback") or t_metrics.get("expansion_aborted")
+                was_blocked = t_metrics.get("risk_blocked") or t_metrics.get("scheduler_blocked")
+                if not was_blocked:
+                    transforms_reached.append(t_name)
+                if not was_blocked and changed:
+                    transforms_activated.append(t_name)
+                if not was_blocked and changed and not has_safety_issue and tokens_after < tokens_before:
+                    transforms_useful.append(t_name)
+
+        working.metadata["_lattice_reachability"] = {
+            "reached": transforms_reached,
+            "activated": transforms_activated,
+            "useful": transforms_useful,
+            "reached_count": len(transforms_reached),
+            "activated_count": len(transforms_activated),
+            "useful_count": len(transforms_useful),
+        }
+        # ---- End reachability telemetry ----
         budget_exhausted = budget_skipped_count > 0
         working.metadata["_lattice_runtime_budget"] = {
             "exhausted": budget_exhausted,
