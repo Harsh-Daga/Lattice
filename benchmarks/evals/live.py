@@ -19,7 +19,7 @@ from lattice.core.pipeline import CompressorPipeline
 from lattice.core.pipeline_factory import build_default_pipeline
 from lattice.core.result import is_err, unwrap, unwrap_err
 from lattice.core.serialization import message_from_dict, message_to_dict
-from lattice.core.transport import Request
+from lattice.core.transport import Request, Response
 from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
 from lattice.utils.validation import lossy_transform_allowed, request_safety_profile, structure_signature
 
@@ -151,6 +151,18 @@ async def run_scenario(
             )
             optimized_resp_text = optimized_resp.content or ""
             optimized_usage = dict(optimized_resp.usage or {})
+            # Reverse-compress response: restore <ref_N>, <g_N>, <crossref_N>
+            # placeholders back to original values. Without this step,
+            # placeholders leak into quality evaluation and report samples.
+            try:
+                response_obj = Response(
+                    content=optimized_resp_text,
+                    model=model,
+                )
+                restored = await pipeline.reverse(response_obj, ctx)
+                optimized_resp_text = restored.content or optimized_resp_text
+            except Exception:
+                pass  # Reverse failure is non-fatal; use raw response
             optimized_latency = LatencyMeasurement(
                 pipeline_ms=pipeline_ms,
                 network_ms=(time.perf_counter() - t0_total) * 1000,

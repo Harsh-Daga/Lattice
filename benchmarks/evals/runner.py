@@ -225,11 +225,24 @@ async def run_feature_eval(
     provider: str = "",
     iterations: int = 1,
     warmup: int = 0,
+    live_provider: Any = None,
+    live_model: str = "",
+    live_provider_name: str = "",
 ) -> EvalSectionReport:
-    """Run local feature evals without provider calls."""
+    """Run local feature evals with optional live provider calls.
+
+    Without live_provider: dry-run only — validates tier matching and
+    transform reachability. Response samples and task_equivalence are
+    unavailable (marked N/A).
+
+    With live_provider: generates real outputs via model calls and
+    computes task-equivalence quality scores with the structural
+    evaluator.
+    """
     selected = scenarios or default_scenarios()
     config = LatticeConfig.auto()
     pipeline = build_full_pipeline(config)
+    dry_run = live_provider is None
     report = BenchmarkReport(
         runner_name="feature_eval",
         provider=provider or "local",
@@ -239,6 +252,7 @@ async def run_feature_eval(
             "warmup": warmup,
             "scenario_count": len(selected),
             "transforms": [t.name for t in pipeline.transforms],
+            "live_provider": not dry_run,
         },
     )
 
@@ -269,11 +283,11 @@ async def run_feature_eval(
                 telemetry,
             ) = await run_scenario(
                 scenario=scenario,
-                provider=None,
+                provider=live_provider,
                 pipeline=pipeline,
-                model=model,
-                provider_name=provider,
-                dry_run=True,
+                model=live_model or model,
+                provider_name=live_provider_name or provider,
+                dry_run=dry_run,
                 iteration=iteration,
             )
             if baseline_lat:
@@ -1029,7 +1043,6 @@ async def run_production_evals(
 ) -> ProductionEvalReport:
     """Run the full production eval bundle."""
     selected_scenarios = default_scenarios(scenarios or None)
-    # Resolve provider/model from targets for accurate report labelling
     provider_targets = default_provider_targets(
         providers, model_overrides=model_overrides,
         strict_model_selection=providers is not None,
@@ -1038,6 +1051,17 @@ async def run_production_evals(
     eval_provider = first_target.provider if first_target else ""
     eval_model = first_target.model if first_target else ""
 
+    # Set up live provider for feature_eval when providers are configured
+    live_provider_fe = None
+    if first_target and first_target.available:
+        try:
+            live_provider_fe = setup_provider(
+                provider_name=eval_provider,
+                base_url=first_target.base_url or None,
+            )
+        except Exception:
+            pass  # Feature eval proceeds in dry-run mode if provider unavailable
+
     sections = [
         await run_feature_eval(
             scenarios=selected_scenarios,
@@ -1045,6 +1069,9 @@ async def run_production_evals(
             warmup=warmup,
             provider=eval_provider,
             model=eval_model,
+            live_provider=live_provider_fe,
+            live_model=eval_model,
+            live_provider_name=eval_provider,
         ),
         await run_feature_matrix_eval(
             input_path=replay_input,
@@ -1563,6 +1590,14 @@ async def run_provider_validation(
                             timeout=30,
                         )
                         optimized_output = optimized_resp.content or ""
+                        # Reverse-compress: restore <ref_N>, <g_N>, <crossref_N>
+                        try:
+                            from lattice.core.transport import Response
+                            resp_obj = Response(content=optimized_output, model=target.model)
+                            restored = await pipeline.reverse(resp_obj, ctx)
+                            optimized_output = restored.content or optimized_output
+                        except Exception:
+                            pass  # Non-fatal
                         opt_provider_ms = (_time.perf_counter() - t0) * 1000
                     except Exception:
                         optimized_output = ""
