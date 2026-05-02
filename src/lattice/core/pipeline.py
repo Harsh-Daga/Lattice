@@ -473,6 +473,16 @@ class CompressorPipeline:
                     if self.config.graceful_degradation:
                         working = backup.copy()
                         continue
+                    return Err(
+                        TransformError(
+                            transform=transform.name,
+                            code="PSG_REASONING_COMPRESSION_LIMIT",
+                            message=(
+                                f"Compression ratio {compression_ratio:.2f} exceeds "
+                                f"reasoning tier limit (0.10)"
+                            ),
+                        )
+                    )
             # ---- End compression limit guard ----
 
             # ---- PSG safety check ----
