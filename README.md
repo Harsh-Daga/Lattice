@@ -1,4 +1,4 @@
-# LATTICE
+# <h1 align="center">LATTICE</h1>
 
 <p align="center">
   <strong>LLM Transport & Efficiency Layer</strong><br>
