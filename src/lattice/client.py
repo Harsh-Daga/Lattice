@@ -30,7 +30,7 @@ from lattice.core.pipeline import CompressorPipeline
 from lattice.core.pipeline_factory import build_default_pipeline, pipeline_summary
 from lattice.core.result import is_err, unwrap
 from lattice.core.serialization import message_from_dict, message_to_dict
-from lattice.core.transport import Request
+from lattice.core.transport import Request, Response
 
 
 @dataclasses.dataclass(slots=True)
@@ -61,6 +61,10 @@ class LatticeClient:
     def __init__(self, config: LatticeConfig | None = None) -> None:
         self.config = config or LatticeConfig.auto()
         self._pipeline = _build_pipeline(self.config)
+        # Store the last compression context for reverse-decompression.
+        # Without this, <ref_N>, <g_N>, <crossref_N> placeholders leak
+        # into provider responses with no way to restore them.
+        self._last_compress_ctx: TransformContext | None = None
 
     def compress(
         self,
@@ -101,6 +105,33 @@ class LatticeClient:
             runtime=dict(compressed.metadata.get("_lattice_runtime", {})),
             runtime_budget=dict(compressed.metadata.get("_lattice_runtime_budget", {})),
         )
+
+    def decompress_response(
+        self,
+        response_text: str,
+        model: str = "",
+    ) -> str:
+        """Decompress a provider response by restoring placeholders.
+
+        After calling compress() and sending the compressed messages to a
+        provider, the response may contain <ref_N>, <g_N>, <crossref_N>
+        placeholders. This method restores them to the original values.
+
+        Args:
+            response_text: The provider's raw response content.
+            model: Model identifier (optional).
+
+        Returns:
+            The response with placeholders restored to original values.
+        """
+        if self._last_compress_ctx is None:
+            return response_text  # No compression was performed
+        try:
+            resp = Response(content=response_text, model=model)
+            restored = asyncio.run(self._pipeline.reverse(resp, self._last_compress_ctx))
+            return restored.content or response_text
+        except Exception:
+            return response_text  # Non-fatal: return raw response
 
     def compress_request(
         self,
@@ -262,6 +293,7 @@ class LatticeClient:
             model=request.model,
         )
         result = await self._pipeline.process(request, ctx)
+        self._last_compress_ctx = ctx  # Save for decompress_response()
         if is_err(result):
             if self.config.graceful_degradation:
                 return request
