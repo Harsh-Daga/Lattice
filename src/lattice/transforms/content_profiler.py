@@ -632,17 +632,16 @@ def _extract_features(
             sum(0.15 for ti in task_indicators if ti in span_text.lower()), 1.0
         )
 
-        # Reasoning signal: explicit reasoning markers
+        # Reasoning signal: explicit causal/logical reasoning markers.
+        # "because" removed — too broad; over-protects explanatory narrative.
+        # Causal language is covered by the force-protect rules ("root cause",
+        # "the reason is", "the cause was", "determined that").
         reasoning_markers = [
-            "because",
             "therefore",
             "thus",
             "hence",
-            "since",
-            "if",
-            "then",
-            "else",
             "consequently",
+            "as a result",
         ]
         span.reasoning_signal = any(m in span_text.lower() for m in reasoning_markers)
 

@@ -274,6 +274,14 @@ class CompressorPipeline:
                     "runtime_transform_ms",
                     round(cumulative_transform_ms, 3),
                 )
+                # Record reachability: reached but deferred (never executed)
+                context.record_metric(transform.name, "reached", True)
+                context.record_metric(transform.name, "deferred", True)
+                context.record_metric(
+                    transform.name,
+                    "deferred_reason",
+                    "runtime_budget_exhausted",
+                )
                 self._log.debug(
                     "transform_skipped_runtime_budget",
                     request_id=context.request_id,
@@ -639,7 +647,10 @@ class CompressorPipeline:
                     "expansion_aborted"
                 )
                 was_blocked = t_metrics.get("risk_blocked") or t_metrics.get("scheduler_blocked")
-                if not was_blocked:
+                was_deferred = t_metrics.get("deferred")
+                was_executed = "tokens_before" in t_metrics
+                # reached: executed, deferred (budget), or explicitly recorded
+                if not was_blocked and (was_executed or was_deferred or t_metrics.get("reached")):
                     transforms_reached.append(t_name)
                 if not was_blocked and changed:
                     transforms_activated.append(t_name)

@@ -217,6 +217,14 @@ def classify_task(request: Request) -> TaskClassification:
         hard_override = True
         signals.append("hard_override:log_heavy_debugging")
 
+    # Hard rule 4: significant debugging cues alone → REASONING
+    # (no reasoning words needed — debugging tasks require lossless handling)
+    elif has_debugging_cues and debug_score > 10:
+        task_class = TaskClass.DEBUGGING
+        execution_tier = ExecutionTier.REASONING
+        hard_override = True
+        signals.append("hard_override:debugging_detected")
+
     # Score-based classification
     elif score >= 70:
         task_class = TaskClass.REASONING
