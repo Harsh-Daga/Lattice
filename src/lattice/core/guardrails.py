@@ -189,6 +189,68 @@ def check_format_preservation(
     return SafetyDecision(action=GuardAction.ALLOW, reason="format_preserved")
 
 
+def check_critical_signal_loss(
+    text_before: str,
+    text_after: str,
+) -> SafetyDecision:
+    """Check that critical signals survive transformation.
+
+    Critical signals: counts, numeric facts, error messages, dates,
+    IDs, root-cause phrases, grouped categories, tool args, strict
+    instructions.
+
+    Returns ROLLBACK if any critical signal set is lost.
+    """
+    # Count patterns: "N errors", "N failures", "N requests"
+    count_pattern = re.compile(
+        r"\b(\d+)\s+(errors?|failures?|warnings?|requests?|timeouts?|attempts?)\b",
+        re.IGNORECASE,
+    )
+    before_counts: dict[str, int] = {}
+    for m in count_pattern.finditer(text_before):
+        key = m.group(2).lower()
+        before_counts[key] = before_counts.get(key, 0) + int(m.group(1))
+    after_counts: dict[str, int] = {}
+    for m in count_pattern.finditer(text_after):
+        key = m.group(2).lower()
+        after_counts[key] = after_counts.get(key, 0) + int(m.group(1))
+
+    for key, count in before_counts.items():
+        if key not in after_counts or after_counts[key] < count * 0.5:
+            return SafetyDecision(
+                action=GuardAction.ROLLBACK,
+                reason=f"critical_count_loss:{key}",
+                rule_that_fired="critical_signal_loss",
+            )
+
+    # Error message patterns
+    error_pattern = re.compile(
+        r"\b(error|exception|failure|crash|timeout|refused|denied)\b",
+        re.IGNORECASE,
+    )
+    before_errors = set(m.group(0).lower() for m in error_pattern.finditer(text_before))
+    after_errors = set(m.group(0).lower() for m in error_pattern.finditer(text_after))
+    if before_errors and not (before_errors & after_errors):
+        return SafetyDecision(
+            action=GuardAction.ROLLBACK,
+            reason="critical_error_signal_lost",
+            rule_that_fired="critical_signal_loss",
+        )
+
+    # Root cause phrases
+    root_cause_pattern = re.compile(
+        r"\b(root cause|caused by|due to|because)\b", re.IGNORECASE
+    )
+    if root_cause_pattern.search(text_before) and not root_cause_pattern.search(text_after):
+        return SafetyDecision(
+            action=GuardAction.ROLLBACK,
+            reason="root_cause_lost",
+            rule_that_fired="critical_signal_loss",
+        )
+
+    return SafetyDecision(action=GuardAction.ALLOW, reason="critical_signals_preserved")
+
+
 def check_blank_output(
     baseline_output: str,
     optimized_output: str,

@@ -367,6 +367,14 @@ class CompressorPipeline:
                         transform=transform.name,
                     )
                     context.record_metric(transform.name, "scheduler_blocked", True)
+                    # Record deferred reason for reachability — important
+                    # for rate_distortion/context_selector which may be
+                    # reached but deferred by scheduler
+                    context.record_metric(transform.name, "deferred", True)
+                    for entry in schedule.get("schedule", []):
+                        if isinstance(entry, dict) and entry.get("name") == transform.name:
+                            context.record_metric(transform.name, "deferred_reason", entry.get("reason", "scheduler_blocked"))
+                            break
                     continue
             # ---- End span-aware gating ----
 
@@ -466,6 +474,7 @@ class CompressorPipeline:
             # dictionary_compress, grammar_compress) store referent mappings.
             if transform.name in self._irreversible_transforms:
                 from lattice.core.guardrails import (
+                    check_critical_signal_loss,
                     check_entity_preservation,
                     check_format_preservation,
                 )
@@ -518,6 +527,27 @@ class CompressorPipeline:
                                 transform=transform.name,
                                 code="PSG_FORMAT_LOSS",
                                 message=f"Format preservation failed: {fmt_decision.reason}",
+                            )
+                        )
+                    sig_decision = check_critical_signal_loss(text_before, text_after)
+                    if sig_decision.action.value == "rollback":
+                        self._log.warning(
+                            "transform_critical_signal_loss",
+                            request_id=context.request_id,
+                            transform=transform.name,
+                            reason=sig_decision.reason,
+                        )
+                        context.record_metric(transform.name, "safety_rollback", True)
+                        context.record_metric(transform.name, "rollback_reason", sig_decision.reason)
+                        working = backup.copy()
+                        working.metadata["_lattice_rollback_reason"] = sig_decision.reason
+                        if self.config.graceful_degradation:
+                            continue
+                        return Err(
+                            TransformError(
+                                transform=transform.name,
+                                code="PSG_CRITICAL_SIGNAL_LOSS",
+                                message=f"Critical signal loss: {sig_decision.reason}",
                             )
                         )
             # ---- End PSG safety check ----
