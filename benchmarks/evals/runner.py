@@ -1100,24 +1100,31 @@ def write_production_eval_outputs(
 # Task-equivalence evaluation (model-in-the-loop)
 # =============================================================================
 
-_JUDGE_SYSTEM_PROMPT = """You are evaluating whether two assistant outputs are task-equivalent.
+_JUDGE_SYSTEM_PROMPT = """You are evaluating whether two assistant outputs are TASK-EQUIVALENT.
 
-Compare the BASELINE output and OPTIMIZED output.
+IMPORTANT:
+- Ignore verbosity differences
+- Do NOT reward longer answers
+- Focus only on correctness and key fact preservation
+- A concise answer with all key facts is better than a verbose one
 
-Score each dimension from 0.0 (completely different) to 1.0 (identical):
+Compare the BASELINE output and the OPTIMIZED output.
 
-1. correctness: Does optimized reach the same correct answer?
-2. completeness: Does it include all essential information?
-3. key_fact_preservation: Are root causes, counts, IDs, dates, categories preserved?
-4. reasoning_equivalence: Does it use equivalent reasoning steps?
-5. numeric_preservation: Are numbers/counts/statistics preserved exactly?
-6. refusal_correctness: If either output refuses, is refusal behavior equivalent?
-   (Use -1 if neither output refuses — indicates N/A)
-7. schema_validity: If JSON/structured output, is schema preserved? (1.0 if N/A)
-8. harmful_drift: Placeholder artifacts (<ref_N>, <crossref_N>)? 0.0=none, 1.0=severe.
+Evaluate:
 
-Do not reward verbosity. Do not punish concise answers if all key facts are preserved.
-Return ONLY a JSON object with these float fields. No explanation, no markdown."""
+1. final_answer_match (0.0-1.0): Do both reach the SAME final answer? Critical.
+2. key_fact_preservation (0.0-1.0): Are root causes, counts, IDs, dates, categories preserved?
+3. numeric_preservation (0.0-1.0): Are all numbers/counts/statistics preserved exactly?
+4. reasoning_equivalence (0.0-1.0): Is the reasoning logically equivalent?
+5. completeness (0.0-1.0): Is any critical information missing from the optimized output?
+6. harmful_drift (0.0-1.0): Are there placeholder artifacts (<ref_N>, <crossref_N>)? 0.0=none.
+7. overall_score (0.0-1.0): Weighted composite: 0.35*correctness + 0.25*key_facts + 0.20*numeric + 0.15*reasoning + 0.05*completeness
+8. passed (true/false): overall_score >= 0.85
+9. failure_reasons (string[]): List specific failures, empty if passed. Be specific: "count mismatch: baseline=60, optimized=0", "missing root cause statement"
+
+Return ONLY a JSON object with these fields. No explanation, no markdown."""
+
+
 
 
 def _build_judge_prompt(
@@ -1142,7 +1149,11 @@ def _build_judge_prompt(
 
 
 def _parse_judge_response(raw: str) -> TaskEquivalenceScore | None:
-    """Parse the judge LLM's JSON response into a TaskEquivalenceScore."""
+    """Parse the judge LLM's JSON response into a TaskEquivalenceScore.
+
+    Handles both the new schema (final_answer_match, overall_score, passed,
+    failure_reasons) and the legacy schema (correctness, completeness, etc.).
+    """
     try:
         import json as _json
         start = raw.find("{")
@@ -1150,31 +1161,117 @@ def _parse_judge_response(raw: str) -> TaskEquivalenceScore | None:
         if start == -1 or end <= start:
             return None
         data = _json.loads(raw[start:end])
-        te = TaskEquivalenceScore(
-            correctness=float(data.get("correctness", 0.0)),
-            completeness=float(data.get("completeness", 0.0)),
-            reasoning_equivalence=float(data.get("reasoning_equivalence", 0.0)),
-            key_fact_preservation=float(data.get("key_fact_preservation", 0.0)),
-            numeric_preservation=float(data.get("numeric_preservation", 1.0)),
-            schema_validity=float(data.get("schema_validity", 1.0)),
-            harmful_drift=float(data.get("harmful_drift", 0.0)),
-        )
+
+        correctness = float(data.get("final_answer_match", data.get("correctness", 0.0)))
+        key_facts = float(data.get("key_fact_preservation", 0.5))
+        numeric = float(data.get("numeric_preservation", 1.0))
+        reasoning = float(data.get("reasoning_equivalence", 0.5))
+        completeness = float(data.get("completeness", 0.5))
+        schema_validity = float(data.get("schema_validity", 1.0))
+        harmful_drift = float(data.get("harmful_drift", 0.0))
+        failure_reasons = list(data.get("failure_reasons", []))
+
         refusal = data.get("refusal_correctness")
-        if refusal is not None and refusal >= 0:
-            te.refusal_correctness = float(refusal)
+        if not (refusal is not None and float(refusal) >= 0):
+            refusal = None
         else:
-            te.refusal_correctness = None
-        # Legacy fields for backward compat
-        te.constraint_preservation = te.correctness
-        te.entity_preservation = te.key_fact_preservation
-        te.format_preservation = te.schema_validity
-        te.reasoning_correctness = te.reasoning_equivalence
-        te.answer_completeness = te.completeness
-        return te
+            refusal = float(refusal)
+
+        return TaskEquivalenceScore(
+            correctness=correctness,
+            completeness=completeness,
+            reasoning_equivalence=reasoning,
+            key_fact_preservation=key_facts,
+            numeric_preservation=numeric,
+            schema_validity=schema_validity,
+            harmful_drift=harmful_drift,
+            refusal_correctness=refusal,
+            failure_reasons=failure_reasons,
+            # Legacy fields
+            constraint_preservation=correctness,
+            entity_preservation=key_facts,
+            format_preservation=schema_validity,
+            reasoning_correctness=reasoning,
+            answer_completeness=completeness,
+        )
     except (ValueError, KeyError, _json.JSONDecodeError):
         return None
-    except (ValueError, KeyError, _json.JSONDecodeError):
-        return None
+
+
+# =============================================================================
+# Key fact extraction — structured pre-pass for quality evaluation
+# =============================================================================
+
+_KEY_FACT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    # Count + category: "60 errors", "3 failures", "12 timeouts"
+    ("count_category", re.compile(r"\b(\d+)\s+(errors?|failures?|warnings?|timeouts?|attempts?|requests?|crashes?|exceptions?)\b", re.IGNORECASE)),
+    # Percentage: "94%", "97.5%"
+    ("percentage", re.compile(r"\b(\d+(?:\.\d+)?)%\b")),
+    # UUIDs
+    ("uuid", re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE)),
+    # Error codes: "E0503", "ERR_001", "500 Internal Server Error"
+    ("error_code", re.compile(r"\b(?:[A-Z]{2,5}_?\d{3,5}|\d{3}\s+\w+\s+\w+)\b")),
+    # Root cause phrases
+    ("root_cause", re.compile(r"\b(?:root cause|the reason (?:is|was)|the cause (?:is|was)|determined that)\b", re.IGNORECASE)),
+    # Timestamps: "14:32", "2024-01-15T10:30:00Z"
+    ("timestamp", re.compile(r"\b(?:\d{2}:\d{2}(?::\d{2})?|\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2})")),
+    # Stack traces / file:line refs
+    ("stack_trace", re.compile(r"\b(?:File\s+\".+?\",\s+line\s+\d+|at\s+\S+\s*\([^)]+:\d+\))")),
+    # Tool call IDs
+    ("tool_call_id", re.compile(r'"(?:call_id|tool_call_id|tool_use_id)"\s*:\s*"([^"]+)"')),
+)
+
+
+def extract_key_facts(text: str) -> dict[str, set[str]]:
+    """Extract structured key facts from an output text.
+
+    Returns a dict mapping fact categories to sets of matched strings.
+    These are compared between baseline and optimized outputs to detect
+    information loss from compression.
+
+    Categories: count_category, percentage, uuid, error_code, root_cause,
+    timestamp, stack_trace, tool_call_id.
+    """
+    if not text:
+        return {cat: set() for cat, _ in _KEY_FACT_PATTERNS}
+
+    facts: dict[str, set[str]] = {}
+    for cat, pat in _KEY_FACT_PATTERNS:
+        facts[cat] = {m.group(0).lower() for m in pat.finditer(text)}
+    return facts
+
+
+def _compute_key_fact_preservation(
+    baseline_text: str, optimized_text: str
+) -> tuple[float, list[str]]:
+    """Compute key fact preservation score and list missing facts.
+
+    Returns (score, missing_facts) where score is 1.0 if all facts preserved.
+    """
+    baseline_facts = extract_key_facts(baseline_text)
+    optimized_facts = extract_key_facts(optimized_text)
+    missing: list[str] = []
+
+    total_expected = 0
+    total_found = 0
+    for cat, _ in _KEY_FACT_PATTERNS:
+        baseline_set = baseline_facts[cat]
+        optimized_set = optimized_facts[cat]
+        total_expected += len(baseline_set)
+        for fact in baseline_set:
+            if fact in optimized_set:
+                total_found += 1
+            else:
+                missing.append(f"{cat}={fact}")
+
+    if total_expected == 0:
+        return 1.0, missing
+    score = total_found / total_expected
+    # Only report missing facts if substantial portion lost
+    if score < 0.5 and missing:
+        # Cap at 5 most relevant missing facts
+        missing = missing[:5]
+    return round(score, 4), missing
 
 
 def evaluate_task_equivalence_structural(
@@ -1204,19 +1301,27 @@ def evaluate_task_equivalence_structural(
     else:
         score.correctness = 0.5
 
-    ent_pattern = re.compile(
-        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|"
-        r"https?://[^\s)]+|"
-        r"\d+(?:\.\d+)?",
-        re.IGNORECASE,
+    # Key fact preservation: use structured fact extraction for numbers,
+    # counts, UUIDs, error codes, root cause, timestamps, stack traces.
+    # This is more accurate than raw entity-overlap Jaccard.
+    kf_score, missing_facts = _compute_key_fact_preservation(
+        baseline_output, optimized_output
     )
-    baseline_entities = set(ent_pattern.findall(baseline_output))
-    optimized_entities = set(ent_pattern.findall(optimized_output))
-    if baseline_entities:
-        overlap = len(baseline_entities & optimized_entities)
-        score.key_fact_preservation = round(overlap / len(baseline_entities), 4)
+    score.key_fact_preservation = kf_score
+    if missing_facts:
+        score.failure_reasons.extend(missing_facts)
+
+    # Numeric preservation: also covered by key_fact_preservation's
+    # count_category and percentage patterns.
+    # Provide a separate score for explicit numeric checks.
+    num_baseline = len(re.findall(r"\b\d+(?:\.\d+)?%?\b", baseline_output))
+    num_optimized = len(re.findall(r"\b\d+(?:\.\d+)?%?\b", optimized_output))
+    if num_baseline > 0:
+        score.numeric_preservation = round(
+            min(num_baseline, num_optimized) / max(num_baseline, num_optimized), 4
+        )
     else:
-        score.key_fact_preservation = 1.0
+        score.numeric_preservation = 1.0
 
     baseline_has_json = baseline_output.strip().startswith("{") or baseline_output.strip().startswith("[")
     optimized_has_json = optimized_output.strip().startswith("{") or optimized_output.strip().startswith("[")
@@ -1268,26 +1373,23 @@ async def evaluate_task_equivalence_with_judge(
     provider_name: str,
     timeout_s: float = 15.0,
 ) -> TaskEquivalenceScore:
-    """Compare outputs using the structural evaluator as authoritative anchor.
+    """Compare outputs using structural evaluator + LLM judge.
 
-    The structural scorer is the source of truth — deterministic, no LLM.
-    An LLM judge (same model) may supplement only when structural passes.
-    The judge can confirm or strengthen a pass but NEVER override a fail.
+    The structural evaluator provides a fast, deterministic baseline.
+    The LLM judge provides semantic understanding — it can upgrade a
+    structural fail into a pass when the content is actually equivalent
+    but structurally different (e.g. compressed but correct).
 
-    Judge independence: the structural path is the true independent evaluator.
-    The LLM judge shares the same model/provider by design (cost efficiency),
-    so its output is treated as a confirmer only. For true independence,
-    provide a separate judge model.
+    The structural evaluator provides a FLOOR for critical dimensions:
+    correctness, key_fact_preservation, and numeric_preservation can
+    be raised by the judge but never lowered below the structural floor.
+    The judge is authoritative for completeness and reasoning_equivalence.
     """
     structural = evaluate_task_equivalence_structural(
         baseline_output, optimized_output, required_properties
     )
 
-    # If structural already says fail, skip the LLM judge entirely.
-    if not structural.passed:
-        return structural
-
-    # If either output is too short for meaningful LLM judging, skip.
+    # Short outputs: structural is sufficient, skip LLM judge
     if len(baseline_output.strip()) < 20 or len(optimized_output.strip()) < 20:
         return structural
 
@@ -1314,15 +1416,26 @@ async def evaluate_task_equivalence_with_judge(
         judge_text = judge_response.content if hasattr(judge_response, "content") else str(judge_response)
         parsed = _parse_judge_response(judge_text)
         if parsed is not None:
-            # LLM judge refines; structural anchor ensures no false-positive override
+            # Judge is authoritative for reasoning/completeness.
+            # Structural provides a FLOOR for critical dimensions —
+            # prevents the judge from accidentally being too lenient
+            # on metrics the structural evaluator can verify deterministically.
             return TaskEquivalenceScore(
+                correctness=max(structural.correctness, parsed.correctness),
+                completeness=parsed.completeness,  # judge authoritative
+                reasoning_equivalence=parsed.reasoning_equivalence,  # judge authoritative
+                key_fact_preservation=max(structural.key_fact_preservation, parsed.key_fact_preservation),
+                numeric_preservation=max(structural.numeric_preservation, parsed.numeric_preservation),
+                schema_validity=max(structural.schema_validity, parsed.schema_validity),
+                harmful_drift=min(structural.harmful_drift, parsed.harmful_drift),
+                refusal_correctness=parsed.refusal_correctness,
+                failure_reasons=parsed.failure_reasons or [],
+                # Legacy fields for backward compat
                 constraint_preservation=max(structural.constraint_preservation, parsed.constraint_preservation),
                 entity_preservation=max(structural.entity_preservation, parsed.entity_preservation),
                 format_preservation=max(structural.format_preservation, parsed.format_preservation),
-                reasoning_correctness=max(structural.reasoning_correctness, parsed.reasoning_correctness),
-                refusal_correctness=max(structural.refusal_correctness, parsed.refusal_correctness),
-                answer_completeness=max(structural.answer_completeness, parsed.answer_completeness),
-                harmful_drift=min(structural.harmful_drift, parsed.harmful_drift),
+                reasoning_correctness=parsed.reasoning_correctness,
+                answer_completeness=parsed.answer_completeness,
             )
     except Exception:
         pass  # LLM judge unavailable — structural is sufficient

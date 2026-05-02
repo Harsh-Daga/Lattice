@@ -10,7 +10,6 @@ import time
 from typing import Any
 
 from benchmarks.framework.types import LatencyMeasurement, QualityMeasurement, TaskEquivalenceScore
-from benchmarks.metrics.quality import evaluate_response  # legacy compat / JSON+tool checks
 from benchmarks.scenarios.prompts import BenchmarkScenario
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
