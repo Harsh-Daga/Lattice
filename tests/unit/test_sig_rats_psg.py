@@ -11,7 +11,7 @@ from lattice.core.guardrails import (
 )
 from lattice.core.scheduler import decide_schedule
 from lattice.core.semantic_graph import SemanticImportanceGraph, SemanticSpan
-from lattice.core.task_classifier import TaskClass, TaskClassification, classify_task
+from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
 from lattice.core.transport import Message, Request
 from lattice.utils.validation import SemanticRiskScore
 
@@ -154,14 +154,14 @@ class TestSchedulerDecision:
         assert "tool_filter" in decision.allowed_transforms
 
     def test_conditional_blocked_on_reasoning(self) -> None:
-        task = TaskClassification(task_class=TaskClass.REASONING, reasoning_heavy=True)
+        task = TaskClassification(task_class=TaskClass.REASONING, reasoning_heavy=True, execution_tier=ExecutionTier.REASONING_SAFE)
         risk = SemanticRiskScore(strict_instructions=15, sensitive_domain=10)
         decision = decide_schedule(
             transform_names=["reference_sub", "output_cleanup"],
             task=task,
             risk=risk,
         )
-        # reference_sub is CONDITIONAL, blocked on reasoning
+        # CONDITIONAL blocked on REASONING_SAFE tier (only SAFE allowed)
         assert "reference_sub" in decision.blocked_transforms
         assert "output_cleanup" in decision.allowed_transforms
 

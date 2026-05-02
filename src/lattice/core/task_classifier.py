@@ -1,7 +1,8 @@
 """Task classification — RATS input layer.
 
-Deterministic task classification used by the scheduler to decide
-which transforms are appropriate for a given workload.
+Deterministic hybrid scoring classifier that assigns both a task class
+and an execution tier. Hard overrides ensure debugging/reasoning prompts
+never get lossy transforms.
 
 RATS decides **what may run**.
 """
@@ -10,29 +11,39 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import re
 from typing import Any
 
 from lattice.core.transport import Request
 
 
 class TaskClass(enum.Enum):
-    """Deterministic classification of the request's primary task."""
+    SIMPLE = "simple"
+    RETRIEVAL = "retrieval"
+    SUMMARIZATION = "summarization"
+    ANALYSIS = "analysis"
+    DEBUGGING = "debugging"
+    REASONING = "reasoning"
+    STRUCTURED = "structured"
 
-    RETRIEVAL = "retrieval"  # lookup, search, find
-    SUMMARIZATION = "summarization"  # condense, summarize, shorten
-    ANALYSIS = "analysis"  # analyze, compare, evaluate
-    DEBUGGING = "debugging"  # fix, error, log, stack, trace
-    REASONING = "reasoning"  # deduce, infer, solve, prove
+
+class ExecutionTier(enum.Enum):
+    SIMPLE = "SIMPLE"
+    MEDIUM = "MEDIUM"
+    COMPLEX = "COMPLEX"
+    REASONING = "REASONING"
+    REASONING_SAFE = "REASONING_SAFE"
 
 
 @dataclasses.dataclass(slots=True)
 class TaskClassification:
-    """Complete task classification output."""
-
-    task_class: TaskClass = TaskClass.RETRIEVAL
+    task_class: TaskClass = TaskClass.SIMPLE
+    execution_tier: ExecutionTier = ExecutionTier.SIMPLE
+    score: int = 0
     confidence: float = 0.5
     signals: list[str] = dataclasses.field(default_factory=list)
-    preferred_strategy: str = "conservative"
+    hard_override: bool = False
+    preferred_strategy: str = "balanced"
     reasoning_heavy: bool = False
     structured_heavy: bool = False
     debug_heavy: bool = False
@@ -40,13 +51,23 @@ class TaskClassification:
 
     @property
     def is_conservative(self) -> bool:
-        return self.task_class in (TaskClass.DEBUGGING, TaskClass.REASONING)
+        return (
+            self.execution_tier in (ExecutionTier.REASONING, ExecutionTier.REASONING_SAFE)
+            or self.task_class in (TaskClass.DEBUGGING, TaskClass.REASONING)
+        )
+
+    @property
+    def requires_safe_mode(self) -> bool:
+        return self.confidence < 0.7 and self.score >= 40
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "task_class": self.task_class.value,
+            "execution_tier": self.execution_tier.value,
+            "score": self.score,
             "confidence": round(self.confidence, 2),
             "signals": self.signals,
+            "hard_override": self.hard_override,
             "preferred_strategy": self.preferred_strategy,
             "reasoning_heavy": self.reasoning_heavy,
             "structured_heavy": self.structured_heavy,
@@ -57,139 +78,189 @@ class TaskClassification:
 
 
 def classify_task(request: Request) -> TaskClassification:
-    """Classify a request's primary task type from its content.
-
-    Uses lightweight heuristics — deterministic, explainable, fast.
-    """
+    """Hybrid score classifier with hard overrides for REASONING."""
     text = "\n".join(msg.content or "" for msg in request.messages)
     lowered = text.lower()
-
+    score = 0
     signals: list[str] = []
-    reason_bonus = 0.0
-    debug_bonus = 0.0
-    analysis_bonus = 0.0
-    summary_bonus = 0.0
-    retrieval_bonus = 0.0
+    has_debugging_cues = False
+    has_reasoning_cues = False
+    structured_heavy = False
+    has_code = "```" in text
 
-    # Reasoning signals
+    # ---- Weighted signal scoring ----
+
+    # Reasoning cues (high weight)
     reasoning_patterns = [
-        (r"\bwhy\b", 5),
-        (r"\banalyze\b", 5),
-        (r"\broot cause\b", 8),
-        (r"\bdeduce\b", 8),
-        (r"\binfer\b", 8),
-        (r"\bsolve\b", 5),
+        (r"\bwhy\b", 12),
+        (r"\broot cause\b", 15),
+        (r"\banalyze\b", 10),
+        (r"\binfer\b", 10),
+        (r"\bdeduce\b", 10),
         (r"\bprove\b", 10),
-        (r"\breason\b.*\bstep\b", 10),
-        (r"\bexplain\b.*\bwhy\b", 8),
-        (r"\bthink\b.*\bcarefully\b", 8),
+        (r"\breason\b.*\bstep\b", 12),
+        (r"\bexplain\b.*\bwhy\b", 10),
+        (r"\bthink\b.*\bcarefully\b", 10),
     ]
-    for pattern, weight in reasoning_patterns:
-        if __import__("re").search(pattern, lowered):
-            reason_bonus += weight
-            signals.append(f"reasoning:{pattern[:20]}")
+    for pat, weight in reasoning_patterns:
+        if re.search(pat, lowered):
+            score += weight
+            signals.append(f"reasoning:{pat[:20]}")
+            has_reasoning_cues = True
 
-    # Debugging signals
+    # Debugging/crash/log cues (high weight)
     debug_patterns = [
-        (r"\berror\b", 4),
-        (r"\bexception\b", 6),
-        (r"\btraceback\b", 8),
-        (r"\blog\b", 2),
-        (r"\bfailure\b", 5),
-        (r"\bbug\b", 5),
-        (r"\bcrash\b", 7),
+        (r"\berror\b", 8),
+        (r"\bfailure\b", 10),
+        (r"\bfailed\b", 10),
+        (r"\btraceback\b", 10),
+        (r"\bexception\b", 8),
+        (r"\bcrash\b", 10),
+        (r"\bbug\b", 6),
+        (r"\blog\b", 3),
         (r"\bdebug\b", 8),
-        (r"\bstall\b", 5),
-        (r"\btimeout\b", 4),
-        (r"\boutage\b", 6),
+        (r"\boutage\b", 8),
     ]
-    for pattern, weight in debug_patterns:
-        if __import__("re").search(pattern, lowered):
-            debug_bonus += weight
-            signals.append(f"debug:{pattern[:20]}")
+    for pat, weight in debug_patterns:
+        if re.search(pat, lowered):
+            score += weight
+            signals.append(f"debug:{pat[:20]}")
+            has_debugging_cues = True
 
-    # Analysis signals
-    analysis_patterns = [
-        (r"\bcompare\b", 4),
-        (r"\bdifference\b", 3),
-        (r"\btrend\b", 4),
-        (r"\bpattern\b", 3),
-        (r"\bcorrelation\b", 5),
-        (r"\bstatistic\b", 5),
+    # Aggregation/comparison cues
+    agg_patterns = [
+        (r"\bcount\b", 5),
+        (r"\bcompare\b", 5),
+        (r"\bdistribution\b", 8),
+        (r"\bpattern\b", 4),
+        (r"\btrend\b", 5),
+        (r"\bgroup by\b", 5),
+        (r"\bcorrelation\b", 6),
+        (r"\bstatistic\b", 6),
     ]
-    for pattern, weight in analysis_patterns:
-        if __import__("re").search(pattern, lowered):
-            analysis_bonus += weight
-            signals.append(f"analysis:{pattern[:20]}")
+    for pat, weight in agg_patterns:
+        if re.search(pat, lowered):
+            score += weight
+            signals.append(f"analysis:{pat[:20]}")
 
-    # Summarization signals
+    # Structured content
+    has_json = "{" in text or "[" in text
+    has_table = "|" in text
+    structured_heavy = has_json or has_code or has_table
+    if structured_heavy:
+        score += 10
+        signals.append("structured_input")
+
+    # Long input
     words = len(lowered.split())
     if words > 500:
-        summary_bonus += 15
-        signals.append("summarization:long_form")
-    if words > 200:
-        summary_bonus += 5
+        score += 15
+        signals.append("long_input")
+    elif words > 200:
+        score += 5
+        signals.append("medium_input")
+
+    # Code present
+    if has_code:
+        score += 10
+        signals.append("code_present")
 
     # Retrieval signals
     retrieval_patterns = [
-        (r"\bfind\b", 3),
+        (r"\bfind\b", 5),
         (r"\blookup\b", 5),
         (r"\bsearch\b", 4),
-        (r"\bselect\b", 2),
-        (r"\blist\b", 2),
-        (r"\bshow\b", 1),
+        (r"\bselect\b", 3),
+        (r"\blist\b", 3),
+        (r"\bshow\b", 2),
+        (r"\bretrieve\b", 5),
     ]
-    for pattern, weight in retrieval_patterns:
-        if __import__("re").search(pattern, lowered):
-            retrieval_bonus += weight
-            signals.append(f"retrieval:{pattern[:20]}")
+    for pat, weight in retrieval_patterns:
+        if re.search(pat, lowered):
+            score += weight
+            signals.append(f"retrieval:{pat[:20]}")
 
-    # Structured content bonus for analysis/debugging
-    has_json = "{" in text or "[" in text
-    has_code = "```" in text
-    has_table = "|" in text
-    structured_heavy = has_json or has_code or has_table
-
-    # Log-heavy = debugging
-    log_lines = len(__import__("re").findall(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}", lowered))
+    # Log-heavy bonus
+    log_lines = len(re.findall(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}", lowered))
     if log_lines > 5:
-        debug_bonus += log_lines * 1.5
-        signals.append(f"debug:log_lines={log_lines}")
+        score += min(log_lines * 2, 20)
+        signals.append(f"log_lines={log_lines}")
+        has_debugging_cues = True
 
-    # Determine dominant class
-    scores = {
-        TaskClass.REASONING: reason_bonus,
-        TaskClass.DEBUGGING: debug_bonus,
-        TaskClass.ANALYSIS: analysis_bonus,
-        TaskClass.SUMMARIZATION: summary_bonus,
-        TaskClass.RETRIEVAL: retrieval_bonus or 1.0,
-    }
-    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    dominant_class = ranked[0][0]
-    dominant_score = ranked[0][1]
-    _unused = ranked[1][1] if len(ranked) > 1 else 0.0
-    total_score = sum(scores.values()) or 1.0
+    # ---- Hard overrides ----
+    hard_override = False
+    task_class = TaskClass.SIMPLE
+    execution_tier = ExecutionTier.SIMPLE
 
-    # Conservative tie-breaking
-    if debug_bonus > 5 and reason_bonus > 5:
-        dominant_class = TaskClass.DEBUGGING if log_lines > 5 else TaskClass.REASONING
+    # Compute category-specific scores for override logic
+    debug_score = sum(weight for pat, weight in debug_patterns if re.search(pat, lowered))
+    reason_score = sum(weight for pat, weight in reasoning_patterns if re.search(pat, lowered))
 
-    # Budget based on complexity
+    # Hard rule 1: root cause or explicit why-fail → REASONING (highest priority)
+    if re.search(r"\broot cause\b|\bwhy did this fail\b|\bwhy.*\bfail\b", lowered):
+        task_class = TaskClass.REASONING
+        execution_tier = ExecutionTier.REASONING
+        hard_override = True
+        signals.append("hard_override:root_cause_why")
+
+    # Hard rule 2: both debugging AND reasoning cues scored significantly → REASONING
+    elif has_debugging_cues and has_reasoning_cues and debug_score > 10 and reason_score > 10:
+        task_class = TaskClass.DEBUGGING
+        execution_tier = ExecutionTier.REASONING
+        hard_override = True
+        signals.append("hard_override:debugging+reasoning")
+
+    # Hard rule 3: traceback or heavy log analysis → REASONING
+    elif has_debugging_cues and log_lines > 5:
+        task_class = TaskClass.DEBUGGING
+        execution_tier = ExecutionTier.REASONING
+        hard_override = True
+        signals.append("hard_override:log_heavy_debugging")
+
+    # Score-based classification
+    elif score >= 70:
+        task_class = TaskClass.REASONING
+        execution_tier = ExecutionTier.REASONING
+    elif score >= 45:
+        task_class = TaskClass.ANALYSIS
+        execution_tier = ExecutionTier.MEDIUM
+    elif score >= 10 or any("retrieval" in s for s in signals):
+        task_class = TaskClass.RETRIEVAL
+        execution_tier = ExecutionTier.SIMPLE
+    elif words > 200:
+        task_class = TaskClass.SUMMARIZATION
+        execution_tier = ExecutionTier.MEDIUM
+    else:
+        task_class = TaskClass.SIMPLE
+        execution_tier = ExecutionTier.SIMPLE
+
+    # Override for structured-but-simple
+    if structured_heavy and task_class == TaskClass.SIMPLE:
+        task_class = TaskClass.STRUCTURED
+        execution_tier = ExecutionTier.MEDIUM
+
+    # Confidence
+    confidence = min(1.0, score / 100)
+    if confidence < 0.7 and score >= 40:
+        execution_tier = ExecutionTier.REASONING_SAFE
+
+    # Budget based on tier
     budget_ms = 20.0
-    if dominant_class in (TaskClass.DEBUGGING, TaskClass.REASONING):
+    if execution_tier in (ExecutionTier.REASONING, ExecutionTier.REASONING_SAFE):
         budget_ms = 50.0
-    elif dominant_class == TaskClass.ANALYSIS:
+    elif execution_tier == ExecutionTier.COMPLEX:
         budget_ms = 30.0
 
     return TaskClassification(
-        task_class=dominant_class,
-        confidence=round(min(dominant_score / total_score, 1.0), 2),
+        task_class=task_class,
+        execution_tier=execution_tier,
+        score=score,
+        confidence=round(confidence, 2),
         signals=signals[:20],
-        preferred_strategy="conservative"
-        if dominant_class in (TaskClass.DEBUGGING, TaskClass.REASONING)
-        else "balanced",
-        reasoning_heavy=reason_bonus > 10,
+        hard_override=hard_override,
+        preferred_strategy="conservative" if execution_tier in (ExecutionTier.REASONING, ExecutionTier.REASONING_SAFE) else "balanced",
+        reasoning_heavy=has_reasoning_cues or execution_tier == ExecutionTier.REASONING,
         structured_heavy=structured_heavy,
-        debug_heavy=debug_bonus > 10,
+        debug_heavy=has_debugging_cues,
         budget_ms=budget_ms,
     )

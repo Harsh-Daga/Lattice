@@ -20,6 +20,27 @@ from lattice.utils.validation import (
     get_transform_safety_bucket,
 )
 
+# Tier-based policy matrix
+_ALLOWED_BUCKETS: dict[str, set[TransformSafetyBucket]] = {
+    "SIMPLE": {TransformSafetyBucket.SAFE, TransformSafetyBucket.CONDITIONAL},
+    "MEDIUM": {TransformSafetyBucket.SAFE, TransformSafetyBucket.CONDITIONAL},
+    "COMPLEX": {TransformSafetyBucket.SAFE, TransformSafetyBucket.CONDITIONAL},
+    "REASONING": {TransformSafetyBucket.SAFE, TransformSafetyBucket.CONDITIONAL},
+    "REASONING_SAFE": {TransformSafetyBucket.SAFE},
+}
+
+# Transforms always blocked on REASONING/REASONING_SAFE tiers.
+# Only irreversible lossy transforms are blocked. Reversible transforms
+# (reference_sub, dictionary_compress, grammar_compress) store referent
+# mappings and are safe even on conservative tasks.
+_REASONING_DISABLED: frozenset[str] = frozenset({
+    "message_dedup",
+    "rate_distortion",
+    "hierarchical_summary",
+    "structural_fingerprint",
+    "semantic_compress",
+})
+
 
 @dataclasses.dataclass(slots=True)
 class TransformScheduleEntry:
@@ -90,7 +111,10 @@ def decide_schedule(
         total_budget_ms: Total budget from runtime contract.
     """
     risk_level = risk.level if risk else "UNKNOWN"
-    is_conservative = task.is_conservative
+    tier = task.execution_tier.value
+    # REASONING/DEBUGGING task classes always get conservative treatment
+    if task.is_conservative and tier not in ("REASONING", "REASONING_SAFE"):
+        tier = "REASONING"
 
     schedule: list[TransformScheduleEntry] = []
     blocked: list[str] = []
@@ -103,29 +127,38 @@ def decide_schedule(
             bucket=bucket,
         )
 
-        if bucket == TransformSafetyBucket.SAFE:
+        # Tier-based gating: only buckets allowed for this tier can run
+        tier_buckets = _ALLOWED_BUCKETS.get(tier, {TransformSafetyBucket.SAFE})
+
+        # REASONING tiers explicitly disable lossy transforms
+        if tier in ("REASONING", "REASONING_SAFE") and name in _REASONING_DISABLED:
+            entry.allowed = False
+            entry.reason = "reasoning_tier_disabled"
+
+        elif bucket not in tier_buckets:
+            entry.allowed = False
+            entry.reason = f"bucket_{bucket.value}_not_allowed_at_tier_{tier}"
+
+        elif bucket == TransformSafetyBucket.SAFE:
             entry.allowed = True
             entry.reason = "safe_transform"
+
         elif bucket == TransformSafetyBucket.CONDITIONAL:
-            if is_conservative and task.reasoning_heavy:
-                entry.allowed = False
-                entry.reason = "blocked_on_conservative_task"
-            elif risk_level in ("HIGH", "CRITICAL"):
+            if risk_level in ("HIGH", "CRITICAL"):
                 entry.allowed = False
                 entry.reason = f"conditional_blocked_at_{risk_level.lower()}_risk"
             else:
                 entry.allowed = True
                 entry.reason = "conditional_allowed"
+
         elif bucket == TransformSafetyBucket.DANGEROUS:
-            if is_conservative:
-                entry.allowed = False
-                entry.reason = "dangerous_blocked_on_conservative_task"
-            elif risk_level != "LOW":
+            if risk_level != "LOW":
                 entry.allowed = False
                 entry.reason = f"dangerous_blocked_at_{risk_level.lower()}_risk"
             else:
                 entry.allowed = True
                 entry.reason = "dangerous_allowed_at_low_risk"
+
         else:
             entry.allowed = True
             entry.reason = "unknown_bucket"

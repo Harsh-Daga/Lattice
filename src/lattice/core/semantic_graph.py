@@ -48,6 +48,7 @@ class SemanticSpan:
     reasoning_signal: bool = False
     importance: float = 0.0
     protected: bool = False
+    compressible: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {

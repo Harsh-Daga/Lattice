@@ -669,22 +669,65 @@ def _compute_importance(spans: list[SemanticSpan]) -> None:
         span.importance = min(round(score * 100, 1), 100.0)
 
 
-def _derive_protected(spans: list[SemanticSpan], threshold: float = 40.0) -> None:
-    """Mark spans above threshold as protected.
+def _derive_protected(spans: list[SemanticSpan]) -> None:
+    """Contrastive protection: top-k by importance + hard force-protect rules.
 
-    Also protect spans with reasoning signals or high entity density in
-    diagnostic content. Boilerplate with high entity density (code, tables)
-    gets a higher threshold to prevent over-protection.
+    Instead of an absolute threshold that over-protects, uses:
+    1. Top 20% by importance score (minimum 1 span protected)
+    2. Force-protect rules for counts, errors, root cause, IDs, reasoning
+    3. Compressible flag for boilerplate that passed under the threshold
     """
-    for span in spans:
-        # Structure-aware threshold: code/tables with many entities need
-        # a higher bar to protect as boilerplate, not signal
-        effective_threshold = threshold
-        if span.structure_type in ("code", "json", "table") and span.entity_density > 0.5:
-            effective_threshold = max(threshold, 80.0)
+    if not spans:
+        return
 
-        span.protected = (
-            span.importance >= effective_threshold
-            or span.reasoning_signal
-            or (span.entity_density >= 0.5 and span.structure_type not in ("code", "table"))
+    # Step 1: Rank by importance
+    ranked = sorted(spans, key=lambda s: s.importance, reverse=True)
+    protected_count = max(1, int(0.20 * len(spans)))
+
+    # Step 2: Protect top-k
+    for span in ranked[:protected_count]:
+        span.protected = True
+
+    # Step 3: Force-protect rules — always protect content containing:
+    for span in spans:
+        text_lower = span.text.lower()
+
+        # Exact numbers, dates, IDs
+        if re.search(r"\b\d+(?:\.\d+)?\b", span.text) and len(re.findall(r"\b\d+(?:\.\d+)?\b", span.text)) >= 2:
+            span.protected = True
+
+        # Root cause statements
+        if re.search(r"\broot cause\b|\bcaused by\b|\bdue to\b", text_lower):
+            span.protected = True
+
+        # Error messages
+        if re.search(r"\b(error|exception|failure|crash|timeout|refused|denied)\b", text_lower):
+            span.protected = True
+
+        # Counts and distributions
+        if re.search(r"\b\d+\s+(errors|failures|warnings|requests|timeouts|attempts)\b", text_lower):
+            span.protected = True
+
+        # Stack traces
+        if re.search(r"\bat\s+\S+\s*\([^)]+:\d+\)|\bFile\s+\".+?\",\s+line\s+\d+", span.text):
+            span.protected = True
+
+        # User's final question (last user message)
+        if span.reasoning_signal and span.position_weight >= 0.8:
+            span.protected = True
+
+        # Tool calls and IDs
+        if re.search(r'"(call_id|tool_call_id|tool_use_id)"|"id"\s*:\s*"call_', span.text):
+            span.protected = True
+
+        # Structured output instructions
+        if re.search(r"\breturn json\b|\boutput format\b|\btable format\b", text_lower):
+            span.protected = True
+
+    # Step 4: Mark compressible spans (boilerplate, metadata, non-diagnostic repetition)
+    for span in spans:
+        span.compressible = (
+            not span.protected
+            and span.structure_type in ("narrative", "log_line")
+            and not span.reasoning_signal
         )
