@@ -251,6 +251,82 @@ def check_critical_signal_loss(
     return SafetyDecision(action=GuardAction.ALLOW, reason="critical_signals_preserved")
 
 
+_OPAQUE_PLACEHOLDER_RE = re.compile(r"<(ref|crossref|g|d)_\d+>", re.IGNORECASE)
+
+
+def check_placeholder_leakage(
+    text_before: str,
+    text_after: str,
+) -> SafetyDecision:
+    """Detect opaque placeholder leakage in compressed text.
+
+    Placeholders like <ref_0>, <g_1>, <d_36>, <crossref_X> are
+    opaque tokens that hurt model reasoning. They must only appear
+    when accompanied by an ALIAS MAP that declares their meaning.
+
+    Only checks for NEW placeholders that were introduced by the
+    current transform (not ones already present from prior transforms).
+
+    Returns ROLLBACK if NEW opaque placeholders appear without a manifest.
+    """
+    placeholders_before = set(_OPAQUE_PLACEHOLDER_RE.findall(text_before))
+    placeholders_after = set(_OPAQUE_PLACEHOLDER_RE.findall(text_after))
+
+    new_placeholders = placeholders_after - placeholders_before
+
+    if not new_placeholders:
+        return SafetyDecision(action=GuardAction.ALLOW, reason="no_new_placeholders")
+
+    # Check if an ALIAS MAP or manifest is present to declare these new tokens
+    has_alias_manifest = bool(
+        re.search(r"ALIAS\s*MAP\s*:", text_after, re.IGNORECASE)
+        or re.search(r"^\s*[A-Z]\d+\s*=\s*", text_after, re.MULTILINE)
+    )
+
+    if has_alias_manifest:
+        undefined: list[str] = []
+        for ph in new_placeholders:
+            tag = re.sub(r"[<>]", "", ph)
+            pattern = rf"\b{re.escape(tag)}\s*="
+            if not re.search(pattern, text_after):
+                undefined.append(ph)
+
+        if undefined:
+            return SafetyDecision(
+                action=GuardAction.ROLLBACK,
+                reason=f"placeholder_undefined: {', '.join(undefined[:3])}",
+                rule_that_fired="placeholder_leakage",
+            )
+        return SafetyDecision(action=GuardAction.ALLOW, reason="new_placeholders_manifested")
+
+    return SafetyDecision(
+        action=GuardAction.ROLLBACK,
+        reason=f"placeholder_leakage_no_manifest: {', '.join(sorted(new_placeholders)[:5])}",
+        rule_that_fired="placeholder_leakage",
+    )
+
+
+def check_negative_savings(
+    tokens_before: int,
+    tokens_after: int,
+    transform_name: str = "",
+) -> SafetyDecision:
+    """Reject transforms that increase token count.
+
+    A transform that produces MORE tokens than before is a net negative
+    and should be rolled back. More aggressive than the expansion guard
+    (1.5x) — any token increase is rejected.
+    """
+    if tokens_before > 0 and tokens_after > tokens_before:
+        delta = tokens_after - tokens_before
+        return SafetyDecision(
+            action=GuardAction.ROLLBACK,
+            reason=f"negative_savings: {tokens_before}→{tokens_after} (+{delta})",
+            rule_that_fired="negative_savings",
+        )
+    return SafetyDecision(action=GuardAction.ALLOW, reason="token_savings_valid")
+
+
 def check_blank_output(
     baseline_output: str,
     optimized_output: str,

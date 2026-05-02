@@ -99,6 +99,16 @@ class CompressorPipeline:
             "hierarchical_summary",
         }
     )
+    # Transforms that intentionally use opaque placeholders (<ref_N> etc.)
+    # as part of their normal operation. These store referent mappings in
+    # context session_state and restore them via reverse().
+    _placeholder_using_transforms: frozenset[str] = frozenset(
+        {
+            "reference_sub",
+            "grammar_compress",
+            "dictionary_compress",
+        }
+    )
 
     def __init__(
         self,
@@ -488,6 +498,40 @@ class CompressorPipeline:
                         )
                     )
             # ---- End compression limit guard ----
+
+            # ---- Placeholder leakage guard ----
+            # Opaque placeholders (<ref_N>, <g_N>, <d_N>, <crossref_N>)
+            # hurt model reasoning. Check every transform except the ones
+            # that intentionally use placeholders (reference_sub etc. store
+            # referent mappings and restore via reverse()).
+            if transform.name not in self._placeholder_using_transforms:
+                _text_before = "\n".join(m.content for m in backup.messages)
+                _text_after = "\n".join(m.content for m in working.messages)
+                if _text_before != _text_after:
+                    from lattice.core.guardrails import check_placeholder_leakage
+
+                    pl_decision = check_placeholder_leakage(_text_before, _text_after)
+                    if pl_decision.action.value == "rollback":
+                        self._log.warning(
+                            "transform_placeholder_leakage",
+                            request_id=context.request_id,
+                            transform=transform.name,
+                            reason=pl_decision.reason,
+                        )
+                        context.record_metric(transform.name, "placeholder_leakage", True)
+                        context.record_metric(transform.name, "leakage_reason", pl_decision.reason)
+                        working = backup.copy()
+                        working.metadata["_lattice_rollback_reason"] = pl_decision.reason
+                        if self.config.graceful_degradation:
+                            continue
+                        return Err(
+                            TransformError(
+                                transform=transform.name,
+                                code="PSG_PLACEHOLDER_LEAKAGE",
+                                message=f"Placeholder leakage: {pl_decision.reason}",
+                            )
+                        )
+            # ---- End placeholder leakage guard ----
 
             # ---- PSG safety check ----
             # Entity/format checks only for irreversible transforms that
