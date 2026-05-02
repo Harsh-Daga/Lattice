@@ -668,6 +668,22 @@ async def run_provider_eval(
             total_runs += 1
         sections.append({"target": target.to_dict(), "adapter": adapter.name, "benchmark": report.to_dict()})
 
+    # Aggregate quality scores across targets
+    all_te_scores: list[float] = []
+    for section in sections:
+        bm = section.get("benchmark", {})
+        if not isinstance(bm, dict):
+            continue
+        agg = bm.get("summary", {})
+        avg_q = agg.get("avg_quality_score", 0.0)
+        if avg_q > 0.0:
+            all_te_scores.append(float(avg_q))
+    provider_avg_quality = (
+        round(statistics.mean(all_te_scores), 4)
+        if all_te_scores
+        else 0.0
+    )
+
     return EvalSectionReport(
         name="provider_eval",
         kind="live",
@@ -676,6 +692,8 @@ async def run_provider_eval(
             "target_count": len(targets),
             "active_targets": total_runs,
             "skipped_targets": total_skipped,
+            "scenario_count": len(selected) if selected else 0,
+            "avg_quality_score": provider_avg_quality,
         },
         details={"targets": sections},
         benchmark=None,
