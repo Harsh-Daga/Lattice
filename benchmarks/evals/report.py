@@ -276,7 +276,7 @@ def _render_special_details(lines: list[str], details: dict[str, Any]) -> bool:
                         f"{te.get('entity_preservation', 0.0):.3f}",
                         f"{te.get('format_preservation', 0.0):.3f}",
                         f"{te.get('reasoning_correctness', 0.0):.3f}",
-                        f"{te.get('refusal_correctness', 0.0):.3f}",
+                        f"{te.get('refusal_correctness') or 0.0:.3f}",
                         f"{te.get('answer_completeness', 0.0):.3f}",
                         f"{te.get('harmful_drift', 0.0):.3f}",
                     ]
