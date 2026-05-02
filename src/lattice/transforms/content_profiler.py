@@ -699,8 +699,10 @@ def _derive_protected(spans: list[SemanticSpan]) -> None:
         ):
             span.protected = True
 
-        # Root cause statements
-        if re.search(r"\broot cause\b|\bcaused by\b|\bdue to\b", text_lower):
+        # Root cause statements — narrow: only explicit root-cause language
+        if re.search(
+            r"\broot cause\b|\bthe reason.*\bis\b|\bthe cause was\b|\bdetermined that\b", text_lower
+        ):
             span.protected = True
 
         # Error messages
