@@ -165,7 +165,7 @@ class TestTransformSafetyBuckets:
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.CONDITIONAL, name
 
     def test_dangerous_transforms(self) -> None:
-        for name in ("structural_fingerprint", "hierarchical_summary"):
+        for name in ("hierarchical_summary",):
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.DANGEROUS, name
 
     def test_unknown_transform_defaults_to_dangerous(self) -> None:
@@ -232,14 +232,14 @@ class TestRiskGatingBehavior:
             sensitive_domain=10, high_stakes_entities=15, strict_instructions=10
         )
         assert risk.level in ("MEDIUM", "HIGH")
-        allowed, reason = transform_allowed_at_risk("structural_fingerprint", risk)
+        allowed, reason = transform_allowed_at_risk("hierarchical_summary", risk)
         assert allowed is False
         assert "blocked" in reason
 
     def test_dangerous_allowed_at_low_risk(self) -> None:
         risk = SemanticRiskScore()
         assert risk.level == "LOW"
-        allowed, reason = transform_allowed_at_risk("structural_fingerprint", risk)
+        allowed, reason = transform_allowed_at_risk("hierarchical_summary", risk)
         assert allowed is True
 
 

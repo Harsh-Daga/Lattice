@@ -304,8 +304,8 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "rate_distortion": TransformSafetyBucket.CONDITIONAL,
     "information_theoretic_selector": TransformSafetyBucket.CONDITIONAL,
     "self_information": TransformSafetyBucket.CONDITIONAL,
-    # DANGEROUS — can replace meaning-bearing content with placeholders
-    "structural_fingerprint": TransformSafetyBucket.DANGEROUS,
+    "structural_fingerprint": TransformSafetyBucket.CONDITIONAL,
+    # DANGEROUS — replaces meaning-bearing content with placeholders
     "hierarchical_summary": TransformSafetyBucket.DANGEROUS,
     "hierarchical_summarizer": TransformSafetyBucket.DANGEROUS,  # alias
 }

@@ -196,29 +196,85 @@ def classify_task(request: Request) -> TaskClassification:
     debug_score = sum(weight for pat, weight in debug_patterns if re.search(pat, lowered))
     reason_score = sum(weight for pat, weight in reasoning_patterns if re.search(pat, lowered))
 
-    # Hard rule 1: root cause or explicit why-fail → REASONING (highest priority)
-    if re.search(r"\broot cause\b|\bwhy did this fail\b|\bwhy.*\bfail\b", lowered):
+    # Determine whether "root cause" is a genuine instruction or a meta-instruction.
+    # Meta-instructions ("keep the root cause", "retain the root cause") should
+    # boost the score but NOT hard-override to REASONING.
+    has_root_cause = bool(re.search(r"\broot cause\b", lowered))
+    is_root_cause_meta = has_root_cause and bool(
+        re.search(
+            r"\b(keep|retain|preserve|include|ensure|trim|store|note|remember)"
+            r"\s+.*?\b(root cause)\b",
+            lowered,
+        )
+    )
+
+    # Determine debugging context: error/crash/failure/exception/traceback signals
+    # plus investigative language ("memory leak", "investigate", "diagnose").
+    has_debug_context = any(
+        re.search(rf"\b{pat}\b", lowered)
+        for pat in (
+            "error",
+            "crash",
+            "failure",
+            "failed",
+            "debug",
+            "traceback",
+            "exception",
+            "outage",
+            "timeout",
+            "deadlock",
+            "memory leak",
+            "investigate",
+            "diagnose",
+            "triage",
+        )
+    )
+
+    # Hard rule 1: root cause WITH debugging context → REASONING
+    if has_root_cause and has_debug_context and not is_root_cause_meta:
         task_class = TaskClass.REASONING
         execution_tier = ExecutionTier.REASONING
         hard_override = True
-        signals.append("hard_override:root_cause_why")
+        signals.append("hard_override:root_cause_with_debug_context")
 
-    # Hard rule 2: both debugging AND reasoning cues scored significantly → REASONING
+    # Hard rule 2: root cause instruction ("find the root cause of X") → REASONING
+    elif (
+        has_root_cause
+        and not is_root_cause_meta
+        and bool(
+            re.search(
+                r"\b(find|identify|determine|what is|explain|deduce|infer|locate|diagnose)\s+.*?\b(root cause)\b",
+                lowered,
+            )
+        )
+    ):
+        task_class = TaskClass.REASONING
+        execution_tier = ExecutionTier.REASONING
+        hard_override = True
+        signals.append("hard_override:root_cause_instruction")
+
+    # Hard rule 3: why-fail questions WITH debugging context → REASONING
+    elif re.search(r"\bwhy.*\bfail(?:ed|ure)?\b", lowered) and has_debug_context:
+        task_class = TaskClass.REASONING
+        execution_tier = ExecutionTier.REASONING
+        hard_override = True
+        signals.append("hard_override:why_fail_with_debug_context")
+
+    # Hard rule 4: both debugging AND reasoning cues scored significantly → REASONING
     elif has_debugging_cues and has_reasoning_cues and debug_score > 10 and reason_score > 10:
         task_class = TaskClass.DEBUGGING
         execution_tier = ExecutionTier.REASONING
         hard_override = True
         signals.append("hard_override:debugging+reasoning")
 
-    # Hard rule 3: traceback or heavy log analysis → REASONING
+    # Hard rule 5: traceback or heavy log analysis → REASONING
     elif has_debugging_cues and log_lines > 5:
         task_class = TaskClass.DEBUGGING
         execution_tier = ExecutionTier.REASONING
         hard_override = True
         signals.append("hard_override:log_heavy_debugging")
 
-    # Hard rule 4: significant debugging cues alone → REASONING
-    # (no reasoning words needed — debugging tasks require lossless handling)
+    # Hard rule 6: significant debugging cues alone → REASONING
     elif has_debugging_cues and debug_score > 10:
         task_class = TaskClass.DEBUGGING
         execution_tier = ExecutionTier.REASONING

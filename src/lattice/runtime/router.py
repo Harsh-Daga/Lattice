@@ -14,6 +14,7 @@ This tier is used for:
 from __future__ import annotations
 
 import dataclasses
+import re
 from typing import Any
 
 from lattice.core.transport import Request
@@ -72,10 +73,16 @@ class RuntimeRouter:
     - Tools: 0-20 pts
     - Reasoning: 0-30 pts
     - Code: 0-15 pts
+    - Debugging: 0-25 pts (errors, crashes, log analysis, root cause)
     - Depth: 0-10 pts
 
+    Hard overrides:
+    - Root cause + debugging context → REASONING
+    - Explicit diagnostic/debugging query → REASONING
+    - Heavy error signal (>5 error/crash mentions in query) → REASONING
+
     Thresholds:
-    - REASONING >= 65
+    - REASONING >= 70
     - COMPLEX >= 40
     - MEDIUM >= 20
     - SIMPLE < 20
@@ -85,6 +92,8 @@ class RuntimeRouter:
         self,
         reasoning_keywords: list[str] | None = None,
         code_indicators: list[str] | None = None,
+        debug_indicators: list[str] | None = None,
+        root_cause_indicators: list[str] | None = None,
     ) -> None:
         self.reasoning_keywords = reasoning_keywords or [
             "prove",
@@ -116,6 +125,24 @@ class RuntimeRouter:
             "data structure",
             "api design",
             "unit test",
+        ]
+        self.debug_indicators = debug_indicators or [
+            "debug",
+            "error",
+            "crash",
+            "failure",
+            "traceback",
+            "exception",
+            "timeout",
+            "outage",
+            "investigate",
+            "diagnose",
+            "triage",
+        ]
+        self.root_cause_indicators = root_cause_indicators or [
+            "root cause",
+            "what caused",
+            "explain why",
         ]
 
     def classify(self, request: Request) -> RoutingDecision:
@@ -150,7 +177,33 @@ class RuntimeRouter:
         code_hits = sum(1 for ind in self.code_indicators if ind in combined)
         code_score = min(15, code_hits * 3)
 
-        # 5. Depth score (0-10)
+        # 5. Debugging score (0-25) — error patterns, log analysis, diagnostic signals
+        # Only count patterns in query content (user/assistant), not tool-output data labels.
+        # Use word-boundary matching to avoid substring false positives
+        # (e.g. "degraded" should not match "debug", "logically" should not match "log").
+        query_text = " ".join(
+            m.content for m in request.messages if m.role in ("user", "assistant", "system")
+        ).lower()
+        debug_hits = 0
+        for ind in self.debug_indicators:
+            if re.search(rf"\b{re.escape(ind)}\b", query_text):
+                debug_hits += 1
+        # Also match error/crash/failure in tool output for log-line counts
+        error_log_lines = max(
+            query_text.count("[error]"),
+            query_text.count("error:"),
+            query_text.count("error :"),
+        )
+        # Overrides for error-heavy diagnostic content
+        if error_log_lines > 25:
+            debug_hits += 5
+        debug_score = min(25, debug_hits * 3)
+
+        # Root cause signal (0-15) — explicit root cause / explain-why patterns
+        root_cause_hits = sum(1 for ind in self.root_cause_indicators if ind in query_text)
+        root_cause_score = min(15, root_cause_hits * 5)
+
+        # 6. Depth score (0-10)
         msg_count = len(request.messages)
         if msg_count >= 10:
             depth_score = 10
@@ -159,14 +212,66 @@ class RuntimeRouter:
         else:
             depth_score = 0
 
-        total_score = length_score + tool_score + reasoning_score + code_score + depth_score
+        total_score = (
+            length_score
+            + tool_score
+            + reasoning_score
+            + code_score
+            + debug_score
+            + root_cause_score
+            + depth_score
+        )
 
-        if total_score >= 65:
+        # ---- Hard overrides for diagnostic/debugging/reasoning context ----
+        # These ensure the tier reflects the actual workload, not just
+        # keyword-scoring that misses genuine debugging/reasoning tasks.
+
+        has_debug_context = any(
+            ind in query_text
+            for ind in ("error", "crash", "failure", "debug", "traceback", "exception")
+        ) or bool(
+            re.search(r"\blog\b", query_text)
+            and not re.search(
+                r"\b(logically|catalog|analog|dialogue|prolog|blog|slog)\b", query_text
+            )
+        )
+        has_root_cause_signal = "root cause" in query_text
+        hard_override = False
+
+        # Hard rule 1: root cause WITH debugging context → REASONING
+        if has_root_cause_signal and has_debug_context:
+            tier = Tier.REASONING
+            total_score = max(total_score, 70)
+            hard_override = True
+
+        # Hard rule 2: explicit diagnostic/debugging query → REASONING
+        elif any(
+            pat in query_text
+            for pat in (
+                "debug the",
+                "investigate the failure",
+                "what caused",
+            )
+        ) or bool(re.search(r"explain why.*(error|crash|fail(?:ed|ure))", query_text)):
+            tier = Tier.REASONING
+            total_score = max(total_score, 70)
+            hard_override = True
+
+        # Hard rule 3: heavy log-line error signal → REASONING
+        elif error_log_lines > 25 and total_score < 40:
+            tier = Tier.REASONING
+            total_score = max(total_score, 70)
+            hard_override = True
+
+        # Score-based tier assignment (only if no hard override fired)
+        if hard_override:
+            confidence = min(1.0, total_score / 100)
+        elif total_score >= 70:
             tier = Tier.REASONING
             confidence = min(1.0, total_score / 100)
         elif total_score >= 40:
             tier = Tier.COMPLEX
-            confidence = min(1.0, total_score / 65)
+            confidence = min(1.0, total_score / 70)
         elif total_score >= 20:
             tier = Tier.MEDIUM
             confidence = min(1.0, total_score / 40)
@@ -179,6 +284,8 @@ class RuntimeRouter:
             "tools": tool_score,
             "reasoning": reasoning_score,
             "code": code_score,
+            "debugging": debug_score,
+            "root_cause": root_cause_score,
             "depth": depth_score,
         }
         return RoutingDecision(
@@ -204,10 +311,8 @@ class RuntimeRouter:
         features = features or {}
         if tier == Tier.SIMPLE:
             skipped = (
-                "strategy_selector",
                 "structural_fingerprint",
                 "self_information",
-                "context_selector",
                 "information_theoretic_selector",
                 "rate_distortion",
                 "hierarchical_summary",
@@ -218,11 +323,10 @@ class RuntimeRouter:
         elif tier == Tier.MEDIUM:
             skipped = (  # type: ignore[assignment]
                 "self_information",
-                "information_theoretic_selector",
                 "hierarchical_summary",
             )
             mode = "balanced"
-            budget_ms = 8.0
+            budget_ms = 20.0
             preferred_strategy = "submodular"
         elif tier == Tier.COMPLEX:
             skipped = ("hierarchical_summary",)  # type: ignore[assignment]
@@ -232,7 +336,7 @@ class RuntimeRouter:
         else:
             skipped = ()  # type: ignore[assignment]
             mode = "max_fidelity"
-            budget_ms = 35.0
+            budget_ms = 50.0
             preferred_strategy = "hybrid"
 
         # Tool-heavy requests should retain tool/filtering and cache planning;

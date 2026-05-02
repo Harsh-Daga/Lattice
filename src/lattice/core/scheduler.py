@@ -38,7 +38,6 @@ _REASONING_DISABLED: frozenset[str] = frozenset(
         "message_dedup",
         "rate_distortion",
         "hierarchical_summary",
-        "structural_fingerprint",
         "semantic_compress",
     }
 )

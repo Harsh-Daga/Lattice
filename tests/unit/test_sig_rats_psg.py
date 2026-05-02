@@ -169,11 +169,11 @@ class TestSchedulerDecision:
         task = TaskClassification(task_class=TaskClass.DEBUGGING)
         risk = SemanticRiskScore(strict_instructions=5)
         decision = decide_schedule(
-            transform_names=["structural_fingerprint", "tool_filter"],
+            transform_names=["hierarchical_summary", "tool_filter"],
             task=task,
             risk=risk,
         )
-        assert "structural_fingerprint" in decision.blocked_transforms
+        assert "hierarchical_summary" in decision.blocked_transforms
         assert "tool_filter" in decision.allowed_transforms
 
     def test_schedule_sort_order(self) -> None:
@@ -296,12 +296,16 @@ class TestRATSSafetyIntegration:
         task = TaskClassification(task_class=TaskClass.DEBUGGING, debug_heavy=True)
         risk = SemanticRiskScore(strict_instructions=10)
         decision = decide_schedule(
-            transform_names=["structural_fingerprint", "hierarchical_summary", "tool_filter"],
+            transform_names=["rate_distortion", "hierarchical_summary", "tool_filter", "structural_fingerprint"],
             task=task,
             risk=risk,
         )
-        assert "structural_fingerprint" in decision.blocked_transforms
+        # rate_distortion: CONDITIONAL but in _REASONING_DISABLED → blocked
+        assert "rate_distortion" in decision.blocked_transforms
+        # hierarchical_summary: DANGEROUS → blocked (not in REASONING allowed buckets)
         assert "hierarchical_summary" in decision.blocked_transforms
+        # structural_fingerprint: CONDITIONAL, NOT in _REASONING_DISABLED → allowed
+        assert "structural_fingerprint" in decision.allowed_transforms
         assert "tool_filter" in decision.allowed_transforms
 
     def test_retrieval_prompt_allows_aggressive(self) -> None:

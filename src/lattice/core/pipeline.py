@@ -85,11 +85,7 @@ class CompressorPipeline:
     config: LatticeConfig
     _budget_sensitive_transforms: frozenset[str] = frozenset(
         {
-            "strategy_selector",
-            "structural_fingerprint",
             "self_information",
-            "context_selector",
-            "information_theoretic_selector",
             "rate_distortion",
             "hierarchical_summary",
         }
