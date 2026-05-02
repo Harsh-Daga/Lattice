@@ -273,7 +273,11 @@ def _usage_total_tokens(usage: dict[str, Any]) -> int:
 
 
 def detect_provider(model: str, provider_hint: str | None = None) -> str:
-    """Determine provider from explicit hint or model prefix."""
+    """Determine provider from explicit hint or model prefix.
+
+    Falls back to ``"openai"`` when no hint or prefix is present
+    (e.g. Codex sending ``model: gpt-4`` without a provider prefix).
+    """
     if provider_hint:
         hint = provider_hint.lower().strip()
         if hint in _SUPPORTED_PROVIDERS:
@@ -1169,10 +1173,22 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 x_lattice_provider,
             )
         except Exception as exc:
-            return JSONResponse(
-                {"error": "provider_detection_failed", "message": str(exc)},
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+            # If provider detection failed, check if this is a Codex request
+            # with a bare model name (e.g., "gpt-4"). Codex uses JWT tokens
+            # or plain API keys which we forward to OpenAI.
+            from lattice.integrations.codex.auth import _is_codex_jwt
+
+            if _is_codex_jwt(authorization or ""):
+                provider_name = "openai"
+                deps.logger.info(
+                    "codex_chat_completion_route_to_openai",
+                    model=request.model or body.get("model", "gpt-4"),
+                )
+            else:
+                return JSONResponse(
+                    {"error": "provider_detection_failed", "message": str(exc)},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
 
         delta_mode = "delta" if request.metadata.get("_delta_wire") else ""
         base_url = deps.provider.provider_base_urls.get(provider_name, "")
@@ -1488,7 +1504,11 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                             tool_choice=compressed_request.tool_choice,
                             stop=compressed_request.stop,
                             provider_name=provider_name,
-                            api_key=client_api_key,
+                            # Forward client API key for provider the client
+                            # intended to reach (OpenAI for Codex/standard usage).
+                            # For other providers, Lattice uses its own
+                            # configured credentials.
+                            api_key=client_api_key if provider_name == "openai" else None,
                             metadata=compressed_request.metadata,
                             extra_headers=compressed_request.extra_headers,
                             extra_body=compressed_request.extra_body,
