@@ -106,6 +106,7 @@ from lattice.gateway.compat import anthropic_passthrough as compat_anthropic_pas
 from lattice.gateway.compat import responses_passthrough as compat_responses_passthrough
 from lattice.gateway.compat import (
     responses_websocket_passthrough as compat_responses_websocket_passthrough,
+    chat_completions_websocket_passthrough as compat_ws_chat,
 )
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.proxy import compat_exports as _compat_exports
@@ -282,6 +283,12 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
     async def _responses_websocket_passthrough_with_logger(websocket: Any) -> None:
         await compat_responses_websocket_passthrough(websocket, logger=logger)
 
+    async def _chat_completions_ws_passthrough(websocket: Any) -> None:
+        await compat.chat_completions_websocket_passthrough(websocket, logger=logger)
+
+    async def _chat_completions_ws_passthrough(websocket: Any) -> None:
+        await compat_ws_chat(websocket, logger=logger)
+
     register_provider_compat_routes(
         app,
         compat,
@@ -312,6 +319,7 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
             anthropic_passthrough=_anthropic_passthrough_with_logger,
             responses_passthrough=_responses_passthrough_with_logger,
             responses_websocket_passthrough=_responses_websocket_passthrough_with_logger,
+            chat_completions_websocket_passthrough=_chat_completions_ws_passthrough,
             maintenance=maintenance,
         ),
     )

@@ -558,21 +558,50 @@ class CompressorPipeline:
             # ---- End placeholder leakage guard ----
 
             # ---- PSG safety check ----
-            # Entity/format checks only for irreversible transforms that
+            # Compute text diffs once for all PSG checks in this section.
+            _psg_text_before = "\n".join(m.content for m in backup.messages)
+            _psg_text_after = "\n".join(m.content for m in working.messages)
+
+            # Numeric preservation: runs for ALL transforms when content changed.
+            # Protects error counts, failure counts, percentages — critical for
+            # debugging and analysis tasks where these are diagnostic signals.
+            if _psg_text_before != _psg_text_after:
+                from lattice.core.guardrails import check_entity_preservation as _chk_entity
+                from lattice.core.guardrails import _check_numeric_preservation
+                from lattice.core.guardrails import check_critical_signal_loss as _chk_signal
+                from lattice.core.guardrails import check_format_preservation as _chk_format
+
+                # Numeric loss: N errors/failures/warnings/timeouts/crashes,
+                # percentages — these are diagnostic signals, not noise.
+                num_decision = _check_numeric_preservation(_psg_text_before, _psg_text_after)
+                if num_decision.action.value == "rollback":
+                    self._log.warning(
+                        "transform_numeric_loss",
+                        request_id=context.request_id,
+                        transform=transform.name,
+                        reason=num_decision.reason,
+                    )
+                    context.record_metric(transform.name, "safety_rollback", True)
+                    context.record_metric(transform.name, "rollback_reason", num_decision.reason)
+                    working = backup.copy()
+                    working.metadata["_lattice_rollback_reason"] = num_decision.reason
+                    if self.config.graceful_degradation:
+                        continue
+                    return Err(
+                        TransformError(
+                            transform=transform.name,
+                            code="PSG_NUMERIC_LOSS",
+                            message=f"Numeric preservation failed: {num_decision.reason}",
+                        )
+                    )
+
+            # Entity/format/signal checks only for irreversible transforms that
             # genuinely discard content. Reversible transforms (reference_sub,
             # dictionary_compress, grammar_compress) store referent mappings.
             if transform.name in self._irreversible_transforms:
-                from lattice.core.guardrails import (
-                    check_critical_signal_loss,
-                    check_entity_preservation,
-                    check_format_preservation,
-                )
-
                 protected_spans: list[int] = working.metadata.get("_lattice_protected_spans", [])
-                if protected_spans:
-                    text_before = "\n".join(m.content for m in backup.messages)
-                    text_after = "\n".join(m.content for m in working.messages)
-                    entity_decision = check_entity_preservation(text_before, text_after)
+                if protected_spans and _psg_text_before != _psg_text_after:
+                    entity_decision = _chk_entity(_psg_text_before, _psg_text_after)
                     if entity_decision.action.value == "rollback":
                         self._log.warning(
                             "transform_entity_loss_rollback",
@@ -595,7 +624,7 @@ class CompressorPipeline:
                                 message=f"Entity preservation failed: {entity_decision.reason}",
                             )
                         )
-                    fmt_decision = check_format_preservation(text_before, text_after)
+                    fmt_decision = _chk_format(_psg_text_before, _psg_text_after)
                     if fmt_decision.action.value == "rollback":
                         self._log.warning(
                             "transform_format_loss_rollback",
@@ -618,7 +647,7 @@ class CompressorPipeline:
                                 message=f"Format preservation failed: {fmt_decision.reason}",
                             )
                         )
-                    sig_decision = check_critical_signal_loss(text_before, text_after)
+                    sig_decision = _chk_signal(_psg_text_before, _psg_text_after)
                     if sig_decision.action.value == "rollback":
                         self._log.warning(
                             "transform_critical_signal_loss",

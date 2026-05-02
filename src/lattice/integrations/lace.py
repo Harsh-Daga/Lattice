@@ -176,9 +176,15 @@ def lace_agent(
         we_started_proxy = proxy_info.get("started", False)
         print(f"[lattice] {proxy_info['message']}")
 
-        # 2. Start sidecar tunnel (unless disabled)
+        # 2. Start sidecar tunnel for HTTP-only agents.
+        #
+        # Codex already speaks websocket-friendly proxy traffic directly and
+        # should route to the main proxy port. Using the generic sidecar adds
+        # an extra 8788 hop that can fail independently and does not buy us
+        # anything for Codex.
         agent_connect_port = port
-        if not no_tunnel:
+        use_sidecar = not no_tunnel and agent not in {"codex"}
+        if use_sidecar:
             config = LatticeConfig.auto()
             sidecar = TunnelSidecar(
                 config=config,
@@ -191,6 +197,8 @@ def lace_agent(
             time.sleep(0.2)
             agent_connect_port = 8788
             print(f"[lattice] Sidecar tunnel listening on {sidecar.connect_url}")
+        elif agent == "codex" and not no_tunnel:
+            print("[lattice] Codex routes directly to the main proxy; skipping sidecar tunnel")
 
         # 3. Build environment via registry
         env = os.environ.copy()

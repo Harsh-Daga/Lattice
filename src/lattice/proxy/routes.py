@@ -132,6 +132,7 @@ class ProviderCompatRouteDeps:
     anthropic_passthrough: Any
     responses_passthrough: Any
     responses_websocket_passthrough: Any
+    chat_completions_websocket_passthrough: Any = None
     maintenance: Any = None
 
 
@@ -231,12 +232,48 @@ def register_provider_compat_routes(
 
     @app.websocket("/v1/responses")
     async def responses_websocket(websocket: WebSocket) -> None:
+        logger = getattr(deps, "logger", None)
+        if logger is not None:
+            try:
+                logger.info(
+                    "responses_websocket_route_entered",
+                    path=str(getattr(getattr(websocket, "url", None), "path", "")),
+                    headers={k: v for k, v in websocket.headers.items()},
+                )
+            except Exception:
+                pass
         await deps.responses_websocket_passthrough(websocket)
+
+    @app.websocket("/v1/responses/")
+    async def responses_websocket_slash(websocket: WebSocket) -> None:
+        await responses_websocket(websocket)
+
+    @app.websocket("/v1/chat/completions")
+    async def chat_completions_websocket_route(websocket: WebSocket) -> None:
+        """WebSocket handler for chat completions (Codex CLI, custom clients).
+
+        Accepts a WS upgrade, reads the first text frame as the JSON body,
+        processes it through the Lattice pipeline, proxies to the upstream
+        provider via SSE, and pipes events back as WS text frames.
+        """
+        logger = getattr(deps, "logger", None)
+        if logger is not None:
+            try:
+                logger.info(
+                    "chat_completions_ws_route_entered",
+                    headers={k: v for k, v in websocket.headers.items()},
+                )
+            except Exception:
+                pass
+        await deps.chat_completions_websocket_passthrough(websocket)
 
     responses_aliases = (
         "/v1/codex/responses",
+        "/v1/codex/responses/",
         "/backend-api/responses",
+        "/backend-api/responses/",
         "/backend-api/codex/responses",
+        "/backend-api/codex/responses/",
     )
     for base_path in responses_aliases:
         app.add_api_route(base_path, responses_post, methods=["POST"])

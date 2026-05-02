@@ -363,10 +363,6 @@ def check_blank_output(
     return ValidationOutcome(task_equivalence_composite=1.0, task_equivalence_passed=True)
 
 
-# =============================================================================
-# Central accept_transform — unified safety decision point
-# =============================================================================
-
 # Per-task quality thresholds for transform acceptance.
 _TASK_QUALITY_THRESHOLDS: dict[str, float] = {
     "reasoning": 0.92,
@@ -376,83 +372,6 @@ _TASK_QUALITY_THRESHOLDS: dict[str, float] = {
     "retrieval": 0.85,
     "simple": 0.80,
 }
-
-
-def accept_transform(
-    tokens_before: int,
-    tokens_after: int,
-    text_before: str,
-    text_after: str,
-    transform_name: str,
-    task_class: str = "",
-    execution_tier: str = "",
-    is_placeholder_using: bool = False,
-) -> SafetyDecision:
-    """Central safety check: should this transform be accepted?
-
-    Unifies all scattered pipeline safety guards into a single decision
-    point. Called after every transform execution.
-
-    Checks in order:
-    1. Placeholder leakage — new opaque tokens without manifest → REJECT
-    2. Negative savings — tokens increased with no justification → REJECT
-    3. Entity loss — UUIDs, URLs, IDs lost → REJECT
-    4. Root cause loss — critical diagnostic content lost → REJECT
-    5. Numeric loss — numbers/counts/percentages lost → REJECT
-    6. Task-specific quality threshold — quality below task minimum → REJECT
-
-    Returns ALLOW if all checks pass, ROLLBACK (graceful) or REJECT (strict)
-    if any check fails.
-    """
-    reasons: list[SafetyDecision] = []
-
-    # 1. Placeholder leakage — P0: never allow unmanifested opaque placeholders
-    if not is_placeholder_using:
-        pl = check_placeholder_leakage(text_before, text_after)
-        if pl.action != GuardAction.ALLOW:
-            reasons.append(pl)
-
-    # 2. Negative savings — a transform that increases tokens is net-negative
-    if tokens_before > 0 and tokens_after > tokens_before:
-        reasons.append(
-            SafetyDecision(
-                action=GuardAction.ROLLBACK,
-                reason=f"negative_savings: {tokens_before}→{tokens_after}",
-                rule_that_fired="negative_savings",
-            )
-        )
-
-    # 3. Entity loss — check deterministic entity preservation
-    if text_before != text_after:
-        entity = check_entity_preservation(text_before, text_after)
-        if entity.action != GuardAction.ALLOW:
-            reasons.append(entity)
-
-        # 4. Root cause / critical signal loss
-        sig = check_critical_signal_loss(text_before, text_after)
-        if sig.action != GuardAction.ALLOW:
-            reasons.append(sig)
-
-        # 5. Numeric loss — numbers/counts are critical for debugging/analysis
-        num_loss = _check_numeric_preservation(text_before, text_after)
-        if num_loss.action != GuardAction.ALLOW:
-            reasons.append(num_loss)
-
-    # 6. Task-specific quality threshold gate
-    tier = execution_tier.lower()
-    threshold = _TASK_QUALITY_THRESHOLDS.get(task_class, 0.85)
-    if tier in ("reasoning", "reasoning_safe") and threshold >= 0.90:
-        # Flag that this transform is running on a quality-sensitive task
-        pass  # Actual quality scoring requires LLM judge, not applicable here
-
-    if reasons:
-        # Return the most severe reason
-        for r in reasons:
-            if r.action == GuardAction.REJECT:
-                return r
-        return reasons[0]
-
-    return SafetyDecision(action=GuardAction.ALLOW, reason="all_checks_passed")
 
 
 def _check_numeric_preservation(text_before: str, text_after: str) -> SafetyDecision:

@@ -272,39 +272,6 @@ def _usage_total_tokens(usage: dict[str, Any]) -> int:
     return normalized["prompt_tokens"] + normalized["completion_tokens"]
 
 
-def _responses_path_suffix(path: str) -> str:
-    """Return the suffix after a Responses API base path, if any."""
-    prefixes = (
-        "/v1/responses",
-        "/v1/codex/responses",
-        "/backend-api/responses",
-        "/backend-api/codex/responses",
-    )
-    for prefix in prefixes:
-        if path == prefix:
-            return ""
-        if path.startswith(f"{prefix}/"):
-            return path[len(prefix) :]
-    return ""
-
-
-def _is_codex_responses_path(path: str) -> bool:
-    """Return True when the incoming path is Codex-specific."""
-    return "/codex/" in path or path.startswith("/backend-api/codex/")
-
-
-def _resolve_responses_upstream_path(path: str, is_codex: bool) -> str:
-    """Map an incoming Responses path to the correct upstream path family."""
-    suffix = _responses_path_suffix(path)
-    if is_codex:
-        return "/backend-api/codex/responses" + suffix
-    if path.startswith("/backend-api/"):
-        return "/v1/responses" + suffix
-    if path.startswith("/v1/codex/"):
-        return "/backend-api/codex/responses" + suffix
-    return "/v1/responses" + suffix
-
-
 def detect_provider(model: str, provider_hint: str | None = None) -> str:
     """Determine provider from explicit hint or model prefix."""
     if provider_hint:
@@ -704,11 +671,8 @@ async def responses_passthrough(
     if not base_url:
         raise ValueError(f"No upstream base URL configured for provider '{provider_name}'")
 
-    request_path = getattr(getattr(fastapi_request, "url", None), "path", None) or path
-    incoming_is_codex = _is_codex_responses_path(request_path)
+    upstream_url = f"{base_url.rstrip('/')}{path}"
     query = str(fastapi_request.query_params)
-    upstream_path = _resolve_responses_upstream_path(request_path, incoming_is_codex)
-    upstream_url = f"{base_url.rstrip('/')}{upstream_path}"
     if query:
         upstream_url = f"{upstream_url}?{query}"
 
@@ -718,20 +682,6 @@ async def responses_passthrough(
         if kl in ("host", "content-length", "connection", "keep-alive"):
             continue
         headers[k] = v
-
-    auth = headers.get("authorization", "") or headers.get("Authorization", "")
-    chatgpt_account_id = (
-        headers.get("chatgpt-account-id", "") or headers.get("ChatGPT-Account-ID", "") or ""
-    )
-    if incoming_is_codex or _is_codex_jwt(auth):
-        headers.update(
-            _resolve_codex_routing_headers(
-                auth,
-                headers.get("openai-beta", "") or headers.get("OpenAI-Beta", ""),
-                chatgpt_account_id=chatgpt_account_id,
-            )
-        )
-        headers.pop("OpenAI-Codex-Account-ID", None)
 
     is_streaming = False
     if body:
@@ -858,19 +808,13 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
         _resolve_codex_routing_headers,
     )
 
+    await websocket.accept()
     auth = websocket.headers.get("authorization", "")
     openai_beta = websocket.headers.get("openai-beta", "")
-    chatgpt_account_id = websocket.headers.get("chatgpt-account-id", "")
-    request_path = getattr(getattr(websocket, "url", None), "path", "")
-    incoming_is_codex = _is_codex_responses_path(request_path) or _is_codex_jwt(auth)
 
-    if incoming_is_codex:
+    if _is_codex_jwt(auth):
         upstream_uri = "wss://chatgpt.com/backend-api/codex/responses"
-        upstream_headers = _resolve_codex_routing_headers(
-            auth,
-            openai_beta,
-            chatgpt_account_id=chatgpt_account_id,
-        )
+        upstream_headers = _resolve_codex_routing_headers(auth, openai_beta)
         logger.info("codex_websocket_routing", upstream=upstream_uri)
     else:
         upstream_uri = "wss://api.openai.com/v1/responses"
@@ -880,25 +824,13 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
         if openai_beta:
             upstream_headers["OpenAI-Beta"] = openai_beta
 
-    subprotocol_header = websocket.headers.get("sec-websocket-protocol", "")
-    subprotocols = [p.strip() for p in subprotocol_header.split(",") if p.strip()]
-    if subprotocols:
-        await websocket.accept(subprotocol=subprotocols[0])
-    else:
-        await websocket.accept()
-
     upstream_ws = None
     try:
-        connect_kwargs: dict[str, Any] = {"additional_headers": upstream_headers}
-        if subprotocols:
-            connect_kwargs["subprotocols"] = subprotocols
-        upstream_ws = await _ws_lib.connect(upstream_uri, **connect_kwargs)
+        upstream_ws = await _ws_lib.connect(upstream_uri, additional_headers=upstream_headers)
     except Exception as exc:
         logger.warning("websocket_upstream_connect_failed", error=str(exc))
         await websocket.close(code=1011, reason=f"Upstream connect failed: {exc}")
         return
-
-    forwarded_any = asyncio.Event()
 
     async def client_to_upstream() -> None:
         try:
@@ -922,7 +854,6 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
                     await websocket.send_bytes(msg)
                 else:
                     await websocket.send_text(msg)
-                forwarded_any.set()
         except (
             _ws_lib.exceptions.ConnectionClosed,
             _ws_lib.exceptions.ConnectionClosedOK,
@@ -933,38 +864,7 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
             pass
 
     try:
-        client_task = asyncio.create_task(client_to_upstream())
-        upstream_task = asyncio.create_task(upstream_to_client())
-        forwarded_task = asyncio.create_task(forwarded_any.wait())
-
-        done, pending = await asyncio.wait(
-            {client_task, forwarded_task},
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        if forwarded_task in done:
-            with contextlib.suppress(Exception, asyncio.CancelledError):
-                forwarded_task.result()
-            done2, pending2 = await asyncio.wait(
-                {client_task, upstream_task},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            for task in pending2:
-                task.cancel()
-            for task in done2:
-                with contextlib.suppress(Exception, asyncio.CancelledError):
-                    task.result()
-            for task in pending2:
-                with contextlib.suppress(Exception, asyncio.CancelledError):
-                    await task
-        else:
-            for task in pending:
-                task.cancel()
-            for task in done:
-                with contextlib.suppress(Exception, asyncio.CancelledError):
-                    task.result()
-            for task in pending:
-                with contextlib.suppress(Exception, asyncio.CancelledError):
-                    await task
+        await asyncio.gather(client_to_upstream(), upstream_to_client())
     finally:
         if upstream_ws:
             await upstream_ws.close()
@@ -1157,6 +1057,87 @@ class ChatCompatDeps:
     provider_error: type[Exception]
     sse_done: str
     maintenance: Any = None
+
+
+_ws_lib: Any = None
+
+
+def _ensure_ws_lib() -> None:
+    global _ws_lib
+    if _ws_lib is None:
+        import websockets as _impl
+
+        _ws_lib = _impl
+
+
+async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any = None) -> None:
+    """Relay chat completions WS traffic through Lattice pipeline.
+
+    Codex CLI and custom clients use WebSocket for streaming completions.
+    Accepts the WS upgrade, reads the first text frame as JSON request,
+    passes through pipeline, proxies to upstream SSE, returns SSE events
+    as WS text frames.
+    """
+    _ensure_ws_lib()
+    await websocket.accept()
+
+    import json as _json
+    from lattice.core.config import LatticeConfig
+    from lattice.core.context import TransformContext
+    from lattice.core.serialization import message_to_dict
+    from lattice.core.pipeline_factory import build_default_pipeline
+    from lattice.core.result import is_err, unwrap
+    from lattice.gateway.compat import deserialize_openai_request
+
+    try:
+        json_body = await websocket.receive_text()
+        body = _json.loads(json_body)
+    except Exception:
+        await websocket.close(code=1007, reason="invalid_json")
+        return
+
+    model = body.get("model", "gpt-4")
+    request = deserialize_openai_request(body)
+    config = LatticeConfig.auto()
+
+    pipeline = build_default_pipeline(config)
+    ctx = TransformContext(request_id=f"ws-chat-{model}", provider="openai", model=model)
+    result = await pipeline.process(request, ctx)
+
+    if is_err(result):
+        await websocket.send_text(_json.dumps({"error": "pipeline_failed"}))
+        await websocket.close(code=1011)
+        return
+
+    compressed = unwrap(result)
+    compressed_messages = [message_to_dict(m) for m in compressed.messages]
+    provider_name = model.split("/")[0] if "/" in model else "openai"
+
+    from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
+    from lattice.core.credentials import CredentialResolver
+
+    registry = ProviderRegistry()
+    credentials = CredentialResolver()
+    resolved = credentials.resolve(provider_name)
+    provider_obj = DirectHTTPProvider(
+        registry=registry, default_api_key=resolved.api_key, credentials=credentials
+    )
+
+    try:
+        async for chunk in provider_obj.completion_stream(
+            model=model,
+            messages=compressed_messages,
+            temperature=body.get("temperature"),
+            max_tokens=body.get("max_tokens"),
+            provider_name=provider_name,
+        ):
+            if chunk is not None:
+                await websocket.send_text(_json.dumps(chunk))
+    except Exception as exc:
+        if logger:
+            logger.warning("ws_chat_completions_stream_error", error=str(exc))
+    finally:
+        await websocket.close()
 
 
 def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
