@@ -1340,15 +1340,9 @@ def evaluate_task_equivalence_structural(
     score = TaskEquivalenceScore()
     baseline_len = len(baseline_output.strip())
     optimized_len = len(optimized_output.strip())
-    if baseline_len > 0:
-        ratio = min(baseline_len, optimized_len) / max(baseline_len, optimized_len)
-        score.correctness = round(ratio, 4)
-    else:
-        score.correctness = 0.5
 
     # Key fact preservation: use structured fact extraction for numbers,
     # counts, UUIDs, error codes, root cause, timestamps, stack traces.
-    # This is more accurate than raw entity-overlap Jaccard.
     kf_score, missing_facts = _compute_key_fact_preservation(
         baseline_output, optimized_output
     )
@@ -1356,9 +1350,7 @@ def evaluate_task_equivalence_structural(
     if missing_facts:
         score.failure_reasons.extend(missing_facts)
 
-    # Numeric preservation: also covered by key_fact_preservation's
-    # count_category and percentage patterns.
-    # Provide a separate score for explicit numeric checks.
+    # Numeric preservation
     num_baseline = len(re.findall(r"\b\d+(?:\.\d+)?%?\b", baseline_output))
     num_optimized = len(re.findall(r"\b\d+(?:\.\d+)?%?\b", optimized_output))
     if num_baseline > 0:
@@ -1367,6 +1359,18 @@ def evaluate_task_equivalence_structural(
         )
     else:
         score.numeric_preservation = 1.0
+
+    # Correctness: use key_fact_preservation as the primary signal.
+    # Length ratio provides a FLOOR — if output is drastically shorter,
+    # correctness can't be perfect. But a short output with all facts
+    # preserved should score well, not be penalized for conciseness.
+    if baseline_len > 0:
+        length_ratio = min(baseline_len, optimized_len) / max(baseline_len, optimized_len)
+        # Non-linear: length_ratio >= 0.5 → no penalty, below → gradual penalty
+        length_floor = min(1.0, max(0.0, (length_ratio - 0.3) / 0.5))
+        score.correctness = round(max(kf_score, 0.5) * length_floor, 4)
+    else:
+        score.correctness = 0.5
 
     baseline_has_json = baseline_output.strip().startswith("{") or baseline_output.strip().startswith("[")
     optimized_has_json = optimized_output.strip().startswith("{") or optimized_output.strip().startswith("[")

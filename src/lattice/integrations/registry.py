@@ -13,6 +13,8 @@ To add a new agent:
 
 from __future__ import annotations
 
+import inspect
+import os
 from collections.abc import Callable
 from typing import Any
 
@@ -78,6 +80,25 @@ def _ensure_builders() -> dict[str, _InstallEnvBuilder]:
 # ---------------------------------------------------------------------------
 
 _PROVIDER_SCOPE_HANDLERS: dict[str, tuple[_ProviderScopeApplier, _ProviderScopeReverter]] = {}
+_REDACTED_ENV_KEYS = {
+    "API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "AZURE_OPENAI_API_KEY",
+    "OLLAMA_CLOUD_API_KEY",
+    "GROQ_API_KEY",
+    "TOGETHER_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "PERPLEXITY_API_KEY",
+    "MISTRAL_API_KEY",
+    "FIREWORKS_API_KEY",
+    "OPENROUTER_API_KEY",
+    "COHERE_API_KEY",
+    "AI21_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "VERTEX_API_KEY",
+}
 
 
 def _ensure_handlers() -> dict[str, tuple[_ProviderScopeApplier, _ProviderScopeReverter]]:
@@ -149,6 +170,46 @@ def _ensure_handlers() -> dict[str, tuple[_ProviderScopeApplier, _ProviderScopeR
     return _PROVIDER_SCOPE_HANDLERS
 
 
+def _call_env_builder(
+    builder: _InstallEnvBuilder,
+    *,
+    port: int,
+    backend: str,
+) -> dict[str, str]:
+    """Call an env builder with only the kwargs it actually accepts.
+
+    Agent integrations have not all converged on the same launch-env
+    signature yet:
+    - Claude/Cursor accept ``backend``
+    - Codex/OpenCode/Copilot accept ``environ``
+
+    The registry is the compatibility layer, so it adapts to the builder
+    instead of forcing every integration to share the same signature.
+    """
+    params = inspect.signature(builder).parameters
+    kwargs: dict[str, Any] = {"port": port}
+    if "backend" in params:
+        kwargs["backend"] = backend
+    elif "environ" in params:
+        kwargs["environ"] = None
+    return builder(**kwargs)
+
+
+def _render_env_display(env: dict[str, str]) -> list[str]:
+    """Return a minimal, redacted display for changed env vars only."""
+    current_env = os.environ
+    display: list[str] = []
+    for key in sorted(env):
+        value = env[key]
+        if key in current_env and current_env[key] == value:
+            continue
+        if any(suffix and suffix in key for suffix in _REDACTED_ENV_KEYS):
+            display.append(f"{key}=<redacted>")
+        else:
+            display.append(f"{key}={value}")
+    return display
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -176,7 +237,7 @@ def build_install_target_envs(
         builder = builders.get(target)
         if builder is None:
             continue
-        result[target] = builder(port=port, backend=backend)
+        result[target] = _call_env_builder(builder, port=port, backend=backend)
     return result
 
 
@@ -188,8 +249,8 @@ def build_launch_env(
     builder = builders.get(agent)
     if builder is None:
         return {}, []
-    env = builder(port=port, backend=backend)
-    display = [f"{k}={v}" for k, v in env.items()]
+    env = _call_env_builder(builder, port=port, backend=backend)
+    display = _render_env_display(env)
     return env, display
 
 

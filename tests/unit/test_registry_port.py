@@ -55,3 +55,17 @@ def test_registry_threads_port_to_handlers() -> None:
     result = apply_provider_scope("cursor", port=1234)
     assert result is not None
     assert result.get("target") == "cursor"
+
+
+def test_registry_launch_env_adapts_to_builder_signature() -> None:
+    """Registry build_launch_env must support both backend and environ builders."""
+    from lattice.integrations.registry import build_launch_env
+
+    codex_env, codex_display = build_launch_env("codex", port=4321)
+    assert codex_env["OPENAI_BASE_URL"] == "http://127.0.0.1:4321/v1"
+    assert any("OPENAI_BASE_URL=http://127.0.0.1:4321/v1" in line for line in codex_display)
+    assert all("API_KEY" not in line for line in codex_display)
+
+    claude_env, claude_display = build_launch_env("claude", port=4322, backend="anthropic")
+    assert claude_env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:4322"
+    assert any("ANTHROPIC_BASE_URL=http://127.0.0.1:4322" in line for line in claude_display)

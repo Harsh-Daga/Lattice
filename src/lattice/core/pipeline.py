@@ -467,6 +467,30 @@ class CompressorPipeline:
                     continue
             # ---- End expansion guardrail ----
 
+            # ---- Negative savings guard ----
+            # A transform that increases tokens without an explicit quality
+            # justification is a net negative. Skip it.
+            if (
+                tokens_before > 0
+                and working_tokens > tokens_before
+                and transform.name not in self._placeholder_using_transforms
+            ):
+                self._log.warning(
+                    "transform_negative_savings",
+                    request_id=context.request_id,
+                    transform=transform.name,
+                    tokens_before=tokens_before,
+                    tokens_after=working_tokens,
+                    delta=working_tokens - tokens_before,
+                )
+                context.record_metric(transform.name, "negative_savings", True)
+                context.record_metric(
+                    transform.name, "tokens_delta", working_tokens - tokens_before
+                )
+                working = backup.copy()
+                continue
+            # ---- End negative savings guard ----
+
             # ---- Compression limit guard (REASONING tier) ----
             task_data = working.metadata.get("_lattice_task_classification", {})
             tier = task_data.get("execution_tier", "") if isinstance(task_data, dict) else ""
