@@ -232,3 +232,18 @@ def register_provider_compat_routes(
     @app.websocket("/v1/responses")
     async def responses_websocket(websocket: WebSocket) -> None:
         await deps.responses_websocket_passthrough(websocket)
+
+    responses_aliases = (
+        "/v1/codex/responses",
+        "/backend-api/responses",
+        "/backend-api/codex/responses",
+    )
+    for base_path in responses_aliases:
+        app.add_api_route(base_path, responses_post, methods=["POST"])
+        app.add_api_route(f"{base_path}/{{response_id:path}}", responses_get, methods=["GET"])
+        app.add_api_route(
+            f"{base_path}/{{response_id:path}}",
+            responses_delete,
+            methods=["DELETE"],
+        )
+        app.add_api_websocket_route(base_path, responses_websocket)

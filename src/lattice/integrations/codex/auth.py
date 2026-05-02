@@ -2,7 +2,7 @@
 
 Codex sends an OpenAI-style Bearer JWT in the Authorization header.
 We decode it (no verification — we are a passthrough proxy) to extract
-`chatgpt_account_id` for WebSocket routing to the correct Codex upstream.
+``chatgpt_account_id`` for routing to the correct Codex upstream.
 """
 
 from __future__ import annotations
@@ -40,12 +40,13 @@ def _decode_openai_bearer_payload(authorization: str) -> dict[str, Any] | None:
 def _resolve_codex_routing_headers(
     authorization: str,
     openai_beta: str = "",
+    chatgpt_account_id: str = "",
 ) -> dict[str, str]:
     """Build upstream headers for Codex WebSocket / HTTP passthrough.
 
-    Extracts ``chatgpt_account_id`` from the JWT payload and adds it as
-    ``OpenAI-Codex-Account-ID`` so the upstream Codex endpoint can route
-    correctly.
+    Prefers an explicit ``ChatGPT-Account-ID`` when provided, otherwise
+    extracts ``chatgpt_account_id`` from the JWT payload and forwards it as
+    ``ChatGPT-Account-ID`` so the upstream Codex endpoint can route correctly.
     """
     headers: dict[str, str] = {}
     if authorization:
@@ -53,11 +54,15 @@ def _resolve_codex_routing_headers(
     if openai_beta:
         headers["OpenAI-Beta"] = openai_beta
 
+    if chatgpt_account_id:
+        headers["ChatGPT-Account-ID"] = chatgpt_account_id
+        return headers
+
     payload = _decode_openai_bearer_payload(authorization)
     if payload is not None:
         account_id = payload.get("chatgpt_account_id")
         if account_id:
-            headers["OpenAI-Codex-Account-ID"] = str(account_id)
+            headers["ChatGPT-Account-ID"] = str(account_id)
 
     return headers
 
