@@ -171,19 +171,28 @@ class TestStartBackgroundServer:
         )
 
         assert pid > 0
-        # The PID should be alive
         pid_file = tmp_path / "server.pid"
         mgr = PIDManager(pid_path=pid_file)
         mgr.write(pid)
         assert mgr._is_alive(pid) is True
 
-        # Give uvicorn a moment to start listening
-        time.sleep(1.0)
-
-        # Verify the server is actually listening
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(2.0)
-            s.connect(("127.0.0.1", port))
+        # Retry connect with backoff — CI runners may be slower to start uvicorn.
+        deadline = time.monotonic() + 5.0
+        last_err: Exception | None = None
+        connected = False
+        while time.monotonic() < deadline:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(1.0)
+                    s.connect(("127.0.0.1", port))
+                    connected = True
+                    break
+            except ConnectionRefusedError as e:
+                last_err = e
+                time.sleep(0.2)
+        assert connected, (
+            f"Server did not start listening on port {port} within 5s: {last_err}"
+        )
 
         # Clean up: stop the server
         mgr.stop(grace_period=3.0)
@@ -212,13 +221,16 @@ class TestStartBackgroundServer:
         mgr = PIDManager(pid_path=pid_file)
         mgr.write(pid)
 
-        # Wait for startup
-        time.sleep(1.0)
-
-        # Check that the process name contains "uvicorn" or "python"
-        name = mgr._process_name(pid)
-        if name is not None:
-            assert "python" in name.lower() or "uvicorn" in name.lower()
+        # Retry process name check with backoff.
+        deadline = time.monotonic() + 5.0
+        name_ok = False
+        while time.monotonic() < deadline:
+            name = mgr._process_name(pid)
+            if name is not None and ("python" in name.lower() or "uvicorn" in name.lower()):
+                name_ok = True
+                break
+            time.sleep(0.2)
+        assert name_ok, f"Process name not uvicorn/python within 5s: {mgr._process_name(pid)}"
 
         # Clean up
         mgr.stop(grace_period=3.0)
