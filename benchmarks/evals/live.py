@@ -9,8 +9,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from benchmarks.framework.types import LatencyMeasurement, QualityMeasurement
-from benchmarks.metrics.quality import evaluate_response
+from benchmarks.framework.types import LatencyMeasurement, QualityMeasurement, TaskEquivalenceScore
+from benchmarks.metrics.quality import evaluate_response  # legacy compat / JSON+tool checks
 from benchmarks.scenarios.prompts import BenchmarkScenario
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
@@ -169,18 +169,19 @@ async def run_scenario(
 
     baseline_tokens = request.token_estimate
     optimized_tokens = compressed.token_estimate
-    quality = None
+    quality: QualityMeasurement | None = None
     if not dry_run and baseline_resp_text and optimized_resp_text:
-        quality = evaluate_response(
-            baseline_response=baseline_resp_text,
-            optimized_response=optimized_resp_text,
-            expect_json=scenario.expect_json,
-            json_schema=scenario.json_schema,
+        te = _compute_task_equivalence(
+            baseline_output=baseline_resp_text,
+            optimized_output=optimized_resp_text,
+            scenario=scenario,
         )
-    else:
-        # Dry-run / no comparison available — quality is explicitly unavailable.
-        # A 1.0 placeholder would be misleading as a real quality signal.
-        quality = QualityMeasurement(semantic_similarity=0.0)
+        quality = QualityMeasurement(
+            task_equivalence=te,
+            semantic_similarity=te.composite,  # align legacy field with authoritative score
+        )
+    # Dry-run / no outputs: quality is explicitly unavailable — not 0.0.
+    # A misleading 0.0 placeholder would contaminate avg_quality_score.
 
     usage_summary: dict[str, Any] = {}
     if baseline_usage or optimized_usage:
@@ -259,6 +260,27 @@ async def run_scenario(
         transform_breakdown,
         usage_summary,
         telemetry,
+    )
+
+
+def _compute_task_equivalence(
+    baseline_output: str,
+    optimized_output: str,
+    scenario: BenchmarkScenario,
+) -> TaskEquivalenceScore:
+    """Compute task equivalence using the structural evaluator.
+
+    The structural evaluator is deterministic (no LLM dependency) and
+    checks: correctness (length ratio), key fact preservation (entity
+    overlap), numeric preservation, schema validity, reasoning signals,
+    and placeholder leakage.
+    """
+    from benchmarks.evals.runner import evaluate_task_equivalence_structural
+
+    return evaluate_task_equivalence_structural(
+        baseline_output=baseline_output,
+        optimized_output=optimized_output,
+        required_properties=getattr(scenario, "required_answer_properties", []) or [],
     )
 
 
