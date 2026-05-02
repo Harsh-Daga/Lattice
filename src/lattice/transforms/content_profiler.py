@@ -44,7 +44,7 @@ from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
 from lattice.core.scheduler import decide_schedule
 from lattice.core.semantic_graph import SemanticImportanceGraph, SemanticSpan
-from lattice.core.task_classifier import classify_task
+from lattice.core.task_classifier import TaskClassification, classify_task
 from lattice.core.transport import Request, Response
 from lattice.utils.validation import SemanticRiskScore, compute_risk_score
 
@@ -123,12 +123,12 @@ class ContentProfiler(ReversibleSyncTransform):
             return Ok(request)
 
         profile = self._classify(request)
-        strategy = self._select_strategy(profile, request)
+        task = classify_task(request)
+        strategy = self._select_strategy(profile, task)
         risk_score = self._compute_risk(request)
 
         # Build SIG — Semantic Importance Graph
         sig = _build_importance_graph(request)
-        task = classify_task(request)
 
         # Build scheduler decision from SIG + RATS + risk
         transform_names = [
@@ -315,8 +315,14 @@ class ContentProfiler(ReversibleSyncTransform):
     # Strategy selection
     # ------------------------------------------------------------------
 
-    def _select_strategy(self, profile: ContentProfile, _request: Request) -> dict[str, Any]:
-        """Select compression parameters based on profile."""
+    def _select_strategy(
+        self, profile: ContentProfile, task: TaskClassification | None = None
+    ) -> dict[str, Any]:
+        """Select compression parameters based on profile and task classification.
+
+        Conservative tasks (REASONING, DEBUGGING) receive a restricted
+        strategy: only safe transforms, no lossy compression.
+        """
         base: dict[str, Any] = {
             "reference_sub": True,
             "tool_filter": True,
@@ -327,6 +333,16 @@ class ContentProfiler(ReversibleSyncTransform):
             "semantic_compress": False,
             "structure_type": profile.value,
         }
+
+        # Conservative tasks: strip lossy transforms entirely
+        if task is not None and isinstance(task, TaskClassification) and task.is_conservative:
+            base.update(
+                {
+                    "semantic_compress": False,
+                    "message_dedup": False,
+                    "rate_distortion": False,
+                }
+            )
 
         if profile == ContentProfile.SHORT:
             return {
@@ -351,8 +367,8 @@ class ContentProfiler(ReversibleSyncTransform):
         if profile == ContentProfile.NARRATIVE_LONG:
             return {
                 **base,
-                "semantic_compress": True,
-                "compression_ratio": 0.6,
+                "semantic_compress": False,  # Disabled by default — too lossy (92% compression, 0.50 quality)
+                "compression_ratio": 0.3,
                 "format_conversion": False,
             }
 
