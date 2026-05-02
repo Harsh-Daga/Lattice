@@ -373,7 +373,11 @@ class CompressorPipeline:
                     context.record_metric(transform.name, "deferred", True)
                     for entry in schedule.get("schedule", []):
                         if isinstance(entry, dict) and entry.get("name") == transform.name:
-                            context.record_metric(transform.name, "deferred_reason", entry.get("reason", "scheduler_blocked"))
+                            context.record_metric(
+                                transform.name,
+                                "deferred_reason",
+                                entry.get("reason", "scheduler_blocked"),
+                            )
                             break
                     continue
             # ---- End span-aware gating ----
@@ -454,7 +458,10 @@ class CompressorPipeline:
             tier = task_data.get("execution_tier", "") if isinstance(task_data, dict) else ""
             if tier in ("REASONING", "REASONING_SAFE") and tokens_before > 0:
                 compression_ratio = (tokens_before - working_tokens) / tokens_before
-                if compression_ratio > 0.10 and transform.name not in ("content_profiler", "runtime_contract"):
+                if compression_ratio > 0.10 and transform.name not in (
+                    "content_profiler",
+                    "runtime_contract",
+                ):
                     self._log.warning(
                         "transform_compression_limit_exceeded",
                         request_id=context.request_id,
@@ -538,7 +545,9 @@ class CompressorPipeline:
                             reason=sig_decision.reason,
                         )
                         context.record_metric(transform.name, "safety_rollback", True)
-                        context.record_metric(transform.name, "rollback_reason", sig_decision.reason)
+                        context.record_metric(
+                            transform.name, "rollback_reason", sig_decision.reason
+                        )
                         working = backup.copy()
                         working.metadata["_lattice_rollback_reason"] = sig_decision.reason
                         if self.config.graceful_degradation:
@@ -609,18 +618,27 @@ class CompressorPipeline:
         transforms_reached: list[str] = []
         transforms_activated: list[str] = []
         transforms_useful: list[str] = []
-        for t_name, t_metrics in (transforms_metrics.items() if isinstance(transforms_metrics, dict) else {}):
+        for t_name, t_metrics in (
+            transforms_metrics.items() if isinstance(transforms_metrics, dict) else {}
+        ):
             if isinstance(t_metrics, dict):
                 tokens_before = t_metrics.get("tokens_before", 0)
                 tokens_after = t_metrics.get("tokens_after", 0)
                 changed = tokens_before != tokens_after and tokens_after > 0
-                has_safety_issue = t_metrics.get("safety_rollback") or t_metrics.get("expansion_aborted")
+                has_safety_issue = t_metrics.get("safety_rollback") or t_metrics.get(
+                    "expansion_aborted"
+                )
                 was_blocked = t_metrics.get("risk_blocked") or t_metrics.get("scheduler_blocked")
                 if not was_blocked:
                     transforms_reached.append(t_name)
                 if not was_blocked and changed:
                     transforms_activated.append(t_name)
-                if not was_blocked and changed and not has_safety_issue and tokens_after < tokens_before:
+                if (
+                    not was_blocked
+                    and changed
+                    and not has_safety_issue
+                    and tokens_after < tokens_before
+                ):
                     transforms_useful.append(t_name)
 
         working.metadata["_lattice_reachability"] = {

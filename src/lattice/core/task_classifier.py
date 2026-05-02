@@ -51,10 +51,10 @@ class TaskClassification:
 
     @property
     def is_conservative(self) -> bool:
-        return (
-            self.execution_tier in (ExecutionTier.REASONING, ExecutionTier.REASONING_SAFE)
-            or self.task_class in (TaskClass.DEBUGGING, TaskClass.REASONING)
-        )
+        return self.execution_tier in (
+            ExecutionTier.REASONING,
+            ExecutionTier.REASONING_SAFE,
+        ) or self.task_class in (TaskClass.DEBUGGING, TaskClass.REASONING)
 
     @property
     def requires_safe_mode(self) -> bool:
@@ -258,7 +258,9 @@ def classify_task(request: Request) -> TaskClassification:
         confidence=round(confidence, 2),
         signals=signals[:20],
         hard_override=hard_override,
-        preferred_strategy="conservative" if execution_tier in (ExecutionTier.REASONING, ExecutionTier.REASONING_SAFE) else "balanced",
+        preferred_strategy="conservative"
+        if execution_tier in (ExecutionTier.REASONING, ExecutionTier.REASONING_SAFE)
+        else "balanced",
         reasoning_heavy=has_reasoning_cues or execution_tier == ExecutionTier.REASONING,
         structured_heavy=structured_heavy,
         debug_heavy=has_debugging_cues,

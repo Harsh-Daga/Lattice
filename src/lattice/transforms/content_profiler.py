@@ -693,7 +693,10 @@ def _derive_protected(spans: list[SemanticSpan]) -> None:
         text_lower = span.text.lower()
 
         # Exact numbers, dates, IDs
-        if re.search(r"\b\d+(?:\.\d+)?\b", span.text) and len(re.findall(r"\b\d+(?:\.\d+)?\b", span.text)) >= 2:
+        if (
+            re.search(r"\b\d+(?:\.\d+)?\b", span.text)
+            and len(re.findall(r"\b\d+(?:\.\d+)?\b", span.text)) >= 2
+        ):
             span.protected = True
 
         # Root cause statements
@@ -705,7 +708,9 @@ def _derive_protected(spans: list[SemanticSpan]) -> None:
             span.protected = True
 
         # Counts and distributions
-        if re.search(r"\b\d+\s+(errors|failures|warnings|requests|timeouts|attempts)\b", text_lower):
+        if re.search(
+            r"\b\d+\s+(errors|failures|warnings|requests|timeouts|attempts)\b", text_lower
+        ):
             span.protected = True
 
         # Stack traces

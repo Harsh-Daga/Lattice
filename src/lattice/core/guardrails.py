@@ -238,9 +238,7 @@ def check_critical_signal_loss(
         )
 
     # Root cause phrases
-    root_cause_pattern = re.compile(
-        r"\b(root cause|caused by|due to|because)\b", re.IGNORECASE
-    )
+    root_cause_pattern = re.compile(r"\b(root cause|caused by|due to|because)\b", re.IGNORECASE)
     if root_cause_pattern.search(text_before) and not root_cause_pattern.search(text_after):
         return SafetyDecision(
             action=GuardAction.ROLLBACK,

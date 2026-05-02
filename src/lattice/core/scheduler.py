@@ -33,13 +33,15 @@ _ALLOWED_BUCKETS: dict[str, set[TransformSafetyBucket]] = {
 # Only irreversible lossy transforms are blocked. Reversible transforms
 # (reference_sub, dictionary_compress, grammar_compress) store referent
 # mappings and are safe even on conservative tasks.
-_REASONING_DISABLED: frozenset[str] = frozenset({
-    "message_dedup",
-    "rate_distortion",
-    "hierarchical_summary",
-    "structural_fingerprint",
-    "semantic_compress",
-})
+_REASONING_DISABLED: frozenset[str] = frozenset(
+    {
+        "message_dedup",
+        "rate_distortion",
+        "hierarchical_summary",
+        "structural_fingerprint",
+        "semantic_compress",
+    }
+)
 
 
 @dataclasses.dataclass(slots=True)
