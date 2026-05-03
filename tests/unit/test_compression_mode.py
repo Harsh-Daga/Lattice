@@ -26,7 +26,10 @@ def test_balanced_mode_enables_selective() -> None:
     cfg = LatticeConfig(compression_mode="balanced")
     cfg.apply_compression_mode()
     assert cfg.transform_content_profiler is True
-    assert cfg.transform_structural_fingerprint is True
+    assert cfg.transform_structural_fingerprint is False
+    assert cfg.transform_code_factoring is True
+    assert cfg.transform_extractive_compress is True
+    assert cfg.transform_tool_projection is True
     assert cfg.transform_self_information is True
     assert cfg.transform_hierarchical_summary is False
     assert cfg.transform_semantic_compress is False

@@ -40,7 +40,7 @@ from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.scheduler import decide_schedule
 from lattice.core.semantic_graph import SemanticImportanceGraph, SemanticSpan
@@ -99,6 +99,7 @@ class ContentProfiler(ReversibleSyncTransform):
     """
 
     name = "content_profiler"
+    transform_class = TransformClass.OBSERVABILITY_ONLY
     priority = 1  # Run FIRST, before all other transforms
 
     def __init__(

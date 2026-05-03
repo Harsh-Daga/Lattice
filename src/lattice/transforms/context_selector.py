@@ -12,7 +12,7 @@ import re
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response, Role
 
@@ -110,6 +110,7 @@ class SubmodularContextSelector(ReversibleSyncTransform):
     """
 
     name = "context_selector"
+    transform_class = TransformClass.SEMANTIC_LOSSY
     priority = 18  # Before R-D compressor
 
     def __init__(
@@ -337,6 +338,7 @@ class InformationTheoreticSelector(SubmodularContextSelector):
 
     name = "information_theoretic_selector"
     priority = 19  # After submodular, before R-D
+    transform_class = TransformClass.SEMANTIC_LOSSY
 
     def _mutual_information(self, doc: str, query: str) -> float:
         """Estimate I(doc; Answer | query) using keyword overlap heuristic."""

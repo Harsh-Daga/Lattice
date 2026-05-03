@@ -14,7 +14,7 @@ from collections import Counter
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
 
@@ -26,6 +26,7 @@ _ALIAS_PREFIX = "A"
 
 class AliasManifestTransform(ReversibleSyncTransform):
     name = "alias_manifest"
+    transform_class = TransformClass.LOSSLESS_CONTEXTUAL
     priority = 16
 
     def process(

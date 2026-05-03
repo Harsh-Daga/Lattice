@@ -313,8 +313,8 @@ class TestRATSSafetyIntegration:
         assert "rate_distortion" in decision.blocked_transforms
         # hierarchical_summary: DANGEROUS → blocked (not in REASONING allowed buckets)
         assert "hierarchical_summary" in decision.blocked_transforms
-        # structural_fingerprint: CONDITIONAL, NOT in _REASONING_DISABLED → allowed
-        assert "structural_fingerprint" in decision.allowed_transforms
+        # structural_fingerprint: blocked for DEBUGGING via per-task matrix
+        assert "structural_fingerprint" in decision.blocked_transforms
         assert "tool_filter" in decision.allowed_transforms
 
     def test_retrieval_prompt_allows_aggressive(self) -> None:

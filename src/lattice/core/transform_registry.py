@@ -153,6 +153,14 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Pattern detection for repeated structures",
     ),
     TransformSpec(
+        canonical_name="code_factoring",
+        config_flag="transform_code_factoring",
+        priority=12,
+        safety_bucket=SAFE,
+        factory_path="lattice.transforms.code_factoring.CodeFactoringTransform",
+        description="Lossless code/file factoring with template extraction",
+    ),
+    TransformSpec(
         canonical_name="self_information",
         config_flag="transform_self_information",
         priority=14,
@@ -258,6 +266,14 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Semantic compression via rate-distortion optimization",
     ),
     TransformSpec(
+        canonical_name="extractive_compress",
+        config_flag="transform_extractive_compress",
+        priority=22,
+        safety_bucket=SAFE,
+        factory_path="lattice.transforms.extractive_compress.ExtractiveCompressor",
+        description="Extractive entity/pattern-preserving compression",
+    ),
+    TransformSpec(
         canonical_name="grammar_compress",
         aliases=("grammar_compressor",),
         config_flag="transform_grammar_compress",
@@ -318,6 +334,14 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         safety_bucket=SAFE,
         factory_path="lattice.transforms.tool_filter.ToolOutputFilter",
         description="Tool output projection / filtering",
+    ),
+    TransformSpec(
+        canonical_name="tool_projection",
+        config_flag="transform_tool_projection",
+        priority=29,
+        safety_bucket=SAFE,
+        factory_path="lattice.transforms.tool_projection.QueryAwareProjection",
+        description="Query-aware tool output field projection",
     ),
     TransformSpec(
         canonical_name="output_cleanup",

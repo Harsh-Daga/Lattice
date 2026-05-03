@@ -13,7 +13,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from lattice.core.task_classifier import TaskClassification
+from lattice.core.task_classifier import TaskClass, TaskClassification
 from lattice.utils.validation import (
     SemanticRiskScore,
     TransformSafetyBucket,
@@ -30,9 +30,6 @@ _ALLOWED_BUCKETS: dict[str, set[TransformSafetyBucket]] = {
 }
 
 # Transforms always blocked on REASONING/REASONING_SAFE tiers.
-# Only irreversible lossy transforms are blocked. Reversible transforms
-# (reference_sub, dictionary_compress, grammar_compress) store referent
-# mappings and are safe even on conservative tasks.
 _REASONING_DISABLED: frozenset[str] = frozenset(
     {
         "message_dedup",
@@ -41,6 +38,67 @@ _REASONING_DISABLED: frozenset[str] = frozenset(
         "semantic_compress",
     }
 )
+
+# Per-task transform matrix — which transforms are allowed per task class.
+# True = allowed by default, False = blocked, None = allowed only if safe mode off.
+_TASK_TRANSFORM_MATRIX: dict[str, dict[str, bool | None]] = {
+    # Retrieval / simple Q&A
+    TaskClass.RETRIEVAL.value: {
+        "rate_distortion": False,
+        "hierarchical_summary": False,
+        "structural_fingerprint": False,
+        "message_dedup": None,
+        "semantic_compress": False,
+    },
+    TaskClass.SIMPLE.value: {
+        "rate_distortion": False,
+        "hierarchical_summary": False,
+    },
+    # Debugging / root cause
+    TaskClass.DEBUGGING.value: {
+        "rate_distortion": False,
+        "semantic_compress": False,
+        "hierarchical_summary": False,
+        "structural_fingerprint": False,
+        "message_dedup": False,
+        "grammar_compress": False,
+    },
+    # Reasoning
+    TaskClass.REASONING.value: {
+        "rate_distortion": False,
+        "semantic_compress": False,
+        "hierarchical_summary": False,
+        "structural_fingerprint": False,
+        "message_dedup": False,
+    },
+    # Structured data / tables
+    TaskClass.STRUCTURED.value: {
+        "rate_distortion": False,
+        "hierarchical_summary": False,
+    },
+}
+
+# Per-task quality thresholds
+_TASK_QUALITY_THRESHOLDS: dict[str, float] = {
+    TaskClass.REASONING.value: 0.92,
+    TaskClass.DEBUGGING.value: 0.90,
+    TaskClass.ANALYSIS.value: 0.88,
+    TaskClass.STRUCTURED.value: 0.87,
+    TaskClass.RETRIEVAL.value: 0.85,
+    TaskClass.SUMMARIZATION.value: 0.85,
+    TaskClass.SIMPLE.value: 0.80,
+}
+
+# Per-task compression limits (max compression ratio allowed)
+_TASK_COMPRESSION_LIMITS: dict[str, float] = {
+    TaskClass.REASONING.value: 0.10,
+    TaskClass.DEBUGGING.value: 0.15,
+    TaskClass.ANALYSIS.value: 0.25,
+    TaskClass.STRUCTURED.value: 0.30,
+    TaskClass.RETRIEVAL.value: 0.40,
+    TaskClass.SUMMARIZATION.value: 0.35,
+    TaskClass.SIMPLE.value: 0.50,
+}
 
 
 @dataclasses.dataclass(slots=True)
@@ -131,8 +189,23 @@ def decide_schedule(
         # Tier-based gating: only buckets allowed for this tier can run
         tier_buckets = _ALLOWED_BUCKETS.get(tier, {TransformSafetyBucket.SAFE})
 
-        # REASONING tiers explicitly disable lossy transforms
-        if tier in ("REASONING", "REASONING_SAFE") and name in _REASONING_DISABLED:
+        # Per-task transform matrix check
+        task_class_value = task.task_class.value
+        matrix = _TASK_TRANSFORM_MATRIX.get(task_class_value, {})
+        if name in matrix:
+            matrix_decision = matrix[name]
+            if matrix_decision is False:
+                entry.allowed = False
+                entry.reason = f"{name}_blocked_for_{task_class_value}"
+            elif matrix_decision is None and task.is_conservative:
+                entry.allowed = False
+                entry.reason = f"{name}_blocked_conservative_{task_class_value}"
+            # if True, fall through to normal gating
+
+        if entry.allowed is False and entry.reason:
+            # Already blocked by matrix check
+            pass
+        elif tier in ("REASONING", "REASONING_SAFE") and name in _REASONING_DISABLED:
             entry.allowed = False
             entry.reason = "reasoning_tier_disabled"
 

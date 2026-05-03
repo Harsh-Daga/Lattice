@@ -4,6 +4,7 @@ from lattice.transforms.alias_manifest import AliasManifestTransform
 from lattice.transforms.arithmetic_sequence import ArithmeticSequenceCompressor
 from lattice.transforms.batching import BatchingEngine, BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
+from lattice.transforms.code_factoring import CodeFactoringTransform
 from lattice.transforms.columnar_pack import ColumnarTablePack
 from lattice.transforms.content_profiler import ContentProfiler
 from lattice.transforms.context_selector import (
@@ -13,6 +14,7 @@ from lattice.transforms.context_selector import (
 from lattice.transforms.delta_encode import DeltaEncoder
 from lattice.transforms.diagnostic_rle import DiagnosticRLE
 from lattice.transforms.dictionary_compress import DictionaryCompressor
+from lattice.transforms.extractive_compress import ExtractiveCompressor
 from lattice.transforms.format_conv import FormatConverter
 from lattice.transforms.grammar_compress import GrammarCompressor
 from lattice.transforms.hierarchical_summary import HierarchicalSummarizer
@@ -30,6 +32,7 @@ from lattice.transforms.stack_interning import StackTraceInterning
 from lattice.transforms.strategy_selector import StrategySelector
 from lattice.transforms.structural_fingerprint import StructuralFingerprint
 from lattice.transforms.tool_filter import ToolOutputFilter
+from lattice.transforms.tool_projection import QueryAwareProjection
 
 __all__ = [
     "AliasManifestTransform",
@@ -37,11 +40,13 @@ __all__ = [
     "BatchingTransform",
     "BatchingEngine",
     "CacheArbitrageOptimizer",
+    "CodeFactoringTransform",
     "ColumnarTablePack",
     "ContentProfiler",
     "DeltaEncoder",
     "DiagnosticRLE",
     "DictionaryCompressor",
+    "ExtractiveCompressor",
     "FormatConverter",
     "GrammarCompressor",
     "HierarchicalSummarizer",
@@ -62,4 +67,5 @@ __all__ = [
     "StructuralFingerprint",
     "SubmodularContextSelector",
     "ToolOutputFilter",
+    "QueryAwareProjection",
 ]

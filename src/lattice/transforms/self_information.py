@@ -63,7 +63,7 @@ from collections import Counter
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 from lattice.utils.validation import request_safety_profile
@@ -386,6 +386,7 @@ class SelfInformationScorer(ReversibleSyncTransform):
     """
 
     name = "self_information"
+    transform_class = TransformClass.OBSERVABILITY_ONLY
     priority = 14  # After structural_fingerprint=12, before message_dedup=15
 
     def __init__(

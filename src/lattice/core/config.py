@@ -182,6 +182,9 @@ class LatticeConfig(BaseSettings):
     transform_json_shape: bool = True
     transform_path_prefix: bool = True
     transform_stack_interning: bool = True
+    transform_extractive_compress: bool = True
+    transform_code_factoring: bool = True
+    transform_tool_projection: bool = True
     rate_distortion_budget: float = Field(
         default=0.02,
         ge=0.0,
@@ -405,10 +408,15 @@ class LatticeConfig(BaseSettings):
             self.transform_dictionary_compress = False
             self.transform_grammar_compress = False
             self.transform_semantic_compress = False
+            self.transform_code_factoring = False
+            self.transform_extractive_compress = False
             self.rate_distortion_budget = 0.0
         elif mode == "balanced":
-            self.transform_structural_fingerprint = True
+            self.transform_structural_fingerprint = False
+            self.transform_code_factoring = True
             self.transform_self_information = True
+            self.transform_extractive_compress = True
+            self.transform_tool_projection = True
             self.transform_hierarchical_summary = False
             self.transform_strategy_selector = True
             self.transform_context_selector = False

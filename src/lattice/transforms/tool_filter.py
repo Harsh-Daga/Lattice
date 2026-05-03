@@ -28,7 +28,7 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
 from lattice.utils.patterns import DEFAULT_BLACKLIST
@@ -67,6 +67,7 @@ class ToolOutputFilter(ReversibleSyncTransform):
     """
 
     name = "tool_filter"
+    transform_class = TransformClass.STRUCTURAL_RISKY
     priority = 30
 
     def __init__(

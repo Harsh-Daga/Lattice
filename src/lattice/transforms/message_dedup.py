@@ -31,7 +31,7 @@ import re
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
 
@@ -66,6 +66,7 @@ class MessageDeduplicator(ReversibleSyncTransform):
     """
 
     name = "message_dedup"
+    transform_class = TransformClass.STRUCTURAL_RISKY
     priority = 15  # After prefix_opt (10), before reference_sub (20)
 
     def __init__(

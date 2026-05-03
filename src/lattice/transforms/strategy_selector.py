@@ -32,7 +32,7 @@ import structlog
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 
@@ -260,6 +260,7 @@ class StrategySelector(ReversibleSyncTransform):
     """
 
     name = "strategy_selector"
+    transform_class = TransformClass.OBSERVABILITY_ONLY
     priority = 19
 
     def __init__(

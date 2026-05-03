@@ -53,7 +53,7 @@ from dataclasses import dataclass
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 
@@ -359,6 +359,7 @@ class StructuralFingerprint(ReversibleSyncTransform):
     """
 
     name = "structural_fingerprint"
+    transform_class = TransformClass.STRUCTURAL_RISKY
     priority = 12  # After prefix_opt=10, before ref_sub=20
 
     def __init__(

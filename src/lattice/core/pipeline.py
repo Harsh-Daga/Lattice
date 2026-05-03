@@ -10,6 +10,7 @@ and returns the modified Request or an error. It handles:
 
 from __future__ import annotations
 
+import enum
 import inspect
 import time
 from typing import Any
@@ -24,6 +25,17 @@ from lattice.core.result import Err, Ok, Result, is_err, unwrap, unwrap_err
 from lattice.core.transport import Request, Response
 
 logger = structlog.get_logger()
+
+
+class TransformClass(enum.Enum):
+    """Semantic classification of a transform's effect on content."""
+
+    LOSSLESS_SAFE = "lossless_safe"
+    LOSSLESS_CONTEXTUAL = "lossless_contextual"
+    SEMANTIC_LOSSY = "semantic_lossy"
+    STRUCTURAL_RISKY = "structural_risky"
+    CACHE_ONLY = "cache_only"
+    OBSERVABILITY_ONLY = "observability_only"
 
 
 # =============================================================================
@@ -43,6 +55,7 @@ class ReversibleSyncTransform:
     name: str = ""
     enabled: bool = True
     priority: int = 50
+    transform_class: TransformClass = TransformClass.LOSSLESS_SAFE
 
     def process(
         self, request: Request, context: TransformContext

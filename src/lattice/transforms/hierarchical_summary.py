@@ -66,7 +66,7 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 
@@ -289,6 +289,7 @@ class HierarchicalSummarizer(ReversibleSyncTransform):
     """
 
     name = "hierarchical_summary"
+    transform_class = TransformClass.SEMANTIC_LOSSY
     priority = 28  # After format_conv=25, before tool_filter=30
 
     def __init__(

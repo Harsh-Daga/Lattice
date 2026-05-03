@@ -6,7 +6,7 @@ import re
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 from lattice.utils.validation import lossy_transform_allowed
@@ -38,6 +38,7 @@ class RateDistortionCompressor(ReversibleSyncTransform):
     """
 
     name = "rate_distortion"
+    transform_class = TransformClass.SEMANTIC_LOSSY
     priority = 22
 
     def __init__(

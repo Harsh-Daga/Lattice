@@ -13,7 +13,7 @@ from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.scheduler import decide_schedule
 from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification
@@ -30,6 +30,7 @@ class RuntimeContractTransform(ReversibleSyncTransform):
     """
 
     name = "runtime_contract"
+    transform_class = TransformClass.OBSERVABILITY_ONLY
     priority = 2
 
     def __init__(self, router: RuntimeRouter | None = None) -> None:

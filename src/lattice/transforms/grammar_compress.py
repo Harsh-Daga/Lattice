@@ -23,7 +23,7 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 
@@ -70,6 +70,7 @@ class GrammarCompressor(ReversibleSyncTransform):
     """
 
     name = "grammar_compress"
+    transform_class = TransformClass.LOSSLESS_CONTEXTUAL
     priority = 24
 
     def __init__(

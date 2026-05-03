@@ -13,7 +13,7 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response, Role
 
@@ -81,6 +81,7 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
     """
 
     name = "cache_arbitrage"
+    transform_class = TransformClass.CACHE_ONLY
     priority = 9  # After content_profiler, before reference_sub
 
     def __init__(self, track_hits: bool = True) -> None:

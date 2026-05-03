@@ -25,7 +25,7 @@ from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 from lattice.utils.patterns import (
@@ -163,7 +163,10 @@ class ReferenceSubstitution(ReversibleSyncTransform):
     """
 
     name = "reference_sub"
-    priority = 20  # Early in pipeline, so subsequent transforms see short aliases
+    priority = 20
+    transform_class = (
+        TransformClass.LOSSLESS_CONTEXTUAL
+    )  # Early in pipeline, so subsequent transforms see short aliases
 
     def __init__(
         self,
