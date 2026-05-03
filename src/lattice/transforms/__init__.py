@@ -18,6 +18,7 @@ from lattice.transforms.extractive_compress import ExtractiveCompressor
 from lattice.transforms.format_conv import FormatConverter
 from lattice.transforms.grammar_compress import GrammarCompressor
 from lattice.transforms.hierarchical_summary import HierarchicalSummarizer
+from lattice.transforms.instruction_context import InstructionContextSeparator
 from lattice.transforms.json_shape import JSONShapeFactor
 from lattice.transforms.message_dedup import MessageDeduplicator
 from lattice.transforms.output_cleanup import OutputCleanup
@@ -28,6 +29,7 @@ from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.runtime_contract import RuntimeContractTransform
 from lattice.transforms.self_information import SelfInformationScorer
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform
+from lattice.transforms.stable_prefix import StablePrefixHandle
 from lattice.transforms.stack_interning import StackTraceInterning
 from lattice.transforms.strategy_selector import StrategySelector
 from lattice.transforms.structural_fingerprint import StructuralFingerprint
@@ -51,6 +53,7 @@ __all__ = [
     "GrammarCompressor",
     "HierarchicalSummarizer",
     "InformationTheoreticSelector",
+    "InstructionContextSeparator",
     "JSONShapeFactor",
     "MessageDeduplicator",
     "OutputCleanup",
@@ -62,6 +65,7 @@ __all__ = [
     "SelfInformationScorer",
     "SpeculativeTransform",
     "SpeculativeExecutor",
+    "StablePrefixHandle",
     "StackTraceInterning",
     "StrategySelector",
     "StructuralFingerprint",

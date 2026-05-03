@@ -185,6 +185,8 @@ class LatticeConfig(BaseSettings):
     transform_extractive_compress: bool = True
     transform_code_factoring: bool = True
     transform_tool_projection: bool = True
+    transform_stable_prefix: bool = True
+    transform_instruction_context_sep: bool = True
     rate_distortion_budget: float = Field(
         default=0.02,
         ge=0.0,

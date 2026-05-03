@@ -54,6 +54,13 @@ class TaskEquivalenceScore:
     harmful_drift: float = 0.0
     failure_reasons: list[str] = dataclasses.field(default_factory=list)
 
+    # Frontier scoring
+    frontier_score: float = 0.0
+    passed_quality_gate: bool = False
+    passed_savings_gate: bool = False
+    rollback_reason: str | None = None
+    placeholder_leakage: bool = False
+
     # Legacy fields kept for backward compatibility
     constraint_preservation: float = 1.0
     entity_preservation: float = 1.0
@@ -129,6 +136,11 @@ class TaskEquivalenceScore:
             "harmful_drift": self.harmful_drift,
             "composite": self.composite,
             "failure_reasons": "; ".join(self.failure_reasons),
+            "frontier_score": self.frontier_score,
+            "passed_quality_gate": self.passed_quality_gate,
+            "passed_savings_gate": self.passed_savings_gate,
+            "rollback_reason": self.rollback_reason,
+            "placeholder_leakage": self.placeholder_leakage,
         }
 
 

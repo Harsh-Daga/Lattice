@@ -303,6 +303,8 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "extractive_compressor": TransformSafetyBucket.SAFE,  # alias
     "code_factoring": TransformSafetyBucket.SAFE,
     "tool_projection": TransformSafetyBucket.SAFE,
+    "stable_prefix": TransformSafetyBucket.SAFE,
+    "instruction_context_sep": TransformSafetyBucket.SAFE,
     # CONDITIONAL — lossy but recoverable; risk-gated
     "reference_sub": TransformSafetyBucket.CONDITIONAL,
     "message_dedup": TransformSafetyBucket.CONDITIONAL,

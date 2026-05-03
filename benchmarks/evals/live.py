@@ -187,6 +187,7 @@ async def run_scenario(
             optimized_output=optimized_resp_text,
             scenario=scenario,
         )
+        _attach_frontier(te, baseline_tokens, optimized_tokens, scenario)
         quality = QualityMeasurement(
             task_equivalence=te,
             semantic_similarity=te.composite,  # align legacy field with authoritative score
@@ -293,6 +294,20 @@ def _compute_task_equivalence(
         optimized_output=optimized_output,
         required_properties=getattr(scenario, "required_answer_properties", []) or [],
     )
+
+
+def _attach_frontier(
+    te: TaskEquivalenceScore,
+    baseline_tokens: int,
+    optimized_tokens: int,
+    scenario: BenchmarkScenario,
+) -> None:
+    """Attach frontier scoring to a TaskEquivalenceScore after quality computed."""
+    from benchmarks.evals.runner import apply_frontier_scoring
+
+    compression = (baseline_tokens - optimized_tokens) / max(baseline_tokens, 1)
+    task_class = getattr(scenario, "complexity", "")
+    apply_frontier_scoring(te, compression, task_class=task_class)
 
 
 def provider_name_from_model(model: str) -> str:

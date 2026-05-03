@@ -135,6 +135,22 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Reorders messages for KV-cache alignment",
     ),
     TransformSpec(
+        canonical_name="stable_prefix",
+        config_flag="transform_stable_prefix",
+        priority=7,
+        safety_bucket=SAFE,
+        factory_path="lattice.transforms.stable_prefix.StablePrefixHandle",
+        description="Stable prefix cache handle computation",
+    ),
+    TransformSpec(
+        canonical_name="instruction_context_sep",
+        config_flag="transform_instruction_context_sep",
+        priority=8,
+        safety_bucket=SAFE,
+        factory_path="lattice.transforms.instruction_context.InstructionContextSeparator",
+        description="Instruction/context/task separation for better comprehension",
+    ),
+    TransformSpec(
         canonical_name="prefix_optimizer",
         aliases=("prefix_opt",),
         config_flag="transform_prefix_opt",

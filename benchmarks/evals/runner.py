@@ -1408,7 +1408,32 @@ def evaluate_task_equivalence_structural(
     score.reasoning_correctness = score.reasoning_equivalence
     score.answer_completeness = score.completeness
 
+    # Detect placeholder leakage
+    score.placeholder_leakage = bool(
+        re.search(r"<(?:ref_|d_|g_|crossref_)\d+>", optimized_output)
+    )
+
     return score
+
+
+def apply_frontier_scoring(
+    score: TaskEquivalenceScore,
+    compression_ratio: float,
+    task_class: str = "",
+) -> None:
+    """Populate frontier scoring fields on a TaskEquivalenceScore."""
+    from benchmarks.framework.frontier import compute_frontier
+
+    frontier = compute_frontier(
+        quality_score=score.composite,
+        compression_ratio=compression_ratio,
+        placeholder_leakage=score.placeholder_leakage,
+        task_class=task_class,
+    )
+    score.frontier_score = frontier.frontier_score
+    score.passed_quality_gate = frontier.passed_quality_gate
+    score.passed_savings_gate = frontier.passed_savings_gate
+    score.rollback_reason = frontier.rollback_reason
 
 
 async def evaluate_task_equivalence_with_judge(
