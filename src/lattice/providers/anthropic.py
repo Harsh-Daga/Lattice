@@ -166,7 +166,9 @@ class AnthropicAdapter:
 
         # Model: anthropic/ prefix or bare claude- name
         model_result = detect_model_prefix(signals, self.name, aliases=self._PREFIXES)
-        if model_result.confidence == DetectionConfidence.NONE and signals.model.lower().startswith("claude-"):
+        if model_result.confidence == DetectionConfidence.NONE and signals.model.lower().startswith(
+            "claude-"
+        ):
             model_result = DetectionResult(
                 provider=self.name,
                 confidence=DetectionConfidence.MODEL,

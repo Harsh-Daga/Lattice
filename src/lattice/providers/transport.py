@@ -167,6 +167,7 @@ def _resolve_provider_name(model: str, provider_name: str | None = None) -> str:
         prefix = model.split("/", 1)[0].lower()
         # Check against the canonical list of registered provider names
         from lattice.providers.capabilities import get_capability_registry
+
         if prefix in get_capability_registry().list_providers():
             return prefix
     raise ProviderError(

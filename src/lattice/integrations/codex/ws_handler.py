@@ -80,11 +80,13 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
     )
     # Also strip any headers that _resolve_codex_routing_headers will re-add
     # with canonical casing, to avoid duplicate headers with mixed case.
-    _headers_to_dedup = frozenset({
-        "chatgpt-account-id",
-        "openai-beta",
-        "authorization",
-    })
+    _headers_to_dedup = frozenset(
+        {
+            "chatgpt-account-id",
+            "openai-beta",
+            "authorization",
+        }
+    )
     upstream_headers: dict[str, str] = {}
     for k, v in ws_headers.items():
         kl = k.lower()
@@ -195,7 +197,7 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
                 error=str(exc),
             )
             if attempt < _WS_CONNECT_RETRY_MAX - 1:
-                delay = min(2 ** attempt, 8) + (time.time() % 1)
+                delay = min(2**attempt, 8) + (time.time() % 1)
                 await asyncio.sleep(delay)
 
     if upstream_ws is None:

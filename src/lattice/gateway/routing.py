@@ -112,9 +112,7 @@ class ProviderAmbiguityError(Exception):
     """Raised when two or more adapters claim the same request with equal confidence."""
 
     def __init__(self, results: list[DetectionResult]) -> None:
-        providers = ", ".join(
-            f"{r.provider} ({r.confidence.name}: {r.reason})" for r in results
-        )
+        providers = ", ".join(f"{r.provider} ({r.confidence.name}: {r.reason})" for r in results)
         super().__init__(
             f"Provider ambiguity: multiple adapters matched with equal confidence. "
             f"Matches: {providers}"

@@ -759,8 +759,7 @@ async def responses_passthrough(
                     error=str(exc),
                 )
                 yield (
-                    f'event: error\ndata: '
-                    f'{{"error":"upstream_timeout","message":"{str(exc)}"}}\n\n'
+                    f'event: error\ndata: {{"error":"upstream_timeout","message":"{str(exc)}"}}\n\n'
                 )
             except httpx.HTTPError as exc:
                 logger.error(
@@ -769,8 +768,7 @@ async def responses_passthrough(
                     error_type=type(exc).__name__,
                 )
                 yield (
-                    f'event: error\ndata: '
-                    f'{{"error":"upstream_error","message":"{str(exc)}"}}\n\n'
+                    f'event: error\ndata: {{"error":"upstream_error","message":"{str(exc)}"}}\n\n'
                 )
 
         transport_outcome = TransportOutcome(

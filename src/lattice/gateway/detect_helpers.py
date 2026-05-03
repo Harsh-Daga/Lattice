@@ -162,9 +162,7 @@ def highest_confidence(
 
     If no detector matched, returns a :data:`DetectionConfidence.NONE` result.
     """
-    best: DetectionResult = DetectionResult(
-        provider=provider, confidence=DetectionConfidence.NONE
-    )
+    best: DetectionResult = DetectionResult(provider=provider, confidence=DetectionConfidence.NONE)
     for result in detectors:
         if result.confidence > best.confidence:
             best = result
