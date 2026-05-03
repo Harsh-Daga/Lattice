@@ -190,9 +190,7 @@ class TestStartBackgroundServer:
             except ConnectionRefusedError as e:
                 last_err = e
                 time.sleep(0.2)
-        assert connected, (
-            f"Server did not start listening on port {port} within 5s: {last_err}"
-        )
+        assert connected, f"Server did not start listening on port {port} within 5s: {last_err}"
 
         # Clean up: stop the server
         mgr.stop(grace_period=3.0)

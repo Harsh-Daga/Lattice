@@ -193,8 +193,6 @@ class ProviderDetectionError(ProxyError):
 class ProviderError(ProxyError):
     """Provider returned an error response."""
 
-    """Provider returned an error response."""
-
     def __init__(
         self,
         provider: str,

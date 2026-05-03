@@ -164,10 +164,20 @@ class AnthropicAdapter:
             "anthropic-version header is Anthropic-specific",
         )
 
+        # Header: x-api-key is used by Anthropic
+        x_api_key_result = detect_header_present(
+            signals,
+            self.name,
+            "x-api-key",
+            "x-api-key header is Anthropic-specific",
+        )
+
         # Model: anthropic/ prefix or bare claude- name
         model_result = detect_model_prefix(signals, self.name, aliases=self._PREFIXES)
-        if model_result.confidence == DetectionConfidence.NONE and signals.model.lower().startswith(
-            "claude-"
+        if (
+            model_result.confidence == DetectionConfidence.NONE
+            and signals.model
+            and signals.model.lower().startswith("claude-")
         ):
             model_result = DetectionResult(
                 provider=self.name,
@@ -182,6 +192,7 @@ class AnthropicAdapter:
             auth_result,
             path_result,
             version_result,
+            x_api_key_result,
             model_result,
         )
 

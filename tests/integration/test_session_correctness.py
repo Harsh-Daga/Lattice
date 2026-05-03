@@ -19,7 +19,7 @@ from lattice.proxy.server import create_app
 @pytest.fixture
 def test_client() -> TestClient:
     config = LatticeConfig(
-        provider_base_url="http://127.0.0.1:11434",
+        provider_base_urls={"openai": "http://127.0.0.1:11434"},
         provider_api_key="fake-key",
         session_store="memory",
     )

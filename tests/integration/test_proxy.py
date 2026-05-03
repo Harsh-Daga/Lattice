@@ -47,6 +47,7 @@ def _make_config() -> LatticeConfig:
         provider_base_urls={
             "openai": "https://api.openai.com",
             "anthropic": "https://api.anthropic.com",
+            "ollama": "http://127.0.0.1:11434",
         },
         provider_api_key=None,
         graceful_degradation=True,

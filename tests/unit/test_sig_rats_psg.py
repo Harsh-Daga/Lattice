@@ -154,7 +154,11 @@ class TestSchedulerDecision:
         assert "tool_filter" in decision.allowed_transforms
 
     def test_conditional_blocked_on_reasoning(self) -> None:
-        task = TaskClassification(task_class=TaskClass.REASONING, reasoning_heavy=True, execution_tier=ExecutionTier.REASONING_SAFE)
+        task = TaskClassification(
+            task_class=TaskClass.REASONING,
+            reasoning_heavy=True,
+            execution_tier=ExecutionTier.REASONING_SAFE,
+        )
         risk = SemanticRiskScore(strict_instructions=15, sensitive_domain=10)
         decision = decide_schedule(
             transform_names=["reference_sub", "output_cleanup"],
@@ -296,7 +300,12 @@ class TestRATSSafetyIntegration:
         task = TaskClassification(task_class=TaskClass.DEBUGGING, debug_heavy=True)
         risk = SemanticRiskScore(strict_instructions=10)
         decision = decide_schedule(
-            transform_names=["rate_distortion", "hierarchical_summary", "tool_filter", "structural_fingerprint"],
+            transform_names=[
+                "rate_distortion",
+                "hierarchical_summary",
+                "tool_filter",
+                "structural_fingerprint",
+            ],
             task=task,
             risk=risk,
         )

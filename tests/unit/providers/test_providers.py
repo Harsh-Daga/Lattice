@@ -102,7 +102,7 @@ class TestOpenAIAdapter:
     def test_supports_prefix(self) -> None:
         a = OpenAIAdapter()
         assert a.supports("openai/gpt-4") is True
-        assert a.supports("azure/gpt-4o") is True
+        assert a.supports("azure/gpt-4o") is False  # Azure has its own adapter
         assert a.supports("ollama/llama3") is False
 
     def test_serialize_request_minimal(self) -> None:
@@ -775,7 +775,7 @@ class TestMapModelName:
     def test_openai_prefix_stripped(self) -> None:
         a = OpenAIAdapter()
         assert a.map_model_name("openai/gpt-4") == "gpt-4"
-        assert a.map_model_name("azure/gpt-4o") == "gpt-4o"
+        assert a.map_model_name("azure/gpt-4o") == "azure/gpt-4o"  # only strips openai/ prefix
         assert a.map_model_name("gpt-4") == "gpt-4"  # bare name unchanged
 
     def test_groq_prefix_stripped(self) -> None:

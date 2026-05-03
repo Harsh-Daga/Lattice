@@ -99,7 +99,7 @@ def detect_auth_pattern(
             provider=provider,
             confidence=DetectionConfidence.AUTH,
             reason=reason,
-            detail={"authorization_prefix": auth[:30]},
+            detail={"has_authorization": True},
         )
     return DetectionResult(provider=provider, confidence=DetectionConfidence.NONE)
 
@@ -138,13 +138,15 @@ def detect_path(
     reason: str,
 ) -> DetectionResult:
     """Check if the request path matches a provider-specific endpoint."""
-    normalized = signals.path.lower().rstrip("/")
+    from urllib.parse import urlparse
+
+    normalized = urlparse(signals.path).path.lower().rstrip("/")
     if normalized in paths:
         return DetectionResult(
             provider=provider,
             confidence=DetectionConfidence.PATH,
             reason=reason,
-            detail={"path": signals.path},
+            detail={"path": normalized},
         )
     return DetectionResult(provider=provider, confidence=DetectionConfidence.NONE)
 

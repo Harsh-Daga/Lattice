@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.errors import ProviderDetectionError, ProviderError
+from lattice.core.errors import ProviderError
 from lattice.providers.capabilities import (
     CacheMode,
     Capability,

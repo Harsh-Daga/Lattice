@@ -217,7 +217,9 @@ class TestHTTPProxyServer:
         """Proxy should forward a GET and return the upstream response."""
         upstream_body = b'{"models":["gpt-4"]}'
 
-        async def _upstream_handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        async def _upstream_handler(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
             while True:
                 line = await reader.readline()
                 if line == b"\r\n":
@@ -253,7 +255,9 @@ class TestHTTPProxyServer:
         """Proxy should forward a POST with body."""
         received_body: bytes = b""
 
-        async def _upstream_handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        async def _upstream_handler(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
             nonlocal received_body
             headers = b""
             content_length = 0
@@ -282,9 +286,7 @@ class TestHTTPProxyServer:
             b"POST /v1/chat/completions HTTP/1.1\r\n"
             b"Host: localhost\r\n"
             b"Content-Type: application/json\r\n"
-            b"Connection: close\r\n"
-            + f"Content-Length: {len(body)}\r\n\r\n".encode()
-            + body
+            b"Connection: close\r\n" + f"Content-Length: {len(body)}\r\n\r\n".encode() + body
         )
         await writer.drain()
 
@@ -302,7 +304,9 @@ class TestHTTPProxyServer:
         """Proxy should stream SSE responses back using chunked encoding."""
         upstream_body = b'data: {"chunk": 1}\n\ndata: {"chunk": 2}\n\n'
 
-        async def _upstream_handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        async def _upstream_handler(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
             while True:
                 line = await reader.readline()
                 if line == b"\r\n":
@@ -329,9 +333,7 @@ class TestHTTPProxyServer:
             b"POST /v1/chat/completions HTTP/1.1\r\n"
             b"Host: localhost\r\n"
             b"Content-Type: application/json\r\n"
-            b"Connection: close\r\n"
-            + f"Content-Length: {len(body)}\r\n\r\n".encode()
-            + body
+            b"Connection: close\r\n" + f"Content-Length: {len(body)}\r\n\r\n".encode() + body
         )
         await writer.drain()
 
@@ -456,7 +458,9 @@ class TestWebSocketTunnel:
         """Start a minimal server that accepts the WS upgrade, verify connect succeeds."""
         server_received = b""
 
-        async def _handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        async def _handle_client(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
             nonlocal server_received
             # Read upgrade request
             while True:
@@ -465,7 +469,9 @@ class TestWebSocketTunnel:
                 if line == b"\r\n":
                     break
             # Send 101 response
-            writer.write(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n")
+            writer.write(
+                b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"
+            )
             await writer.drain()
             # Echo back any WebSocket frames
             try:

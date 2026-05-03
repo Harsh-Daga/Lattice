@@ -59,9 +59,7 @@ class TestTaskEquivalenceScoring:
         assert te.composite < 1.0
 
     def test_harmful_drift_penalizes(self) -> None:
-        te = TaskEquivalenceScore(
-            harmful_drift=0.5, correctness=0.7, key_fact_preservation=0.7
-        )
+        te = TaskEquivalenceScore(harmful_drift=0.5, correctness=0.7, key_fact_preservation=0.7)
         assert te.composite < 0.85
         assert te.passed is False
 
@@ -170,8 +168,7 @@ class TestTransformSafetyBuckets:
 
     def test_unknown_transform_defaults_to_dangerous(self) -> None:
         assert (
-            get_transform_safety_bucket("nonexistent_transform")
-            == TransformSafetyBucket.DANGEROUS
+            get_transform_safety_bucket("nonexistent_transform") == TransformSafetyBucket.DANGEROUS
         )
 
     def test_alias_prefix_opt_maps_to_safe(self) -> None:
@@ -267,7 +264,9 @@ class TestScenarioSafetyExpectations:
                     "required_answer_properties": scenario.required_answer_properties,
                     "judge_rubric": scenario.judge_rubric,
                 }
-            assert "safe_transforms" in safety or scenario.safe_transforms, f"{scenario.name} missing safe_transforms"
+            assert "safe_transforms" in safety or scenario.safe_transforms, (
+                f"{scenario.name} missing safe_transforms"
+            )
             assert "forbidden_transforms" in safety, f"{scenario.name} missing forbidden_transforms"
             assert "required_answer_properties" in safety, (
                 f"{scenario.name} missing required_answer_properties"

@@ -23,6 +23,8 @@ _WS_FIRST_FRAME_TIMEOUT = 60.0
 _WS_CONNECT_RETRY_MAX = 3
 _WS_CONNECT_TIMEOUT = 30.0
 _WS_FALLBACK_HTTP_TIMEOUT = 120.0
+_MAX_WS_MSG_SIZE = 1_000_000  # 1 MiB — reject oversized frames
+_MAX_SSE_BUFFER = 65536  # 64 KiB — cap SSE relay buffer
 
 
 async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> None:
@@ -110,6 +112,8 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
     else:
         # Standard OpenAI API
         base = os.environ.get("LATTICE_OPENAI_BASE_URL", "https://api.openai.com")
+        if base.startswith("http://"):
+            logger.warning("ws_openai_base_url_downgrade", base=base)
         ws_base = base.replace("https://", "wss://").replace("http://", "ws://")
         upstream_url = f"{ws_base.rstrip('/')}/v1/responses"
         logger.info("openai_websocket_routing", upstream=upstream_url, request_id=request_id)
@@ -148,19 +152,33 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
             websocket.receive_text(),
             timeout=_WS_FIRST_FRAME_TIMEOUT,
         )
+        assert first_msg_raw is not None
+        if len(first_msg_raw) > _MAX_WS_MSG_SIZE:
+            logger.warning(
+                "ws_oversized_frame",
+                request_id=request_id,
+                size=len(first_msg_raw),
+                max=_MAX_WS_MSG_SIZE,
+            )
+            await websocket.close(code=1009, reason="frame too large")
+            return
     except asyncio.TimeoutError:
         logger.info(
             "ws_first_frame_timeout",
             request_id=request_id,
             timeout=_WS_FIRST_FRAME_TIMEOUT,
         )
-        with contextlib.suppress(Exception):
+        try:
             await websocket.close(code=1001, reason="first-frame timeout")
+        except (RuntimeError, ConnectionError):
+            pass
         return
     except Exception as exc:
         logger.warning("ws_first_frame_error", request_id=request_id, error=str(exc))
-        with contextlib.suppress(Exception):
+        try:
             await websocket.close(code=1011, reason="first-frame error")
+        except (RuntimeError, ConnectionError):
+            pass
         return
 
     # ------------------------------------------------------------------
@@ -221,16 +239,22 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
 
     if first_msg_raw is None:
         logger.warning("ws_first_frame_missing", request_id=request_id)
-        with contextlib.suppress(Exception):
+        try:
             await upstream_ws.close()
+        except (RuntimeError, ConnectionError):
+            pass
+        try:
+            await websocket.close(code=1011, reason="missing first frame")
+        except (RuntimeError, ConnectionError):
+            pass
         return
 
     try:
         await upstream_ws.send(first_msg_raw)
         logger.debug("ws_first_frame_sent_upstream", request_id=request_id)
-    except Exception as exc:
+    except (RuntimeError, ConnectionError) as exc:
         logger.warning("ws_first_frame_send_failed", request_id=request_id, error=str(exc))
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(RuntimeError, ConnectionError):
             await upstream_ws.close()
         fallback_http_url = upstream_url.replace("wss://", "https://").replace("ws://", "http://")
         await _ws_http_fallback(
@@ -257,8 +281,13 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
             raise
         except _ws_lib.exceptions.ConnectionClosed:
             pass
-        except Exception:
-            pass
+        except Exception as exc:
+            _task = asyncio.current_task()
+            logger.debug(
+                "ws_relay_task_error",
+                task=_task.get_name() if _task else "unknown",
+                error=repr(exc),
+            )
 
     async def _upstream_to_client() -> None:
         try:
@@ -272,8 +301,13 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
             raise
         except _ws_lib.exceptions.ConnectionClosed:
             pass
-        except Exception:
-            pass
+        except Exception as exc:
+            _task = asyncio.current_task()
+            logger.debug(
+                "ws_relay_task_error",
+                task=_task.get_name() if _task else "unknown",
+                error=repr(exc),
+            )
 
     c2u_task = asyncio.create_task(_client_to_upstream(), name="c2u")
     u2c_task = asyncio.create_task(_upstream_to_client(), name="u2c")
@@ -290,13 +324,18 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
             if isinstance(task_exc, asyncio.CancelledError):
                 raise task_exc
     finally:
-        for t in {c2u_task, u2c_task}:
+        for t in (c2u_task, u2c_task):
             if not t.done():
                 t.cancel()
-        with contextlib.suppress(Exception):
+        try:
             await upstream_ws.close()
-        with contextlib.suppress(Exception):
+        except (RuntimeError, ConnectionError):
+            pass
+        try:
             await websocket.close()
+        except (RuntimeError, ConnectionError):
+            pass
+        await asyncio.gather(c2u_task, u2c_task, return_exceptions=True)
 
 
 async def _ws_http_fallback(
@@ -341,7 +380,9 @@ async def _ws_http_fallback(
 
     http_headers = dict(upstream_headers)
     http_headers["content-type"] = "application/json"
-    http_headers.pop("openai-beta", None)
+    for _hkey in list(http_headers):
+        if _hkey.lower() == "openai-beta":
+            http_headers.pop(_hkey, None)
 
     logger.debug("ws_http_fallback_start", request_id=request_id, url=upstream_url)
 
@@ -357,9 +398,10 @@ async def _ws_http_fallback(
                 if resp.status_code != 200:
                     error_body = b""
                     async for chunk in resp.aiter_bytes():
-                        error_body += chunk
-                        if len(error_body) > 2000:
+                        if len(error_body) + len(chunk) > 2000:
+                            error_body += chunk[: 2000 - len(error_body)]
                             break
+                        error_body += chunk
                     logger.error(
                         "ws_http_fallback_error_status",
                         request_id=request_id,
@@ -373,7 +415,10 @@ async def _ws_http_fallback(
                             "message": f"Upstream returned {resp.status_code}",
                         },
                     }
-                    await websocket.send_text(_json.dumps(error_event))
+                    try:
+                        await websocket.send_text(_json.dumps(error_event))
+                    except (RuntimeError, ConnectionError):
+                        pass
                     return
 
                 # Relay SSE data: lines as WS text messages
@@ -381,6 +426,11 @@ async def _ws_http_fallback(
                 async for _chunk_obj in resp.aiter_text():
                     _text_chunk = str(_chunk_obj)
                     _sse_buffer += _text_chunk
+                    if len(_sse_buffer) > _MAX_SSE_BUFFER:
+                        logger.error(
+                            "sse_buffer_overflow", request_id=request_id, size=len(_sse_buffer)
+                        )
+                        break
                     while "\n" in _sse_buffer:
                         _line, _sse_buffer = _sse_buffer.split("\n", 1)
                         _line = _line.strip()

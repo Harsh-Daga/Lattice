@@ -306,7 +306,9 @@ async def test_responses_passthrough_requires_explicit_base_url() -> None:
     # must rely on explicit configuration.
     provider = SimpleNamespace(
         provider_base_urls={},
-        pool=SimpleNamespace(get_client=lambda *_a, **_k: None, get_http_version=lambda *_a, **_k: "1.1"),
+        pool=SimpleNamespace(
+            get_client=lambda *_a, **_k: None, get_http_version=lambda *_a, **_k: "1.1"
+        ),
     )
     request = SimpleNamespace(query_params={}, headers={})
 
@@ -344,7 +346,9 @@ async def test_anthropic_passthrough_requires_explicit_base_url() -> None:
         b"",
         request,
         provider,
-        logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, warning=lambda *_args, **_kwargs: None),
+        logger=SimpleNamespace(
+            info=lambda *_args, **_kwargs: None, warning=lambda *_args, **_kwargs: None
+        ),
     )
     assert resp.status_code == 400
     data = resp.body if hasattr(resp, "body") else resp.content

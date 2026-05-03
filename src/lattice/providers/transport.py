@@ -73,11 +73,15 @@ class ProviderRegistry:
             # Defer ChatGPT import to avoid circular dependency:
             # lattice.integrations.codex.adapter → lattice.providers.openai
             # and lattice.integrations.__init__ → lattice.proxy → lattice.providers.transport
-            from lattice.integrations.codex.adapter import ChatGPTAdapter
+            try:
+                from lattice.integrations.codex.adapter import ChatGPTAdapter
 
-            self._adapters = [
-                # ChatGPT / Codex (must be before OpenAIAdapter to intercept Codex JWTs)
-                ChatGPTAdapter(),  # chatgpt/ prefix, Codex JWT auth
+                chatgpt = ChatGPTAdapter()
+            except ImportError:
+                logger.warning("ChatGPTAdapter import failed, skipping registration")
+                chatgpt = None
+
+            adapters = [
                 # OpenAI-compatible providers (prefix matching)
                 GroqAdapter(),  # groq/ prefix
                 TogetherAdapter(),  # together/ prefix
@@ -97,6 +101,10 @@ class ProviderRegistry:
                 BedrockAdapter(),  # bedrock/ prefix
                 OpenAIAdapter(),  # openai/ prefix
             ]
+            if chatgpt is not None:
+                # ChatGPT / Codex (must be before OpenAIAdapter to intercept Codex JWTs)
+                adapters.insert(0, chatgpt)  # chatgpt/ prefix, Codex JWT auth
+            self._adapters = adapters
 
     def resolve(self, model: str) -> ProviderAdapter:
         """Find the adapter for *model*.
@@ -147,7 +155,9 @@ class ProviderRegistry:
 _PROVIDER_ALIASES: dict[str, str] = {}
 
 
-def _resolve_provider_name(model: str, provider_name: str | None = None) -> str:
+def _resolve_provider_name(
+    model: str, provider_name: str | None = None, registry: ProviderRegistry | None = None
+) -> str:
     """Resolve provider from explicit hint or model prefix.
 
     Priority:
@@ -166,9 +176,8 @@ def _resolve_provider_name(model: str, provider_name: str | None = None) -> str:
     if "/" in model:
         prefix = model.split("/", 1)[0].lower()
         # Check against the canonical list of registered provider names
-        from lattice.providers.capabilities import get_capability_registry
-
-        if prefix in get_capability_registry().list_providers():
+        reg = registry or ProviderRegistry()
+        if prefix in reg.list_adapters():
             return prefix
     raise ProviderError(
         provider="unknown",
@@ -514,7 +523,7 @@ class DirectHTTPProvider:
         import time as time_mod
 
         stall_timeout = self._stall_timeout
-        provider_name = _resolve_provider_name(model, provider_name)
+        provider_name = _resolve_provider_name(model, provider_name, self.registry)
         adapter = self.registry.get_adapter(provider_name)
 
         # Build base URL + key
@@ -1044,7 +1053,7 @@ class DirectHTTPProvider:
         7. Retry on configured status codes.
         8. Deserialize response via adapter.
         """
-        provider_name = _resolve_provider_name(model, provider_name)
+        provider_name = _resolve_provider_name(model, provider_name, self.registry)
         adapter = self.registry.get_adapter(provider_name)
 
         base_url = self._resolve_base_url(provider_name, api_base)
@@ -1242,7 +1251,7 @@ class DirectHTTPProvider:
         **_kwargs: Any,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Async generator of normalized SSE chunks."""
-        provider_name = _resolve_provider_name(model, provider_name)
+        provider_name = _resolve_provider_name(model, provider_name, self.registry)
         adapter = self.registry.get_adapter(provider_name)
 
         base_url = self._resolve_base_url(provider_name, api_base)
@@ -1268,12 +1277,20 @@ class DirectHTTPProvider:
         payload = adapter.serialize_request(request)
         client = self.pool.get_client(provider_name, base_url)
         url = adapter.chat_endpoint(mapped_model, base_url)
-        headers: dict[str, str] = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+        }
         headers.update(adapter.auth_headers(key))
         headers.update(adapter.extra_headers(request))
         headers.update(request.extra_headers)
 
-        self._log.info("http_stream_start", provider=provider_name, model=mapped_model, url=url)
+        self._log.info(
+            "http_stream_start",
+            provider=provider_name,
+            model=mapped_model,
+            url=url,
+        )
         stream_optimizer: Any | None = None
         stream_optimizer_state: Any | None = None
         ttft_timeout, no_first_chunk_retries = self._stream_retry_policy(

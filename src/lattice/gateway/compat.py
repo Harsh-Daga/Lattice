@@ -628,7 +628,18 @@ async def responses_passthrough(
     headers: dict[str, str] = {}
     for k, v in fastapi_request.headers.items():
         kl = k.lower()
-        if kl in ("host", "content-length", "connection", "keep-alive"):
+        if kl in (
+            "host",
+            "content-length",
+            "connection",
+            "keep-alive",
+            "transfer-encoding",
+            "upgrade",
+            "te",
+            "trailer",
+            "proxy-authenticate",
+            "proxy-authorization",
+        ):
             continue
         headers[k] = v
 
@@ -746,10 +757,11 @@ async def responses_passthrough(
                             status_code=resp.status_code,
                             error_body=error_body.decode("utf-8", errors="replace")[:500],
                         )
-                        yield (
-                            f"event: error\ndata: "
-                            f'{{"error":"upstream_error","message":"HTTP {resp.status_code}"}}\n\n'
-                        )
+                        error_payload = {
+                            "error": "upstream_error",
+                            "message": f"HTTP {resp.status_code}",
+                        }
+                        yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
                         return
                     async for chunk in resp.aiter_text():
                         yield chunk
@@ -758,18 +770,16 @@ async def responses_passthrough(
                     "responses_passthrough_stream_timeout",
                     error=str(exc),
                 )
-                yield (
-                    f'event: error\ndata: {{"error":"upstream_timeout","message":"{str(exc)}"}}\n\n'
-                )
+                error_payload = {"error": "upstream_timeout", "message": str(exc)}
+                yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
             except httpx.HTTPError as exc:
                 logger.error(
                     "responses_passthrough_stream_http_error",
                     error=str(exc),
                     error_type=type(exc).__name__,
                 )
-                yield (
-                    f'event: error\ndata: {{"error":"upstream_error","message":"{str(exc)}"}}\n\n'
-                )
+                error_payload = {"error": "upstream_error", "message": str(exc)}
+                yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
 
         transport_outcome = TransportOutcome(
             http_version=http_version,
@@ -887,7 +897,18 @@ async def anthropic_passthrough(
     headers: dict[str, str] = {}
     for k, v in fastapi_request.headers.items():
         kl = k.lower()
-        if kl in ("host", "content-length", "connection", "keep-alive"):
+        if kl in (
+            "host",
+            "content-length",
+            "connection",
+            "keep-alive",
+            "transfer-encoding",
+            "upgrade",
+            "te",
+            "trailer",
+            "proxy-authenticate",
+            "proxy-authorization",
+        ):
             continue
         headers[k] = v
 
@@ -1018,11 +1039,14 @@ async def anthropic_passthrough(
                             status_code=resp.status_code,
                             error_body=error_body.decode("utf-8", errors="replace")[:500],
                         )
-                        yield (
-                            f"event: error\ndata: "
-                            f'{{"type":"error","error":{{"type":"upstream_error",'
-                            f'"message":"HTTP {resp.status_code}"}}}}\n\n'
-                        )
+                        error_payload = {
+                            "type": "error",
+                            "error": {
+                                "type": "upstream_error",
+                                "message": f"HTTP {resp.status_code}",
+                            },
+                        }
+                        yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
                         return
                     async for chunk in resp.aiter_text():
                         yield chunk
@@ -1031,22 +1055,22 @@ async def anthropic_passthrough(
                     "anthropic_passthrough_stream_timeout",
                     error=str(exc),
                 )
-                yield (
-                    f"event: error\ndata: "
-                    f'{{"type":"error","error":{{"type":"timeout_error",'
-                    f'"message":"{str(exc)}"}}}}\n\n'
-                )
+                error_payload = {
+                    "type": "error",
+                    "error": {"type": "timeout_error", "message": str(exc)},
+                }
+                yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
             except httpx.HTTPError as exc:
                 logger.error(
                     "anthropic_passthrough_stream_http_error",
                     error=str(exc),
                     error_type=type(exc).__name__,
                 )
-                yield (
-                    f"event: error\ndata: "
-                    f'{{"type":"error","error":{{"type":"upstream_error",'
-                    f'"message":"{str(exc)}"}}}}\n\n'
-                )
+                error_payload = {
+                    "type": "error",
+                    "error": {"type": "upstream_error", "message": str(exc)},
+                }
+                yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
 
         transport_outcome = TransportOutcome(
             http_version=http_version,
@@ -1300,7 +1324,19 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         # Base URL, delta mode, and client profile
         # ------------------------------------------------------------------
         delta_mode = "delta" if request.metadata.get("_delta_wire") else ""
-        base_url = deps.provider.provider_base_urls.get(provider_name, "")
+        base_url = deps.provider.provider_base_urls.get(provider_name)
+        if not base_url:
+            return JSONResponse(
+                {
+                    "error": "provider_not_configured",
+                    "message": (
+                        f"No base URL configured for provider '{provider_name}'. "
+                        f"Set provider_base_urls['{provider_name}'] or "
+                        f"LATTICE_PROVIDER_BASE_URLS env var."
+                    ),
+                },
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         http_version = deps.provider.pool.get_http_version(provider_name, base_url)
 
         # Throttled maintenance: clean up abandoned stream state and stale cache entries
@@ -1593,7 +1629,12 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         try:
             messages = deps.serialize_messages(compressed_request)
             stream = compressed_request.stream
-            requested_model = compressed_request.model or "gpt-4"
+            requested_model = compressed_request.model
+            if not requested_model:
+                return JSONResponse(
+                    {"error": "model field is required", "message": "model field is required"},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
 
             if stream:
                 model_used = requested_model
@@ -1817,7 +1858,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         stream=False,
                         stop=compressed_request.stop,
                         provider_name=provider_name,
-                        api_key=client_api_key,
+                        api_key=client_api_key if provider_name == "openai" else None,
                         metadata=compressed_request.metadata,
                         extra_headers=compressed_request.extra_headers,
                         extra_body=compressed_request.extra_body,
@@ -1862,7 +1903,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         stream=False,
                         stop=compressed_request.stop,
                         provider_name=provider_name,
-                        api_key=client_api_key,
+                        api_key=client_api_key if provider_name == "openai" else None,
                         metadata=compressed_request.metadata,
                         extra_headers=compressed_request.extra_headers,
                         extra_body=compressed_request.extra_body,

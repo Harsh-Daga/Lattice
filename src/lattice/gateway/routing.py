@@ -21,7 +21,12 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from typing import Any
+from typing import Any, Iterator, Protocol
+
+
+class _HasIterAdapters(Protocol):
+    def iter_adapters(self) -> Iterator[Any]: ...
+
 
 # =============================================================================
 # Detection confidence levels — ordered, higher is stronger
@@ -78,24 +83,47 @@ class RequestSignals:
     # Model string from body or query param (may be empty)
     model: str = ""
 
+    def __post_init__(self) -> None:
+        # Normalize headers and method even on direct construction
+        if self.headers:
+            normalized: dict[str, str] = {}
+            for k, v in self.headers.items():
+                key = k.lower()
+                if isinstance(v, list):
+                    val = ",".join(str(item) for item in v)
+                else:
+                    val = str(v)
+                normalized[key] = val
+            object.__setattr__(self, "headers", normalized)
+        if self.method:
+            object.__setattr__(self, "method", self.method.upper())
+
     @classmethod
     def from_request(
         cls,
         *,
         method: str,
         path: str,
-        headers: dict[str, str],
+        headers: dict[str, Any],
         body: dict[str, Any] | None = None,
         model: str = "",
     ) -> RequestSignals:
         """Build a :class:`RequestSignals` from raw request data.
 
-        Headers are normalised to lower-case keys so that every adapter sees
-        the same view and no canonical-casing bugs creep in.
+        Headers are normalised to lower-case keys and list values are
+        coerced to comma-joined strings so that every adapter sees the
+        same view and no canonical-casing bugs creep in.
         """
-        normalised_headers = {k.lower(): v for k, v in headers.items()}
+        normalised_headers: dict[str, str] = {}
+        for k, v in headers.items():
+            key = k.lower()
+            if isinstance(v, list):
+                val = ",".join(str(item) for item in v)
+            else:
+                val = str(v)
+            normalised_headers[key] = val
         return cls(
-            method=method.upper(),
+            method=method,
             path=path,
             headers=normalised_headers,
             body=body or {},
@@ -153,7 +181,7 @@ class ProviderRouter:
         # result.reason == "Authorization header matches sk-ant-* pattern"
     """
 
-    def __init__(self, registry: Any) -> None:
+    def __init__(self, registry: _HasIterAdapters) -> None:
         """Initialize with a :class:`ProviderRegistry` instance."""
         self._registry = registry
 
@@ -172,7 +200,19 @@ class ProviderRouter:
         """
         results: list[DetectionResult] = []
         for adapter in self._registry.iter_adapters():
-            result = adapter.detect(signals)
+            try:
+                result = adapter.detect(signals)
+            except Exception as exc:
+                # A single buggy adapter must not crash routing for every request.
+                # Log and continue so the failure is observable but isolated.
+                import logging as _logging
+
+                _logging.getLogger("lattice.routing").warning(
+                    "adapter_detect_failed: %s - %r",
+                    getattr(adapter, "name", "unknown"),
+                    exc,
+                )
+                continue
             if result.confidence > DetectionConfidence.NONE:
                 results.append(result)
 

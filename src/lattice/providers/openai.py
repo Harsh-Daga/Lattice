@@ -22,7 +22,7 @@ class OpenAIAdapter:
     name = "openai"
 
     # Provider prefixes that route to this adapter
-    _PREFIXES = {"openai", "azure"}
+    _PREFIXES = {"openai"}
 
     def supports(self, model: str) -> bool:
         """Matches explicit OpenAI-compatible prefixes only."""

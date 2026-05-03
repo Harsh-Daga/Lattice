@@ -8,6 +8,7 @@ We decode it (no verification — we are a passthrough proxy) to extract
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 from typing import Any
 
@@ -36,7 +37,7 @@ def _decode_openai_bearer_payload(authorization: str) -> dict[str, Any] | None:
     try:
         payload_bytes = base64.urlsafe_b64decode(payload_b64)
         return json.loads(payload_bytes.decode("utf-8"))
-    except Exception:
+    except (ValueError, TypeError, json.JSONDecodeError, binascii.Error):
         return None
 
 
@@ -79,7 +80,7 @@ def _is_codex_jwt(authorization: str) -> bool:
     """Return *True* if the Authorization header contains a Codex JWT.
 
     Heuristic: the decoded JWT payload has a nested claim
-    ``https://api.openai.com.auth.chatgpt_account_id`` (OpenAI Codex
+    ``https://api.openai.com/auth`` → ``chatgpt_account_id`` (OpenAI Codex
     OAuth JWT structure).
     """
     payload = _decode_openai_bearer_payload(authorization)

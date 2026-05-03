@@ -97,7 +97,9 @@ class TestDangerousTransforms:
         transform = HierarchicalSummarizer()
         req = Request(
             messages=[
-                Message(role="user", content="## Section 1\nContent here.\n## Section 2\nMore content."),
+                Message(
+                    role="user", content="## Section 1\nContent here.\n## Section 2\nMore content."
+                ),
             ]
         )
         ctx = TransformContext()
@@ -156,15 +158,19 @@ class TestPipelinePSGSafety:
             messages=[
                 Message(role="user", content="hello world"),
                 Message(role="user", content="hello world"),
-                Message(role="user", content="Error: check UUID 550e8400-e29b-41d4-a716-446655440000"),
+                Message(
+                    role="user", content="Error: check UUID 550e8400-e29b-41d4-a716-446655440000"
+                ),
             ]
         )
         req.metadata["_lattice_protected_spans"] = [2]
         ctx = TransformContext()
+
         # Should run — message_dedup is irreversible but entities are in the last message
         async def run():
             result = await pipeline.process(req, ctx)
             assert is_ok(result)
+
         asyncio.run(run())
 
     def test_reversible_transform_bypasses_entity_check(self) -> None:
@@ -188,6 +194,7 @@ class TestPipelinePSGSafety:
         req.metadata["_lattice_task_classification"] = {"task_class": "retrieval"}
         req.metadata["_lattice_risk_score"] = {"strict_instructions": 0, "level": "LOW"}
         ctx = TransformContext()
+
         async def run():
             result = await pipeline.process(req, ctx)
             assert is_ok(result)
@@ -195,4 +202,5 @@ class TestPipelinePSGSafety:
             # Reversible — entities replaced with refs, not lost
             content = modified.messages[0].content
             assert "<ref_" in content
+
         asyncio.run(run())
