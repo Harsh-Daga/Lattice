@@ -477,6 +477,12 @@ class CompressorPipeline:
                         transform.name, "expansion_ratio", round(expansion_ratio, 2)
                     )
                     working = backup.copy()
+                    # Record rollback in reputation
+                    from lattice.core.transform_reputation import get_reputation_registry
+
+                    get_reputation_registry().record(
+                        transform.name, quality=0.0, compression=0.0, rolled_back=True
+                    )
                     continue
             # ---- End expansion guardrail ----
 
@@ -501,15 +507,26 @@ class CompressorPipeline:
                     transform.name, "tokens_delta", working_tokens - tokens_before
                 )
                 working = backup.copy()
+                from lattice.core.transform_reputation import get_reputation_registry
+
+                get_reputation_registry().record(
+                    transform.name, quality=0.0, compression=0.0, rolled_back=True
+                )
                 continue
             # ---- End negative savings guard ----
 
             # ---- Compression limit guard (REASONING tier) ----
             task_data = working.metadata.get("_lattice_task_classification", {})
             tier = task_data.get("execution_tier", "") if isinstance(task_data, dict) else ""
+            task_class_value = (
+                task_data.get("task_class", "") if isinstance(task_data, dict) else ""
+            )
             if tier in ("REASONING", "REASONING_SAFE") and tokens_before > 0:
+                from lattice.core.scheduler import _TASK_COMPRESSION_LIMITS
+
+                max_compression = _TASK_COMPRESSION_LIMITS.get(task_class_value, 0.10)
                 compression_ratio = (tokens_before - working_tokens) / tokens_before
-                if compression_ratio > 0.10 and transform.name not in (
+                if compression_ratio > max_compression and transform.name not in (
                     "content_profiler",
                     "runtime_contract",
                 ):
@@ -530,7 +547,7 @@ class CompressorPipeline:
                             code="PSG_REASONING_COMPRESSION_LIMIT",
                             message=(
                                 f"Compression ratio {compression_ratio:.2f} exceeds "
-                                f"reasoning tier limit (0.10)"
+                                f"{task_class_value} tier limit ({max_compression})"
                             ),
                         )
                     )
@@ -685,6 +702,74 @@ class CompressorPipeline:
                         )
             # ---- End PSG safety check ----
 
+            # ---- MILV runtime judge ----
+            # Skip MILV for placeholder-using transforms (reference_sub, grammar_compress,
+            # dictionary_compress) — they store referent mappings and restore via reverse().
+            # Skip MILV when no task classification metadata exists — content_profiler
+            # didn't run, so we cannot make informed quality decisions.
+            _mdata = working.metadata.get("_lattice_task_classification", {})
+            _has_task = bool(_mdata) and isinstance(_mdata, dict) and bool(_mdata.get("task_class"))
+            if (
+                _psg_text_before != _psg_text_after
+                and tokens_before > 0
+                and transform.name not in self._placeholder_using_transforms
+                and _has_task
+            ):
+                compression = (tokens_before - working_tokens) / tokens_before
+                placeholder_used = transform.name in self._placeholder_using_transforms
+                from lattice.core.milv import should_trigger_milv, validate_transform
+                from lattice.core.task_classifier import TaskClass, TaskClassification
+
+                _tdata = working.metadata.get("_lattice_task_classification", {})
+                _tc_str = (
+                    _tdata.get("task_class", "simple") if isinstance(_tdata, dict) else "simple"
+                )
+                tc = TaskClassification(
+                    task_class=getattr(TaskClass, _tc_str.upper(), TaskClass.SIMPLE),
+                )
+                if should_trigger_milv(
+                    transform.name,
+                    tc,
+                    compression_ratio=compression,
+                    placeholder_aliasing_used=placeholder_used,
+                ):
+                    milv_result = validate_transform(
+                        _psg_text_before,
+                        _psg_text_after,
+                        tc,
+                        placeholder_aliasing_used=placeholder_used,
+                    )
+                    context.record_metric(transform.name, "milv_triggered", True)
+                    context.record_metric(transform.name, "milv_score", milv_result.score)
+                    context.record_metric(transform.name, "milv_passed", milv_result.passed)
+                    if not milv_result.passed:
+                        self._log.warning(
+                            "transform_milv_rejected",
+                            request_id=context.request_id,
+                            transform=transform.name,
+                            score=milv_result.score,
+                            reason=milv_result.reason,
+                        )
+                        working = backup.copy()
+                        from lattice.core.transform_reputation import get_reputation_registry
+
+                        get_reputation_registry().record(
+                            transform.name,
+                            quality=milv_result.score,
+                            compression=compression,
+                            rolled_back=True,
+                        )
+                        if self.config.graceful_degradation:
+                            continue
+                        return Err(
+                            TransformError(
+                                transform=transform.name,
+                                code="MILV_REJECTED",
+                                message=f"MILV rejected: score={milv_result.score:.2f}, {milv_result.reason}",
+                            )
+                        )
+            # ---- End MILV ----
+
             backup = working.copy()
             context.mark_transform_applied(transform.name)
 
@@ -699,6 +784,17 @@ class CompressorPipeline:
                 transform=transform.name,
                 latency_ms=round(elapsed_ms, 3),
             )
+
+            # ---- Reputation recording ----
+            if tokens_before > 0:
+                quality = 1.0
+                compression = (tokens_before - working_tokens) / tokens_before
+                from lattice.core.transform_reputation import get_reputation_registry
+
+                get_reputation_registry().record(
+                    transform.name, quality=quality, compression=compression, rolled_back=False
+                )
+            # ---- End reputation recording ----
 
         # Final token count after all transforms
         final_tokens = working.token_estimate
