@@ -3,6 +3,9 @@
 Proxy, SDK, and MCP modes should use the same compression pipeline ordering so
 runtime contracts and strategy selection do not drift across integration modes.
 Execution-only transforms such as batching/speculation/delta remain opt-in.
+
+The pipeline is now built from :data:`~lattice.core.transform_registry.BUILTIN_TRANSFORMS`
+so that config, ordering, and safety metadata all share one source of truth.
 """
 
 from __future__ import annotations
@@ -11,29 +14,13 @@ from typing import Any
 
 from lattice.core.config import LatticeConfig
 from lattice.core.pipeline import CompressorPipeline
-from lattice.transforms.batching import BatchingTransform
-from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
-from lattice.transforms.content_profiler import ContentProfiler
-from lattice.transforms.context_selector import (
-    InformationTheoreticSelector,
-    SubmodularContextSelector,
+from lattice.core.transform_registry import (
+    BUILTIN_TRANSFORMS,
+    build_transform_instance,
+    list_execution_only_names,
 )
-from lattice.transforms.delta_encode import DeltaEncoder
-from lattice.transforms.dictionary_compress import DictionaryCompressor
-from lattice.transforms.format_conv import FormatConverter
-from lattice.transforms.grammar_compress import GrammarCompressor
-from lattice.transforms.hierarchical_summary import HierarchicalSummarizer
-from lattice.transforms.message_dedup import MessageDeduplicator
-from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.transforms.prefix_opt import PrefixOptimizer
-from lattice.transforms.rate_distortion import RateDistortionCompressor
-from lattice.transforms.reference_sub import ReferenceSubstitution
-from lattice.transforms.runtime_contract import RuntimeContractTransform
-from lattice.transforms.self_information import SelfInformationScorer
-from lattice.transforms.speculative import SpeculativeTransform
-from lattice.transforms.strategy_selector import StrategySelector
-from lattice.transforms.structural_fingerprint import StructuralFingerprint
-from lattice.transforms.tool_filter import ToolOutputFilter
+
+_EXECUTION_TRANSFORMS = set(list_execution_only_names())
 
 
 def build_default_pipeline(
@@ -42,7 +29,7 @@ def build_default_pipeline(
     include_execution_transforms: bool = False,
     session_manager: Any | None = None,
 ) -> CompressorPipeline:
-    """Build the standard LATTICE transform pipeline.
+    """Build the standard LATTICE transform pipeline from the registry.
 
     Args:
         config: Runtime configuration.
@@ -53,56 +40,36 @@ def build_default_pipeline(
     """
     pipeline = CompressorPipeline(config=config)
 
-    if config.transform_content_profiler:
-        pipeline.register(ContentProfiler())
-    if config.transform_runtime_contract:
-        pipeline.register(RuntimeContractTransform())
-    if config.transform_strategy_selector:
-        pipeline.register(StrategySelector())
-    if config.transform_cache_arbitrage:
-        pipeline.register(CacheArbitrageOptimizer())
-    if config.transform_prefix_opt:
-        pipeline.register(PrefixOptimizer())
-    if config.transform_structural_fingerprint:
-        pipeline.register(StructuralFingerprint())
-    if config.transform_self_information:
-        pipeline.register(SelfInformationScorer())
-    if config.transform_message_dedup:
-        pipeline.register(MessageDeduplicator())
-    if config.transform_context_selector:
-        pipeline.register(SubmodularContextSelector(token_budget=config.submodular_token_budget))
-        pipeline.register(InformationTheoreticSelector(token_budget=config.submodular_token_budget))
-    if config.transform_reference_sub:
-        pipeline.register(ReferenceSubstitution())
-    if config.transform_semantic_compress:
-        pipeline.register(
-            RateDistortionCompressor(
-                distortion_budget=config.rate_distortion_budget,
-            )
-        )
-    if config.transform_grammar_compress:
-        pipeline.register(GrammarCompressor())
-    if config.transform_dictionary_compress:
-        pipeline.register(DictionaryCompressor())
-    if config.transform_hierarchical_summary:
-        pipeline.register(HierarchicalSummarizer())
-    if config.transform_tool_filter:
-        pipeline.register(ToolOutputFilter())
-    if config.transform_format_conversion:
-        pipeline.register(FormatConverter())
-    if config.transform_output_cleanup:
-        pipeline.register(OutputCleanup())
+    # Register default (non-execution) transforms
+    for spec in BUILTIN_TRANSFORMS:
+        if spec.execution_only:
+            continue
+        if not spec.default_pipeline:
+            continue
+        if not config.is_transform_enabled(spec.canonical_name):
+            continue
+        instance = build_transform_instance(config, spec)
+        pipeline.register(instance)
 
+    # Register execution-only transforms when requested
     if include_execution_transforms:
-        pipeline.register(BatchingTransform())
-        pipeline.register(SpeculativeTransform())
-        if session_manager is not None:
-            pipeline.register(DeltaEncoder(session_manager=session_manager))
+        for spec in BUILTIN_TRANSFORMS:
+            if not spec.execution_only:
+                continue
+            if not config.is_transform_enabled(spec.canonical_name):
+                continue
+            if spec.canonical_name == "delta_encoder":
+                # DeltaEncoder needs a session_manager injected
+                if session_manager is None:
+                    continue
+                from lattice.transforms.delta_encode import DeltaEncoder
+
+                instance = DeltaEncoder(session_manager=session_manager)
+            else:
+                instance = build_transform_instance(config, spec)
+            pipeline.register(instance)
 
     return pipeline
-
-
-_EXECUTION_TRANSFORMS = {"batching", "speculative", "delta_encoder"}
 
 
 def pipeline_summary(pipeline: CompressorPipeline) -> dict[str, Any]:

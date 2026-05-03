@@ -74,6 +74,11 @@ class HTTPCompatHandler:
         return await self.models_handler(*args, **kwargs)
 
 
+_PROVIDER_FALLBACK_BASE_URLS: dict[str, str] = {
+    "chatgpt": "https://api.openai.com",
+}
+
+
 # =============================================================================
 # Shared proxy compatibility helpers
 # =============================================================================
@@ -694,6 +699,8 @@ async def responses_passthrough(
     # ------------------------------------------------------------------
     base_url = provider.provider_base_urls.get(provider_name)
     if not base_url:
+        base_url = _PROVIDER_FALLBACK_BASE_URLS.get(provider_name)
+    if not base_url:
         return JSONResponse(
             {
                 "error": "provider_not_configured",
@@ -971,6 +978,8 @@ async def anthropic_passthrough(
     # 4. Base URL — MUST be explicitly configured
     # ------------------------------------------------------------------
     base_url = provider.provider_base_urls.get(provider_name)
+    if not base_url:
+        base_url = _PROVIDER_FALLBACK_BASE_URLS.get(provider_name)
     if not base_url:
         return JSONResponse(
             {

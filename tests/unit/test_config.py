@@ -61,6 +61,16 @@ class TestIsTransformEnabled:
         assert cfg.is_transform_enabled("optimal_stopping") is False
         assert cfg.is_transform_enabled("convex_selector") is False
 
+    def test_information_theoretic_selector_enabled_with_context_selector(self):
+        cfg = LatticeConfig(transform_context_selector=True)
+        assert cfg.is_transform_enabled("information_theoretic_selector") is True
+        assert cfg.is_transform_enabled("context_selector") is True
+
+    def test_information_theoretic_selector_disabled_with_context_selector(self):
+        cfg = LatticeConfig(transform_context_selector=False)
+        assert cfg.is_transform_enabled("information_theoretic_selector") is False
+        assert cfg.is_transform_enabled("context_selector") is False
+
 
 class TestApplyCompressionMode:
     """Coverage for ``apply_compression_mode``."""

@@ -23,6 +23,15 @@ from lattice.gateway.compat import (
 )
 from lattice.gateway.server import ClientConnectionInfo, LLMTPGateway
 
+_SENSITIVE_HEADERS: frozenset[str] = frozenset(
+    {
+        "authorization",
+        "chatgpt-account-id",
+        "x-api-key",
+        "api-key",
+    }
+)
+
 
 def register_native_lattice_routes(app: FastAPI, gateway: LLMTPGateway) -> None:
     """Register native LATTICE session and gateway endpoints."""
@@ -233,10 +242,15 @@ def register_provider_compat_routes(
         logger = getattr(deps, "logger", None)
         if logger is not None:
             try:
+                safe_headers = {
+                    k: v
+                    for k, v in websocket.headers.items()
+                    if k.lower() not in _SENSITIVE_HEADERS
+                }
                 logger.info(
                     "responses_websocket_route_entered",
                     path=str(getattr(getattr(websocket, "url", None), "path", "")),
-                    headers={k: v for k, v in websocket.headers.items()},
+                    headers=safe_headers,
                 )
             except Exception:
                 pass
@@ -257,9 +271,14 @@ def register_provider_compat_routes(
         logger = getattr(deps, "logger", None)
         if logger is not None:
             try:
+                safe_headers = {
+                    k: v
+                    for k, v in websocket.headers.items()
+                    if k.lower() not in _SENSITIVE_HEADERS
+                }
                 logger.info(
                     "chat_completions_ws_route_entered",
-                    headers={k: v for k, v in websocket.headers.items()},
+                    headers=safe_headers,
                 )
             except Exception:
                 pass

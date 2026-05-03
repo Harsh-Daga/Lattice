@@ -18,6 +18,8 @@ import pathlib
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from lattice.core.transform_registry import is_transform_enabled as _registry_is_enabled
+
 
 class _ConfigFileSources:
     """Encapsulates config file discovery."""
@@ -417,52 +419,13 @@ class LatticeConfig(BaseSettings):
     def is_transform_enabled(self, name: str) -> bool:
         """Check if a named transform is enabled.
 
-        Transforms are identified by their canonical class name or
-        short name. The mapping covers all built-in transforms.
+        Delegates to :func:`~lattice.core.transform_registry.is_transform_enabled`
+        so that config, pipeline, and safety metadata all share one registry.
         """
-        mapping = {
-            # Phase 0
-            "reference_substitution": self.transform_reference_sub,
-            "tool_output_filter": self.transform_tool_filter,
-            "prefix_optimizer": self.transform_prefix_opt,
-            "output_cleanup": self.transform_output_cleanup,
-            # Short aliases
-            "reference_sub": self.transform_reference_sub,
-            "tool_filter": self.transform_tool_filter,
-            "prefix_opt": self.transform_prefix_opt,
-            # Phase 1
-            "delta_encoder": True,
-            "format_conversion": self.transform_format_conversion,
-            # Phase 2
-            "batching": True,
-            "speculative": True,
-            # Phase 3 — production-grade transforms
-            "message_dedup": self.transform_message_dedup,
-            "message_deduplicator": self.transform_message_dedup,
-            "semantic_compress": self.transform_semantic_compress,
-            "semantic_compressor": self.transform_semantic_compress,
-            # Phase D — rate-distortion compressor
-            "rate_distortion": self.transform_semantic_compress,
-            "rate_distortion_compressor": self.transform_semantic_compress,
-            "content_profiler": self.transform_content_profiler,
-            "runtime_contract": self.transform_runtime_contract,
-            "structural_fingerprint": self.transform_structural_fingerprint,
-            "self_information": self.transform_self_information,
-            "hierarchical_summary": self.transform_hierarchical_summary,
-            "strategy_selector": self.transform_strategy_selector,
-            "context_selector": self.transform_context_selector,
-            "cache_arbitrage": self.transform_cache_arbitrage,
-            "dictionary_compress": self.transform_dictionary_compress,
-            "dictionary_compressor": self.transform_dictionary_compress,
-            "grammar_compress": self.transform_grammar_compress,
-            "grammar_compressor": self.transform_grammar_compress,
-            # Deleted transforms (Phase 0 cleanup) — always False
-            "stream_optimizer": False,
-            "optimal_stopping": False,
-            "fountain_codes": False,
-            "convex_selector": False,
-        }
-        return mapping.get(name, False)
+        # Hard-deleted transforms from Phase 0 cleanup — never enable
+        if name in ("stream_optimizer", "optimal_stopping", "fountain_codes", "convex_selector"):
+            return False
+        return _registry_is_enabled(self, name)
 
     # ------------------------------------------------------------------
     # File loading

@@ -319,10 +319,24 @@ _UNKNOWN_DEFAULT = TransformSafetyBucket.DANGEROUS
 def get_transform_safety_bucket(name: str) -> TransformSafetyBucket:
     """Return the safety bucket for a transform by name.
 
+    Delegates to :func:`~lattice.core.transform_registry.get_transform_safety_bucket`
+    so that safety metadata is derived from the central registry.
     Unknown names default to DANGEROUS — they must be explicitly registered
-    in the safety map to prove safety. This prevents alias-based bypass.
+    to prove safety. This prevents alias-based bypass.
     """
-    return _TRANSFORM_SAFETY_MAP.get(name, _UNKNOWN_DEFAULT)
+    from lattice.core.transform_registry import (
+        DANGEROUS,
+    )
+    from lattice.core.transform_registry import (
+        get_transform_safety_bucket as _registry_bucket,
+    )
+
+    bucket = _registry_bucket(name)
+    if bucket == DANGEROUS:
+        return TransformSafetyBucket.DANGEROUS
+    if bucket == "conditional":
+        return TransformSafetyBucket.CONDITIONAL
+    return TransformSafetyBucket.SAFE
 
 
 def transform_allowed_at_risk(
