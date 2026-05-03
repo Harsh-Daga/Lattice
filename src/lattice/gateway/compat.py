@@ -79,24 +79,44 @@ _PROVIDER_FALLBACK_BASE_URLS: dict[str, str] = {
 }
 
 
-def _prepare_chatgpt_upstream_headers(headers: dict[str, str]) -> dict[str, str]:
-    """Extract ChatGPT-Account-ID from Codex JWT for chatgpt.com upstream.
+def _prepare_chatgpt_upstream_headers(
+    headers: dict[str, str],
+    base_url: str,
+) -> dict[str, str]:
+    """Prepare upstream headers for chatgpt provider.
 
-    All chatgpt provider traffic goes to ``chatgpt.com/backend-api``.
-    The upstream needs ``ChatGPT-Account-ID`` (from JWT claim) for routing.
+    * ``chatgpt.com`` endpoints (WS responses): keep JWT, inject
+      ``ChatGPT-Account-ID`` for upstream routing.
+    * ``api.openai.com`` endpoints (models, chat, etc.): swap to
+      ``OPENAI_API_KEY`` env var if available.  The Codex JWT lacks
+      scopes for many OpenAI endpoints.
     """
+    import os
+
     from lattice.integrations.codex.auth import _is_codex_jwt, _resolve_codex_routing_headers
 
     auth = headers.get("authorization", "")
     if not _is_codex_jwt(auth):
         return headers
 
-    resolved = _resolve_codex_routing_headers(
-        auth,
-        headers.get("openai-beta", ""),
-        headers.get("chatgpt-account-id", ""),
-    )
-    return {**headers, **resolved}
+    is_chatgpt_backend = "chatgpt.com" in base_url
+
+    if is_chatgpt_backend:
+        resolved = _resolve_codex_routing_headers(
+            auth,
+            headers.get("openai-beta", ""),
+            headers.get("chatgpt-account-id", ""),
+        )
+        return {**headers, **resolved}
+
+    # api.openai.com — swap to OPENAI_API_KEY, strip chatgpt-specific headers
+    cleaned = dict(headers)
+    cleaned.pop("chatgpt-account-id", None)
+    cleaned.pop("openai-beta", None)
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if api_key:
+        cleaned["Authorization"] = f"Bearer {api_key}"
+    return cleaned
 
 
 # =============================================================================
@@ -734,7 +754,7 @@ async def responses_passthrough(
         )
 
     if provider_name == "chatgpt":
-        headers = _prepare_chatgpt_upstream_headers(headers)
+        headers = _prepare_chatgpt_upstream_headers(headers, base_url)
 
     upstream_url = f"{base_url.rstrip('/')}{path}"
     query = str(fastapi_request.query_params)
