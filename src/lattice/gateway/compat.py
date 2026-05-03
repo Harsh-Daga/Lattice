@@ -826,7 +826,9 @@ async def responses_passthrough(
             {"error": "provider_not_configured", "message": str(exc)},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
+    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(
+        provider_name, ""
+    )
 
     # For /v1/responses with Codex JWT, route to chatgpt.com backend.
     # All other OpenAI endpoints route to the configured base_url with the JWT as-is.
@@ -1133,7 +1135,9 @@ async def anthropic_passthrough(
             },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
+    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(
+        provider_name, ""
+    )
 
     # ------------------------------------------------------------------
     # 5. Derive model_used for routing headers
@@ -2337,7 +2341,9 @@ async def models_passthrough(
             {"error": "provider_not_configured", "message": str(exc)},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
+    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(
+        provider_name, ""
+    )
 
     _log.debug("models_passthrough upstream=%s provider=%s", upstream_url, provider_name)
 

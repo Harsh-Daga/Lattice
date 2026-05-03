@@ -907,10 +907,7 @@ class DirectHTTPProvider:
         3. adapter's ``_DEFAULT_BASE_URL`` (well-known provider endpoints)
         4. ``_WELL_KNOWN_PROVIDER_URLS`` module-level fallback
         """
-        base_url = (
-            api_base
-            or self.provider_base_urls.get(provider_name)
-        )
+        base_url = api_base or self.provider_base_urls.get(provider_name)
         if not base_url:
             try:
                 adapter = self.registry.get_adapter(provider_name)
@@ -919,6 +916,7 @@ class DirectHTTPProvider:
                 pass
         if not base_url:
             from lattice.gateway.compat import _WELL_KNOWN_PROVIDER_URLS
+
             base_url = _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
         if not base_url:
             raise ProviderError(
