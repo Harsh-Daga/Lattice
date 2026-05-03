@@ -79,6 +79,39 @@ _PROVIDER_FALLBACK_BASE_URLS: dict[str, str] = {
 }
 
 
+def _prepare_chatgpt_upstream_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Swap Codex JWT for OPENAI_API_KEY when available.
+
+    Codex OAuth JWTs have narrow scopes (``api.connectors.read/invoke``) that
+    work for chat/responses endpoints but often fail for ``/v1/models``.
+    When ``OPENAI_API_KEY`` is set, we use it for upstream auth so all
+    OpenAI endpoints succeed.  The ``ChatGPT-Account-ID`` claim is still
+    extracted from the JWT and forwarded for upstream routing.
+    """
+    import os
+
+    from lattice.integrations.codex.auth import _is_codex_jwt, _resolve_codex_routing_headers
+
+    auth = headers.get("authorization", "")
+    if not _is_codex_jwt(auth):
+        return headers
+
+    # Always extract ChatGPT-Account-ID from the JWT for upstream routing
+    resolved = _resolve_codex_routing_headers(
+        auth,
+        headers.get("openai-beta", ""),
+        headers.get("chatgpt-account-id", ""),
+    )
+    headers = {**headers, **resolved}
+
+    # Swap to OPENAI_API_KEY for broader scope access (e.g. /v1/models)
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    return headers
+
+
 # =============================================================================
 # Shared proxy compatibility helpers
 # =============================================================================
@@ -712,6 +745,9 @@ async def responses_passthrough(
             },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
+
+    if provider_name == "chatgpt":
+        headers = _prepare_chatgpt_upstream_headers(headers)
 
     upstream_url = f"{base_url.rstrip('/')}{path}"
     query = str(fastapi_request.query_params)
