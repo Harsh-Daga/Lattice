@@ -80,6 +80,39 @@ class VertexAdapter(OpenAICompatibleAdapter):
     _PREFIXES = {"vertex"}
     _DEFAULT_BASE_URL = ""
 
+    def detect(self, signals: Any) -> Any:
+        """Detect Vertex from explicit signals, Google headers, and GCP auth.
+
+        Vertex uses GCP service-account bearer tokens (``Authorization: Bearer ya29.``)
+        which are distinct from Gemini's API key (``x-goog-api-key``).
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_auth_pattern,
+            detect_explicit,
+            detect_header_present,
+            detect_model_prefix,
+            highest_confidence,
+        )
+        import re
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            detect_header_present(
+                signals,
+                self.name,
+                "x-goog-api-key",
+                "x-goog-api-key header is Google-specific (Gemini / Vertex)",
+            ),
+            detect_auth_pattern(
+                signals,
+                self.name,
+                re.compile(r"ya29\."),
+                "Authorization header contains GCP access token (ya29. prefix)",
+            ),
+            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
+        )
+
     def serialize_request(self, request: Request) -> dict[str, Any]:
         body = super().serialize_request(request)
         cached_content = (

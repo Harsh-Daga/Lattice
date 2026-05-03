@@ -22,7 +22,7 @@ class OpenAIAdapter:
     name = "openai"
 
     # Provider prefixes that route to this adapter
-    _PREFIXES = {"openai"}
+    _PREFIXES = {"openai", "chatgpt", "codex"}
 
     def supports(self, model: str) -> bool:
         """Matches explicit OpenAI-compatible prefixes only."""
@@ -64,25 +64,43 @@ class OpenAIAdapter:
         }
 
     def detect(self, signals: Any) -> Any:
-        """Detect OpenAI from explicit signals only.
+        """Detect OpenAI from explicit signals or Codex JWT.
 
-        OpenAI's auth format (``Bearer sk-...``) is shared with dozens of
-        OpenAI-compatible providers, so we NEVER match on auth alone.
-        Paths such as ``/v1/chat/completions`` are also shared, so we never
-        match on path alone.  Only explicit body/header fields or the
-        ``openai/`` model prefix are considered reliable signals.
+        OpenAI's standard auth format (``Bearer sk-...``) is shared with
+        dozens of OpenAI-compatible providers, so we NEVER match on that.
+        However, a Codex JWT (nested ``chatgpt_account_id`` claim) is a
+        strong OpenAI-specific signal -- it is issued by OpenAI's ChatGPT
+        session infrastructure and routes to the same OpenAI protocol.
+
+        Confidence priority (highest first):
+        1. **EXPLICIT** -- body field ``provider=openai`` or header
+           ``x-lattice-provider=openai``.
+        2. **AUTH** -- ``Authorization`` header contains a Codex JWT.
+        3. **MODEL** -- model prefix ``openai/``, ``chatgpt/``, or ``codex/``.
         """
         from lattice.gateway.detect_helpers import (
             detect_explicit,
             detect_model_prefix,
             highest_confidence,
         )
+        from lattice.gateway.routing import DetectionConfidence, DetectionResult
+        from lattice.integrations.codex.auth import _is_codex_jwt
 
-        return highest_confidence(
-            self.name,
-            detect_explicit(signals, self.name, aliases=self._PREFIXES),
-            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
-        )
+        explicit = detect_explicit(signals, self.name, aliases=self._PREFIXES)
+
+        # Codex JWT -- unique OpenAI/ChatGPT session token
+        auth = signals.headers.get("authorization", "")
+        jwt_result: Any = None
+        if _is_codex_jwt(auth):
+            jwt_result = DetectionResult(
+                provider=self.name,
+                confidence=DetectionConfidence.AUTH,
+                reason="Authorization header contains Codex JWT (chatgpt_account_id claim)",
+            )
+
+        model = detect_model_prefix(signals, self.name, aliases=self._PREFIXES)
+
+        return highest_confidence(self.name, explicit, jwt_result, model)
 
     def serialize_request(self, request: Request) -> dict[str, Any]:
         """Internal Request → OpenAI JSON body."""

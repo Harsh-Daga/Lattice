@@ -158,14 +158,17 @@ def detect_path(
 
 def highest_confidence(
     provider: str,
-    *detectors: DetectionResult,
+    *detectors: DetectionResult | None,
 ) -> DetectionResult:
     """Return the highest-confidence result among *detectors*.
 
+    ``None`` values are skipped so callers can safely pass optional results.
     If no detector matched, returns a :data:`DetectionConfidence.NONE` result.
     """
     best: DetectionResult = DetectionResult(provider=provider, confidence=DetectionConfidence.NONE)
     for result in detectors:
+        if result is None:
+            continue
         if result.confidence > best.confidence:
             best = result
     return best

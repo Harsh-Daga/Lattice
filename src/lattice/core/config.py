@@ -432,7 +432,10 @@ class LatticeConfig(BaseSettings):
     # ------------------------------------------------------------------
     @classmethod
     def from_yaml(cls, path: str | pathlib.Path) -> LatticeConfig:
-        """Load configuration from a YAML file."""
+        """Load a standalone config from YAML — no env var overlay.
+
+        Use :meth:`auto` for the standard priority stack (env > yaml > defaults).
+        """
         import yaml  # type: ignore[import-untyped]
 
         path = pathlib.Path(path)
@@ -449,18 +452,40 @@ class LatticeConfig(BaseSettings):
 
     @classmethod
     def auto(cls) -> LatticeConfig:
-        """Auto-discover configuration.
+        """Auto-discover configuration. Priority: env vars > YAML > defaults.
 
-        Priority: env vars > ~/.config/lattice/config.yaml > ./lattice.yaml > defaults.
-        This is the standard entry point.
+        Builds from env vars and defaults, then layers YAML values for
+        fields not already set via environment variables.
         """
-        # Check for explicit YAML files
         cwd_yaml = pathlib.Path.cwd() / "lattice.yaml"
         home_yaml = pathlib.Path.home() / ".config" / "lattice" / "config.yaml"
 
-        for path in (cwd_yaml, home_yaml):
+        # Collect YAML data from all discovered files
+        yaml_data: dict = {}
+        for path in (home_yaml, cwd_yaml):
             if path.exists():
-                return cls.from_yaml(path)
+                import yaml  # type: ignore[import-untyped]
 
-        # No YAML found — rely on env vars and defaults
-        return cls()
+                with path.open(encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict):
+                    yaml_data.update(data)
+
+        if not yaml_data:
+            return cls()
+
+        # Build from env vars + defaults first
+        instance = cls()
+
+        # Overlay YAML values for fields NOT explicitly set via env vars
+        model_fields = cls.model_fields
+        env_prefix = cls.model_config.get("env_prefix", "LATTICE_")
+        for key, value in yaml_data.items():
+            if key not in model_fields:
+                continue
+            env_var = f"{env_prefix}{key.upper()}"
+            if env_var in os.environ:
+                continue
+            object.__setattr__(instance, key, value)
+
+        return instance

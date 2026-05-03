@@ -10,6 +10,7 @@ Reference: https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inf
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from lattice.core.transport import Request, Response
@@ -183,7 +184,7 @@ class BedrockAdapter:
                         "type": "function",
                         "function": {
                             "name": tu.get("name", ""),
-                            "arguments": tu.get("input", {}),
+                            "arguments": json.dumps(tu.get("input", {})),
                         },
                     }
                 )

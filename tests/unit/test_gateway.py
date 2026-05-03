@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from types import SimpleNamespace
 from typing import Any
@@ -328,13 +329,22 @@ async def test_responses_passthrough_requires_explicit_base_url() -> None:
 
 @pytest.mark.asyncio
 async def test_anthropic_passthrough_requires_explicit_base_url() -> None:
+    """Anthropic passthrough succeeds with well-known URL fallback.
+
+    When no provider_base_urls are configured, the multi-tier URL resolution
+    falls through to ``_WELL_KNOWN_PROVIDER_URLS`` (api.anthropic.com) so the
+    passthrough can still forward requests.
+    """
     from lattice.providers.transport import ProviderRegistry
+
+    async def _mock_request(*_a: Any, **_k: Any) -> SimpleNamespace:
+        return SimpleNamespace(status_code=200, content=b"{}", headers={})
 
     provider = SimpleNamespace(
         provider_base_urls={},
         registry=ProviderRegistry(),
         pool=SimpleNamespace(
-            get_client=lambda *_a, **_k: None,
+            get_client=lambda *_a, **_k: SimpleNamespace(request=_mock_request),
             get_http_version=lambda *_a, **_k: "1.1",
         ),
     )
@@ -343,13 +353,11 @@ async def test_anthropic_passthrough_requires_explicit_base_url() -> None:
     resp = await anthropic_passthrough(
         "POST",
         "/v1/messages",
-        b"",
+        b'{"model":"anthropic/claude-3-haiku","max_tokens":10,"messages":[{"role":"user","content":"hi"}]}',
         request,
         provider,
         logger=SimpleNamespace(
             info=lambda *_args, **_kwargs: None, warning=lambda *_args, **_kwargs: None
         ),
     )
-    assert resp.status_code == 400
-    data = resp.body if hasattr(resp, "body") else resp.content
-    assert b"No base URL configured" in data
+    assert resp.status_code == 200

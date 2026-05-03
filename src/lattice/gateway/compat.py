@@ -74,49 +74,126 @@ class HTTPCompatHandler:
         return await self.models_handler(*args, **kwargs)
 
 
-_PROVIDER_FALLBACK_BASE_URLS: dict[str, str] = {
-    "chatgpt": "https://chatgpt.com/backend-api",
+_PROVIDER_FALLBACK_BASE_URLS: dict[str, str] = {}
+
+_WELL_KNOWN_PROVIDER_URLS: dict[str, str] = {
+    "openai": "https://api.openai.com",
+    "anthropic": "https://api.anthropic.com",
+    "gemini": "https://generativelanguage.googleapis.com",
+    "groq": "https://api.groq.com/openai",
+    "together": "https://api.together.xyz",
+    "deepseek": "https://api.deepseek.com",
+    "perplexity": "https://api.perplexity.com",
+    "mistral": "https://api.mistral.ai",
+    "fireworks": "https://api.fireworks.ai",
+    "openrouter": "https://openrouter.ai/api",
+    "cohere": "https://api.cohere.com",
+    "ai21": "https://api.ai21.com",
 }
 
 
-def _prepare_chatgpt_upstream_headers(
-    headers: dict[str, str],
-    base_url: str,
-) -> dict[str, str]:
-    """Prepare upstream headers for chatgpt provider.
+def _resolve_provider_upstream_url(
+    provider_name: str,
+    path: str,
+    provider: Any,
+    *,
+    query_params: str = "",
+) -> str:
+    """Resolve upstream URL with multi-tier fallback for passthrough endpoints.
 
-    * ``chatgpt.com`` endpoints (WS responses): keep JWT, inject
-      ``ChatGPT-Account-ID`` for upstream routing.
-    * ``api.openai.com`` endpoints (models, chat, etc.): swap to
-      ``OPENAI_API_KEY`` env var if available.  The Codex JWT lacks
-      scopes for many OpenAI endpoints.
+    Resolution order:
+    1. ``provider_base_urls`` (config / env)
+    2. ``_PROVIDER_FALLBACK_BASE_URLS`` (runtime overrides)
+    3. ``default_api_base`` (global default from config)
+    4. ``_WELL_KNOWN_PROVIDER_URLS`` (hardcoded well-known endpoints)
+    5. Raise ValueError
     """
-    import os
+    base_url = provider.provider_base_urls.get(provider_name)
+    if not base_url:
+        base_url = _PROVIDER_FALLBACK_BASE_URLS.get(provider_name)
+    if not base_url:
+        base_url = getattr(provider, "default_api_base", None) or ""
+    if not base_url:
+        base_url = _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
+    if not base_url:
+        raise ValueError(
+            f"No base URL configured for provider '{provider_name}'. "
+            f"Set provider_base_urls['{provider_name}'] or "
+            f"LATTICE_PROVIDER_BASE_URLS env var."
+        )
+    upstream_url = f"{base_url.rstrip('/')}{path}"
+    if query_params:
+        upstream_url = f"{upstream_url}?{query_params}"
+    return upstream_url
 
+
+def _resolve_passthrough_provider(
+    headers: dict[str, str],
+    *,
+    path: str = "",
+    body: dict[str, Any] | None = None,
+) -> str:
+    """Simple header-based provider detection for metadata/lightweight endpoints.
+
+    ``model_metadata_provider`` pattern: detect Anthropic
+    auth signals first, then Gemini, then explicit header, else OpenAI.
+    """
+    from lattice.gateway.routing import RequestSignals
+
+    signals = RequestSignals(
+        method="GET",
+        path=path,
+        headers=headers,
+        body=body or {},
+        model="",
+    )
+
+    # 1. Explicit header wins (operator override)
+    explicit = signals.headers.get("x-lattice-provider")
+    if explicit:
+        return explicit.strip().lower()
+
+    # 2. Gemini API key — exclusive Google signal
+    if signals.headers.get("x-goog-api-key"):
+        return "gemini"
+
+    # 3. Anthropic auth signals — strongest match first
+    auth = signals.headers.get("authorization", "")
+    if auth.startswith("Bearer sk-ant-"):
+        return "anthropic"
+    if signals.headers.get("anthropic-version"):
+        return "anthropic"
+    if signals.headers.get("anthropic-beta"):
+        return "anthropic"
+
+    # 4. x-api-key alone is shared across many providers — only match
+    #    when combined with anthropic-version or anthropic-beta above.
+    #    Standing alone it's too ambiguous.
+
+    # 5. Default — OpenAI (the most common /v1/models consumer)
+    return "openai"
+
+
+def _prepare_codex_upstream_headers(
+    headers: dict[str, str],
+) -> dict[str, str]:
+    """Prepare upstream headers for Codex (ChatGPT session) requests.
+
+    Injects ``ChatGPT-Account-ID`` from the JWT claim for upstream routing.
+    This is a no-op when the auth is not a Codex JWT.
+    """
     from lattice.integrations.codex.auth import _is_codex_jwt, _resolve_codex_routing_headers
 
     auth = headers.get("authorization", "")
     if not _is_codex_jwt(auth):
         return headers
 
-    is_chatgpt_backend = "chatgpt.com" in base_url
-
-    if is_chatgpt_backend:
-        resolved = _resolve_codex_routing_headers(
-            auth,
-            headers.get("openai-beta", ""),
-            headers.get("chatgpt-account-id", ""),
-        )
-        return {**headers, **resolved}
-
-    # api.openai.com — swap to OPENAI_API_KEY, strip chatgpt-specific headers
-    cleaned = dict(headers)
-    cleaned.pop("chatgpt-account-id", None)
-    cleaned.pop("openai-beta", None)
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if api_key:
-        cleaned["Authorization"] = f"Bearer {api_key}"
-    return cleaned
+    resolved = _resolve_codex_routing_headers(
+        auth,
+        headers.get("openai-beta", ""),
+        headers.get("chatgpt-account-id", ""),
+    )
+    return {**headers, **resolved}
 
 
 # =============================================================================
@@ -735,31 +812,49 @@ async def responses_passthrough(
     provider_name = result.provider
 
     # ------------------------------------------------------------------
-    # 4. Base URL — MUST be explicitly configured
+    # 4. Resolve upstream URL with multi-tier fallback
     # ------------------------------------------------------------------
-    base_url = provider.provider_base_urls.get(provider_name)
-    if not base_url:
-        base_url = _PROVIDER_FALLBACK_BASE_URLS.get(provider_name)
-    if not base_url:
+    try:
+        upstream_url = _resolve_provider_upstream_url(
+            provider_name,
+            path,
+            provider,
+            query_params=str(fastapi_request.query_params),
+        )
+    except ValueError as exc:
         return JSONResponse(
-            {
-                "error": "provider_not_configured",
-                "message": (
-                    f"No base URL configured for provider '{provider_name}'. "
-                    f"Set provider_base_urls['{provider_name}'] or "
-                    f"LATTICE_PROVIDER_BASE_URLS env var."
-                ),
-            },
+            {"error": "provider_not_configured", "message": str(exc)},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
+    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
 
-    if provider_name == "chatgpt":
-        headers = _prepare_chatgpt_upstream_headers(headers, base_url)
+    # For /v1/responses with Codex JWT, route to chatgpt.com backend.
+    # All other OpenAI endpoints route to the configured base_url with the JWT as-is.
+    _is_codex = False
+    if provider_name == "openai" and path == "/v1/responses":
+        auth_hdr = headers.get("authorization", "")
+        if auth_hdr:
+            from lattice.integrations.codex.auth import _is_codex_jwt
 
-    upstream_url = f"{base_url.rstrip('/')}{path}"
-    query = str(fastapi_request.query_params)
-    if query:
-        upstream_url = f"{upstream_url}?{query}"
+            _is_codex = _is_codex_jwt(auth_hdr) if auth_hdr else False
+        if _is_codex:
+            upstream_url = "https://chatgpt.com/backend-api/codex/responses"
+            query = str(fastapi_request.query_params)
+            if query:
+                upstream_url = f"{upstream_url}?{query}"
+            headers = _prepare_codex_upstream_headers(headers)
+            # Inject ChatGPT-Account-ID from JWT claim for upstream routing
+            headers = _prepare_codex_upstream_headers(headers)
+        else:
+            upstream_url = f"{base_url.rstrip('/')}{path}"
+            query = str(fastapi_request.query_params)
+            if query:
+                upstream_url = f"{upstream_url}?{query}"
+    else:
+        upstream_url = f"{base_url.rstrip('/')}{path}"
+        query = str(fastapi_request.query_params)
+        if query:
+            upstream_url = f"{upstream_url}?{query}"
 
     # ------------------------------------------------------------------
     # 5. Derive model_used for routing headers from the actual request
@@ -1018,32 +1113,30 @@ async def anthropic_passthrough(
     provider_name = result.provider
 
     # ------------------------------------------------------------------
-    # 4. Base URL — MUST be explicitly configured
+    # 4. Resolve upstream URL with multi-tier fallback
     # ------------------------------------------------------------------
-    base_url = provider.provider_base_urls.get(provider_name)
-    if not base_url:
-        base_url = _PROVIDER_FALLBACK_BASE_URLS.get(provider_name)
-    if not base_url:
+    try:
+        upstream_url = _resolve_provider_upstream_url(
+            provider_name,
+            path,
+            provider,
+            query_params=str(fastapi_request.query_params),
+        )
+    except ValueError as exc:
         return JSONResponse(
             {
                 "type": "error",
                 "error": {
                     "type": "provider_not_configured",
-                    "message": (
-                        f"No base URL configured for provider '{provider_name}'. "
-                        f"Set provider_base_urls['{provider_name}'] or "
-                        f"LATTICE_PROVIDER_BASE_URLS env var."
-                    ),
+                    "message": str(exc),
                 },
             },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
+    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
 
-    upstream_url = f"{base_url.rstrip('/')}{path}"
-    query = str(fastapi_request.query_params)
-    if query:
-        upstream_url = f"{upstream_url}?{query}"
-
+    # ------------------------------------------------------------------
+    # 5. Derive model_used for routing headers
     # ------------------------------------------------------------------
     # 5. Derive model_used from actual request
     # ------------------------------------------------------------------
@@ -1272,12 +1365,20 @@ async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any 
         await websocket.close(code=1007, reason="invalid_json")
         return
 
-    model = body.get("model", "gpt-4")
+    model = body.get("model", "")
+    if not model:
+        if logger:
+            logger.warning("ws_chat_completions_no_model")
+        await websocket.send_text(_json.dumps({"error": "model field is required"}))
+        await websocket.close(code=1007, reason="missing model")
+        return
+
     request = deserialize_openai_request(body)
     config = LatticeConfig.auto()
 
+    provider = model.split("/")[0] if "/" in model else "openai"
     pipeline = build_default_pipeline(config)
-    ctx = TransformContext(request_id=f"ws-chat-{model}", provider="openai", model=model)
+    ctx = TransformContext(request_id=f"ws-chat-{model}", provider=provider, model=model)
     result = await pipeline.process(request, ctx)
 
     if is_err(result):
@@ -1287,7 +1388,7 @@ async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any 
 
     compressed = unwrap(result)
     compressed_messages = [message_to_dict(m) for m in compressed.messages]
-    provider_name = model.split("/")[0] if "/" in model else "openai"
+    provider_name = provider
 
     from lattice.core.credentials import CredentialResolver
     from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
@@ -2184,6 +2285,91 @@ class ResponsesCompatDeps:
     provider: Any
 
 
+async def models_passthrough(
+    fastapi_request: Any,
+    provider: Any,
+    *,
+    session_id: str | None = None,
+) -> Any:
+    """Passthrough /v1/models with simple header-based provider detection.
+
+    The /v1/models endpoint (GET, empty body) provides zero signals for
+    ProviderRouter's adapter-scoring system.  We use a simple header-based
+    heuristic instead, ``model_metadata_provider`` pattern:
+    Anthropic auth → api.anthropic.com, Gemini API key → generativelanguage,
+    explicit header → named provider, else OpenAI.
+
+    This is a pure passthrough — no compression, no pipeline, no transformation.
+    """
+    import logging
+
+    _log = logging.getLogger("lattice.gateway.models")
+
+    headers: dict[str, str] = {}
+    for k, v in fastapi_request.headers.items():
+        kl = k.lower()
+        if kl in (
+            "host",
+            "content-length",
+            "connection",
+            "keep-alive",
+            "transfer-encoding",
+            "upgrade",
+            "te",
+            "trailer",
+            "proxy-authenticate",
+            "proxy-authorization",
+        ):
+            continue
+        headers[k] = v
+
+    provider_name = _resolve_passthrough_provider(headers, path="/v1/models")
+
+    try:
+        upstream_url = _resolve_provider_upstream_url(
+            provider_name,
+            "/v1/models",
+            provider,
+            query_params=str(fastapi_request.query_params),
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            {"error": "provider_not_configured", "message": str(exc)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    base_url = provider.provider_base_urls.get(provider_name) or _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
+
+    _log.debug("models_passthrough upstream=%s provider=%s", upstream_url, provider_name)
+
+    client = provider.pool.get_client(provider_name, base_url)
+    try:
+        http_resp = await client.get(upstream_url, headers=headers)
+    except httpx.TimeoutException:
+        _log.warning("models_passthrough_timeout upstream=%s", upstream_url)
+        return JSONResponse(
+            {"error": "upstream_timeout"},
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+        )
+    except httpx.HTTPError as exc:
+        _log.warning("models_passthrough_error error=%s", exc)
+        return JSONResponse(
+            {"error": "upstream_error", "message": str(exc)},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    response_headers = dict(http_resp.headers)
+    response_headers.pop("content-encoding", None)
+    response_headers.pop("content-length", None)
+    for _hop in ("transfer-encoding", "connection", "keep-alive"):
+        response_headers.pop(_hop, None)
+
+    return StarletteResponse(
+        content=http_resp.content,
+        status_code=http_resp.status_code,
+        headers=response_headers,
+    )
+
+
 def make_models_handler(deps: ResponsesCompatDeps) -> Handler:
     """Create /v1/models passthrough handler."""
 
@@ -2191,10 +2377,7 @@ def make_models_handler(deps: ResponsesCompatDeps) -> Handler:
         request: Any,
         x_lattice_session_id: str | None = None,
     ) -> Any:
-        return await deps.responses_passthrough(
-            "GET",
-            "/v1/models",
-            b"",
+        return await models_passthrough(
             request,
             deps.provider,
             session_id=x_lattice_session_id or "",

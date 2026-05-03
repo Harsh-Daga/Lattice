@@ -20,34 +20,28 @@ from lattice.providers.openai import OpenAIAdapter
 
 
 class AzureAdapter(OpenAIAdapter):
-    """Azure OpenAI adapter.
+    """Azure OpenAI adapter (api-key auth).
 
-    Inherits serialization / deserialization from OpenAIAdapter and only
-    overrides endpoint construction, auth, and model handling.
+    Model format: ``azure/gpt-4o`` — maps deployment name to Azure path.
     """
 
     name = "azure"
     _PREFIXES = {"azure"}
+    _DEFAULT_API_VERSION = "2024-02-01"
 
-    def supports(self, model: str) -> bool:
-        """Matches ``azure/...``."""
-        if "/" not in model:
-            return False
-        prefix = model.split("/", 1)[0].lower()
-        return prefix in self._PREFIXES
-
-    def chat_endpoint(self, model: str, base_url: str) -> str:
+    def chat_endpoint(self, _model: str, base_url: str, api_version: str | None = None) -> str:
         """Azure path includes the *deployment* name (stripped of ``azure/`` prefix).
 
         ``model`` here is actually the deployment name, e.g. ``azure/gpt-4o``
         becomes ``gpt-4o`` in the path.
         """
-        deployment = model
+        deployment = _model
         if "/" in deployment:
             deployment = deployment.split("/", 1)[1]
+        version = api_version or self._DEFAULT_API_VERSION
         return (
             f"{base_url.rstrip('/')}/openai/deployments/{deployment}/chat/completions"
-            "?api-version=2024-02-01"
+            f"?api-version={version}"
         )
 
     def auth_headers(self, api_key: str | None) -> dict[str, str]:

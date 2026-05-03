@@ -70,18 +70,7 @@ class ProviderRegistry:
     def __init__(self, adapters: list[ProviderAdapter] | None = None) -> None:
         self._adapters = list(adapters) if adapters else []
         if not self._adapters:
-            # Defer ChatGPT import to avoid circular dependency:
-            # lattice.integrations.codex.adapter → lattice.providers.openai
-            # and lattice.integrations.__init__ → lattice.proxy → lattice.providers.transport
-            try:
-                from lattice.integrations.codex.adapter import ChatGPTAdapter
-
-                chatgpt = ChatGPTAdapter()
-            except ImportError:
-                logger.warning("ChatGPTAdapter import failed, skipping registration")
-                chatgpt = None
-
-            adapters = [
+            self._adapters = [
                 # OpenAI-compatible providers (prefix matching)
                 GroqAdapter(),  # groq/ prefix
                 TogetherAdapter(),  # together/ prefix
@@ -99,12 +88,8 @@ class ProviderRegistry:
                 AnthropicAdapter(),  # anthropic/ or claude- prefix
                 AzureAdapter(),  # azure/ prefix
                 BedrockAdapter(),  # bedrock/ prefix
-                OpenAIAdapter(),  # openai/ prefix
+                OpenAIAdapter(),  # openai/ prefix, chatgpt/ prefix, codex JWT
             ]
-            if chatgpt is not None:
-                # ChatGPT / Codex (must be before OpenAIAdapter to intercept Codex JWTs)
-                adapters.insert(0, chatgpt)  # chatgpt/ prefix, Codex JWT auth
-            self._adapters = adapters
 
     def resolve(self, model: str) -> ProviderAdapter:
         """Find the adapter for *model*.
@@ -919,13 +904,22 @@ class DirectHTTPProvider:
         Resolution order:
         1. explicit API base passed by caller
         2. per-provider configured base URL (``provider_base_urls``)
-
-        There is no step 3.  Base URLs MUST be configured explicitly via
-        ``provider_base_urls`` or the ``LATTICE_PROVIDER_BASE_URLS`` env var.
-        If none is configured, the request fails with a clear error so the
-        operator knows exactly which provider needs a base URL.
+        3. adapter's ``_DEFAULT_BASE_URL`` (well-known provider endpoints)
+        4. ``_WELL_KNOWN_PROVIDER_URLS`` module-level fallback
         """
-        base_url = api_base or self.provider_base_urls.get(provider_name)
+        base_url = (
+            api_base
+            or self.provider_base_urls.get(provider_name)
+        )
+        if not base_url:
+            try:
+                adapter = self.registry.get_adapter(provider_name)
+                base_url = getattr(adapter, "_DEFAULT_BASE_URL", "") or ""
+            except ProviderError:
+                pass
+        if not base_url:
+            from lattice.gateway.compat import _WELL_KNOWN_PROVIDER_URLS
+            base_url = _WELL_KNOWN_PROVIDER_URLS.get(provider_name, "")
         if not base_url:
             raise ProviderError(
                 provider=provider_name,
@@ -960,8 +954,8 @@ class DirectHTTPProvider:
         if self.default_api_key is not None:
             return self.default_api_key
 
-        # Ollama local does not need authentication
-        if provider_name == "ollama":
+        # Local providers that don't need API keys
+        if provider_name in ("ollama", "bedrock"):
             return ""
 
         # No key found — raise clear error
