@@ -8,8 +8,8 @@ import structlog
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.errors import ProviderDetectionError as CompatProviderDetectionError
+from lattice.core.pipeline import CompressorPipeline
 from lattice.gateway.compat import (
     build_routing_headers as compat_build_routing_headers,
 )
