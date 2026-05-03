@@ -239,22 +239,32 @@ def register_provider_compat_routes(
 
     @app.websocket("/v1/responses")
     async def responses_websocket(websocket: WebSocket) -> None:
+        import time as _time
+
         logger = getattr(deps, "logger", None)
-        if logger is not None:
-            try:
-                safe_headers = {
-                    k: v
-                    for k, v in websocket.headers.items()
-                    if k.lower() not in _SENSITIVE_HEADERS
-                }
-                logger.info(
-                    "responses_websocket_route_entered",
-                    path=str(getattr(getattr(websocket, "url", None), "path", "")),
-                    headers=safe_headers,
-                )
-            except Exception:
-                pass
-        await deps.responses_websocket_passthrough(websocket)
+        metrics = getattr(deps, "metrics", None)
+        start = _time.perf_counter()
+        try:
+            if logger is not None:
+                try:
+                    safe_headers = {
+                        k: v
+                        for k, v in websocket.headers.items()
+                        if k.lower() not in _SENSITIVE_HEADERS
+                    }
+                    logger.info(
+                        "responses_websocket_route_entered",
+                        path=str(getattr(getattr(websocket, "url", None), "path", "")),
+                        headers=safe_headers,
+                    )
+                except Exception:
+                    pass
+            await deps.responses_websocket_passthrough(websocket)
+        finally:
+            elapsed_ms = (_time.perf_counter() - start) * 1000
+            if metrics is not None:
+                metrics.increment("lattice_requests_total")
+                metrics.record_latency("lattice_request_latency_ms", elapsed_ms)
 
     @app.websocket("/v1/responses/")
     async def responses_websocket_slash(websocket: WebSocket) -> None:
@@ -268,21 +278,31 @@ def register_provider_compat_routes(
         processes it through the Lattice pipeline, proxies to the upstream
         provider via SSE, and pipes events back as WS text frames.
         """
+        import time as _time
+
         logger = getattr(deps, "logger", None)
-        if logger is not None:
-            try:
-                safe_headers = {
-                    k: v
-                    for k, v in websocket.headers.items()
-                    if k.lower() not in _SENSITIVE_HEADERS
-                }
-                logger.info(
-                    "chat_completions_ws_route_entered",
-                    headers=safe_headers,
-                )
-            except Exception:
-                pass
-        await deps.chat_completions_websocket_passthrough(websocket)
+        metrics = getattr(deps, "metrics", None)
+        start = _time.perf_counter()
+        try:
+            if logger is not None:
+                try:
+                    safe_headers = {
+                        k: v
+                        for k, v in websocket.headers.items()
+                        if k.lower() not in _SENSITIVE_HEADERS
+                    }
+                    logger.info(
+                        "chat_completions_ws_route_entered",
+                        headers=safe_headers,
+                    )
+                except Exception:
+                    pass
+            await deps.chat_completions_websocket_passthrough(websocket)
+        finally:
+            elapsed_ms = (_time.perf_counter() - start) * 1000
+            if metrics is not None:
+                metrics.increment("lattice_requests_total")
+                metrics.record_latency("lattice_request_latency_ms", elapsed_ms)
 
     responses_aliases = (
         "/v1/codex/responses",
