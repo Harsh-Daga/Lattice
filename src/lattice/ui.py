@@ -123,7 +123,7 @@ class ProxyLiveDisplay:
         table.add_row("Proxy Latency", f"{latency_ms:.0f} ms")
         table.add_row("LLM Latency", f"{llm_latency_ms:.0f} ms")
         table.add_row("Sessions", str(active_sessions))
-        table.add_row("Compression", compression)
+        table.add_row("Compression", str(compression) if compression is not None else "N/A")
 
         # Provider latency breakdown
         provider_table = Table(title="Providers", show_header=True, box=None)

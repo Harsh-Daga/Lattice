@@ -64,6 +64,33 @@ class AzureAdapter(OpenAIAdapter):
                 return rest
         return model
 
+    def detect(self, signals: Any) -> Any:
+        """Detect Azure from explicit signals and the ``api-key`` header.
+
+        Azure OpenAI uses ``api-key`` for authentication — a header that is
+        **not** used by standard OpenAI providers (which use
+        ``Authorization: Bearer``).  This makes ``api-key`` a strong,
+        Azure-specific signal.
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_explicit,
+            detect_header_present,
+            detect_model_prefix,
+            highest_confidence,
+        )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            detect_header_present(
+                signals,
+                self.name,
+                "api-key",
+                "api-key header is Azure-specific (OpenAI uses Authorization: Bearer)",
+            ),
+            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
+        )
+
     def extra_headers(self, _request: Request) -> dict[str, str]:
         return {}
 

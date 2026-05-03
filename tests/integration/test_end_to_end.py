@@ -453,7 +453,10 @@ class TestResponsesAPIPassthrough:
                     },
                 )
             )
-            resp = test_client.get("/v1/models")
+            resp = test_client.get(
+                "/v1/models",
+                headers={"x-lattice-provider": "openai"},
+            )
             assert resp.status_code == 200
             data = resp.json()
             assert data["data"][0]["id"] == "gpt-4"
@@ -475,7 +478,7 @@ class TestResponsesAPIPassthrough:
             )
             resp = test_client.post(
                 "/v1/responses",
-                json={"model": "gpt-4", "input": "hello"},
+                json={"provider": "openai", "model": "gpt-4", "input": "hello"},
                 headers={"authorization": "Bearer test-key"},
             )
             assert resp.status_code == 200
@@ -496,7 +499,10 @@ class TestResponsesAPIPassthrough:
                     json={"id": "resp_456", "object": "response"},
                 )
             )
-            resp = test_client.get("/v1/responses/resp_456")
+            resp = test_client.get(
+                "/v1/responses/resp_456",
+                headers={"x-lattice-provider": "openai"},
+            )
             assert resp.status_code == 200
             assert resp.json()["id"] == "resp_456"
 
@@ -508,7 +514,10 @@ class TestResponsesAPIPassthrough:
             respx.delete("https://api.openai.com/v1/responses/resp_789").mock(
                 return_value=httpx.Response(200, json={"id": "resp_789", "deleted": True})
             )
-            resp = test_client.delete("/v1/responses/resp_789")
+            resp = test_client.delete(
+                "/v1/responses/resp_789",
+                headers={"x-lattice-provider": "openai"},
+            )
             assert resp.status_code == 200
             assert resp.json()["deleted"] is True
 

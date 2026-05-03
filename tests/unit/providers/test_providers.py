@@ -600,7 +600,13 @@ class TestDirectHTTPProviderMocked:
             )
         )
 
-        provider = DirectHTTPProvider(default_api_key="fake")
+        provider = DirectHTTPProvider(
+            default_api_key="fake",
+            provider_base_urls={
+                "openai": "https://api.openai.com",
+                "groq": "https://api.groq.com/openai",
+            },
+        )
         resp = await provider.completion(
             model="openai/gpt-4",
             messages=[{"role": "user", "content": "What is 6*7?"}],
@@ -625,7 +631,9 @@ class TestDirectHTTPProviderMocked:
             )
         )
 
-        provider = DirectHTTPProvider()
+        provider = DirectHTTPProvider(
+            provider_base_urls={"ollama": "http://127.0.0.1:11434"},
+        )
         resp = await provider.completion(
             model="ollama/llama3",
             messages=[{"role": "user", "content": "Hello"}],
@@ -647,7 +655,11 @@ class TestDirectHTTPProviderMocked:
             side_effect=httpx.TimeoutException("Connection timed out")
         )
 
-        provider = DirectHTTPProvider(timeout=0.01, default_api_key="fake")
+        provider = DirectHTTPProvider(
+            timeout=0.01,
+            default_api_key="fake",
+            provider_base_urls={"openai": "https://api.openai.com"},
+        )
         with pytest.raises(ProviderTimeoutError):
             await provider.completion(
                 model="openai/gpt-4",
@@ -663,7 +675,13 @@ class TestDirectHTTPProviderMocked:
             return_value=HttpxResponse(401, json={"error": "invalid key"})
         )
 
-        provider = DirectHTTPProvider(default_api_key="fake")
+        provider = DirectHTTPProvider(
+            default_api_key="fake",
+            provider_base_urls={
+                "openai": "https://api.openai.com",
+                "groq": "https://api.groq.com/openai",
+            },
+        )
         with pytest.raises(ProviderError) as exc_info:
             await provider.completion(
                 model="openai/gpt-4",
@@ -695,7 +713,13 @@ class TestDirectHTTPProviderMocked:
             ]
         )
 
-        provider = DirectHTTPProvider(default_api_key="fake")
+        provider = DirectHTTPProvider(
+            default_api_key="fake",
+            provider_base_urls={
+                "openai": "https://api.openai.com",
+                "groq": "https://api.groq.com/openai",
+            },
+        )
         resp = await provider.completion(
             model="openai/gpt-4",
             messages=[{"role": "user", "content": "Retry me"}],
@@ -723,7 +747,13 @@ class TestDirectHTTPProviderMocked:
             )
         )
 
-        provider = DirectHTTPProvider(default_api_key="fake")
+        provider = DirectHTTPProvider(
+            default_api_key="fake",
+            provider_base_urls={
+                "openai": "https://api.openai.com",
+                "groq": "https://api.groq.com/openai",
+            },
+        )
         resp = await provider.completion(
             model="llama-3.1-70b-versatile",
             messages=[{"role": "user", "content": "Hello"}],

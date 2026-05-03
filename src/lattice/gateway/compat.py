@@ -78,31 +78,6 @@ class HTTPCompatHandler:
 # Shared proxy compatibility helpers
 # =============================================================================
 
-_SUPPORTED_PROVIDERS: tuple[str, ...] = (
-    "openai",
-    "anthropic",
-    "ollama",
-    "ollama-cloud",
-    "azure",
-    "bedrock",
-    "groq",
-    "together",
-    "deepseek",
-    "perplexity",
-    "mistral",
-    "fireworks",
-    "openrouter",
-    "cohere",
-    "ai21",
-    "gemini",
-    "google",
-    "vertex",
-)
-
-
-class ProviderDetectionError(Exception):
-    """Raised when provider cannot be determined from request data."""
-
 
 def build_routing_headers(
     model_used: str,
@@ -270,34 +245,6 @@ def _usage_total_tokens(usage: dict[str, Any]) -> int:
     if isinstance(total, int):
         return total
     return normalized["prompt_tokens"] + normalized["completion_tokens"]
-
-
-def detect_provider(model: str, provider_hint: str | None = None) -> str:
-    """Determine provider from explicit hint or model prefix.
-
-    Falls back to ``"openai"`` when no hint or prefix is present
-    (e.g. Codex sending ``model: gpt-4`` without a provider prefix).
-    """
-    if provider_hint:
-        hint = provider_hint.lower().strip()
-        if hint in _SUPPORTED_PROVIDERS:
-            return hint
-        raise ProviderDetectionError(
-            f"Unknown provider hint '{provider_hint}'. Supported: {', '.join(_SUPPORTED_PROVIDERS)}"
-        )
-    if "/" in model:
-        prefix = model.split("/", 1)[0].lower()
-        if prefix in _SUPPORTED_PROVIDERS:
-            return prefix
-        raise ProviderDetectionError(
-            f"Unknown provider prefix '{prefix}' in model '{model}'. "
-            f"Supported prefixes: {', '.join(_SUPPORTED_PROVIDERS)}"
-        )
-    raise ProviderDetectionError(
-        f"Provider not specified. Use either: "
-        f"1) x-lattice-provider header, or "
-        f"2) model prefix like 'groq/llama-3b' (got model='{model}')"
-    )
 
 
 def detect_new_messages(existing: list[Message], incoming: list[Message]) -> list[Message]:
@@ -669,17 +616,15 @@ async def responses_passthrough(
     logger: Any,
     session_id: str | None = None,
 ) -> Any:
-    """Forward OpenAI Responses API requests directly to configured upstream."""
-    provider_name = "openai"
-    base_url = provider.provider_base_urls.get(provider_name)
-    if not base_url:
-        raise ValueError(f"No upstream base URL configured for provider '{provider_name}'")
+    """Forward Responses API requests to the upstream provider determined by signals.
 
-    upstream_url = f"{base_url.rstrip('/')}{path}"
-    query = str(fastapi_request.query_params)
-    if query:
-        upstream_url = f"{upstream_url}?{query}"
-
+    Provider resolution is delegated to :class:`ProviderRouter`.  There are
+    no hardcoded defaults — if no adapter matches, the request fails with a
+    descriptive 400.
+    """
+    # ------------------------------------------------------------------
+    # 1. Collect headers — skip hop-by-hop fields that httpx manages
+    # ------------------------------------------------------------------
     headers: dict[str, str] = {}
     for k, v in fastapi_request.headers.items():
         kl = k.lower()
@@ -687,22 +632,106 @@ async def responses_passthrough(
             continue
         headers[k] = v
 
-    is_streaming = False
+    # ------------------------------------------------------------------
+    # 2. Parse body if present — JSONDecodeError is the only expected failure
+    # ------------------------------------------------------------------
+    body_json: dict[str, Any] | None = None
     if body:
-        with contextlib.suppress(Exception):
+        try:
             body_json = json.loads(body)
-            is_streaming = body_json.get("stream", False)
+        except json.JSONDecodeError as exc:
+            return JSONResponse(
+                {
+                    "error": "invalid_json",
+                    "message": f"Request body is not valid JSON: {exc}",
+                },
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+    # ------------------------------------------------------------------
+    # 3. Provider detection — zero defaults, zero fallbacks
+    # ------------------------------------------------------------------
+    from lattice.gateway.routing import (
+        ProviderAmbiguityError,
+        ProviderNotDetectedError,
+        ProviderRouter,
+        RequestSignals,
+    )
+
+    router = ProviderRouter(provider.registry)
+    signals = RequestSignals.from_request(
+        method=method,
+        path=path,
+        headers=headers,
+        body=body_json or {},
+        model=body_json.get("model", "") if body_json else "",
+    )
+
+    try:
+        result = router.resolve(signals)
+    except (ProviderNotDetectedError, ProviderAmbiguityError) as exc:
+        logger.warning("responses_provider_detection_failed", error=str(exc))
+        return JSONResponse(
+            {"error": "provider_detection_failed", "message": str(exc)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    provider_name = result.provider
+
+    # ------------------------------------------------------------------
+    # 4. Base URL — MUST be explicitly configured
+    # ------------------------------------------------------------------
+    base_url = provider.provider_base_urls.get(provider_name)
+    if not base_url:
+        return JSONResponse(
+            {
+                "error": "provider_not_configured",
+                "message": (
+                    f"No base URL configured for provider '{provider_name}'. "
+                    f"Set provider_base_urls['{provider_name}'] or "
+                    f"LATTICE_PROVIDER_BASE_URLS env var."
+                ),
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    upstream_url = f"{base_url.rstrip('/')}{path}"
+    query = str(fastapi_request.query_params)
+    if query:
+        upstream_url = f"{upstream_url}?{query}"
+
+    # ------------------------------------------------------------------
+    # 5. Derive model_used for routing headers from the actual request
+    # ------------------------------------------------------------------
+    model_used = body_json.get("model", "") if body_json else ""
+    if "/" in model_used:
+        model_used = model_used.split("/", 1)[1]
+    if not model_used:
+        model_used = "unknown"
+
+    # ------------------------------------------------------------------
+    # 6. Streaming detection
+    # ------------------------------------------------------------------
+    is_streaming = False
+    if body_json:
+        is_streaming = body_json.get("stream", False)
 
     logger.info(
         "responses_passthrough_start",
         url=upstream_url,
+        provider=provider_name,
+        confidence=result.confidence.name,
+        reason=result.reason,
         is_streaming=is_streaming,
-        has_auth=bool(headers.get("authorization") or headers.get("Authorization")),
+        has_auth=bool(headers.get("authorization")),
         body_bytes=len(body),
     )
     client = provider.pool.get_client(provider_name, base_url)
     http_version = provider.pool.get_http_version(provider_name, base_url)
 
+    # ------------------------------------------------------------------
+    # 7. Streaming path
+    # ------------------------------------------------------------------
     if is_streaming:
 
         async def _stream_relay() -> Any:
@@ -724,13 +753,25 @@ async def responses_passthrough(
                         return
                     async for chunk in resp.aiter_text():
                         yield chunk
-            except Exception as exc:
+            except httpx.TimeoutException as exc:
                 logger.error(
-                    "responses_passthrough_stream_exception",
+                    "responses_passthrough_stream_timeout",
+                    error=str(exc),
+                )
+                yield (
+                    f'event: error\ndata: '
+                    f'{{"error":"upstream_timeout","message":"{str(exc)}"}}\n\n'
+                )
+            except httpx.HTTPError as exc:
+                logger.error(
+                    "responses_passthrough_stream_http_error",
                     error=str(exc),
                     error_type=type(exc).__name__,
                 )
-                yield (f'event: error\ndata: {{"error":"stream_error","message":"{str(exc)}"}}\n\n')
+                yield (
+                    f'event: error\ndata: '
+                    f'{{"error":"upstream_error","message":"{str(exc)}"}}\n\n'
+                )
 
         transport_outcome = TransportOutcome(
             http_version=http_version,
@@ -739,7 +780,7 @@ async def responses_passthrough(
             _stream_relay(),
             media_type="text/event-stream",
             headers=build_routing_headers(
-                model_used="gpt",
+                model_used=model_used,
                 compressed_tokens=compressed_tokens,
                 original_tokens=original_tokens,
                 session_id=session_id or "",
@@ -747,16 +788,20 @@ async def responses_passthrough(
             ),
         )
 
+    # ------------------------------------------------------------------
+    # 8. Non-streaming path
+    # ------------------------------------------------------------------
     try:
         http_resp = await client.request(method, upstream_url, content=body, headers=headers)
-    except httpx.TimeoutException:
+    except httpx.TimeoutException as exc:
+        logger.error("responses_passthrough_timeout", error=str(exc))
         return JSONResponse(
-            {"error": "upstream_timeout"},
+            {"error": "upstream_timeout", "message": str(exc)},
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
         )
-    except Exception as exc:
+    except httpx.HTTPError as exc:
         logger.error(
-            "responses_passthrough_error",
+            "responses_passthrough_http_error",
             error=str(exc),
             error_type=type(exc).__name__,
         )
@@ -783,7 +828,7 @@ async def responses_passthrough(
     )
     response_headers.update(
         build_routing_headers(
-            model_used="gpt",
+            model_used=model_used,
             compressed_tokens=compressed_tokens,
             original_tokens=original_tokens,
             session_id=session_id or "",
@@ -798,82 +843,26 @@ async def responses_passthrough(
 
 
 async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> None:
-    """Relay websocket traffic between client and OpenAI Responses upstream.
+    """Relay WebSocket traffic between client and OpenAI Responses upstream.
 
     Supports both standard OpenAI Responses and Codex-specific routing:
     * Standard → ``wss://api.openai.com/v1/responses``
     * Codex     → ``wss://chatgpt.com/backend-api/codex/responses``
-      (detected via JWT ``chatgpt_account_id`` claim)
+      (detected via JWT ``https://api.openai.com/auth.chatgpt_account_id`` claim)
+
+    Robust implementation:
+    * Subprotocol forwarding (client → upstream)
+    * First-frame timeout (60s) so zombie clients don't hold slots
+    * OpenAI-Beta header injection (required by OpenAI)
+    * Env OPENAI_API_KEY fallback when client doesn't send auth
+    * WebSocket → HTTP/SSE fallback when upstream WS fails (prevents
+      Codex from exhausting its WS retry budget)
+    * Configurable retry with jitter for upstream connect
+    * Graceful bidirectional relay with deterministic cleanup
     """
-    import websockets as _ws_lib
+    from lattice.integrations.codex.ws_handler import responses_websocket_passthrough as _impl
 
-    from lattice.integrations.codex.auth import (
-        _is_codex_jwt,
-        _resolve_codex_routing_headers,
-    )
-
-    await websocket.accept()
-    auth = websocket.headers.get("authorization", "")
-    openai_beta = websocket.headers.get("openai-beta", "")
-
-    if _is_codex_jwt(auth):
-        upstream_uri = "wss://chatgpt.com/backend-api/codex/responses"
-        upstream_headers = _resolve_codex_routing_headers(auth, openai_beta)
-        logger.info("codex_websocket_routing", upstream=upstream_uri)
-    else:
-        upstream_uri = "wss://api.openai.com/v1/responses"
-        upstream_headers: dict[str, str] = {}  # type: ignore[no-redef]
-        if auth:
-            upstream_headers["Authorization"] = auth
-        if openai_beta:
-            upstream_headers["OpenAI-Beta"] = openai_beta
-
-    upstream_ws = None
-    try:
-        upstream_ws = await _ws_lib.connect(upstream_uri, additional_headers=upstream_headers)
-    except Exception as exc:
-        logger.warning("websocket_upstream_connect_failed", error=str(exc))
-        await websocket.close(code=1011, reason=f"Upstream connect failed: {exc}")
-        return
-
-    async def client_to_upstream() -> None:
-        try:
-            while True:
-                msg = await websocket.receive_text()
-                await upstream_ws.send(msg)
-        except (
-            _ws_lib.exceptions.ConnectionClosed,
-            _ws_lib.exceptions.ConnectionClosedOK,
-            _ws_lib.exceptions.ConnectionClosedError,
-            RuntimeError,
-        ):
-            # Client or upstream closed — expected on normal teardown
-            pass
-
-    async def upstream_to_client() -> None:
-        try:
-            while True:
-                msg = await upstream_ws.recv()
-                if isinstance(msg, bytes):
-                    await websocket.send_bytes(msg)
-                else:
-                    await websocket.send_text(msg)
-        except (
-            _ws_lib.exceptions.ConnectionClosed,
-            _ws_lib.exceptions.ConnectionClosedOK,
-            _ws_lib.exceptions.ConnectionClosedError,
-            RuntimeError,
-        ):
-            # Client or upstream closed — expected on normal teardown
-            pass
-
-    try:
-        await asyncio.gather(client_to_upstream(), upstream_to_client())
-    finally:
-        if upstream_ws:
-            await upstream_ws.close()
-        with contextlib.suppress(Exception):
-            await websocket.close()
+    await _impl(websocket, logger=logger)
 
 
 async def anthropic_passthrough(
@@ -888,17 +877,15 @@ async def anthropic_passthrough(
     logger: Any,
     session_id: str | None = None,
 ) -> Any:
-    """Forward Anthropic Messages API requests directly to configured upstream."""
-    provider_name = "anthropic"
-    base_url = provider.provider_base_urls.get(provider_name)
-    if not base_url:
-        raise ValueError(f"No upstream base URL configured for provider '{provider_name}'")
+    """Forward Anthropic Messages API requests to the upstream provider.
 
-    upstream_url = f"{base_url.rstrip('/')}{path}"
-    query = str(fastapi_request.query_params)
-    if query:
-        upstream_url = f"{upstream_url}?{query}"
-
+    Provider resolution is delegated to :class:`ProviderRouter`.  There are
+    no hardcoded defaults — if no adapter matches, the request fails with a
+    descriptive 400.
+    """
+    # ------------------------------------------------------------------
+    # 1. Collect headers
+    # ------------------------------------------------------------------
     headers: dict[str, str] = {}
     for k, v in fastapi_request.headers.items():
         kl = k.lower()
@@ -906,22 +893,119 @@ async def anthropic_passthrough(
             continue
         headers[k] = v
 
-    is_streaming = False
+    # ------------------------------------------------------------------
+    # 2. Parse body
+    # ------------------------------------------------------------------
+    body_json: dict[str, Any] | None = None
     if body:
-        with contextlib.suppress(Exception):
+        try:
             body_json = json.loads(body)
-            is_streaming = body_json.get("stream", False)
+        except json.JSONDecodeError as exc:
+            return JSONResponse(
+                {
+                    "type": "error",
+                    "error": {
+                        "type": "invalid_json",
+                        "message": f"Request body is not valid JSON: {exc}",
+                    },
+                },
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+    # ------------------------------------------------------------------
+    # 3. Provider detection — zero defaults
+    # ------------------------------------------------------------------
+    from lattice.gateway.routing import (
+        ProviderAmbiguityError,
+        ProviderNotDetectedError,
+        ProviderRouter,
+        RequestSignals,
+    )
+
+    router = ProviderRouter(provider.registry)
+    signals = RequestSignals.from_request(
+        method=method,
+        path=path,
+        headers=headers,
+        body=body_json or {},
+        model=body_json.get("model", "") if body_json else "",
+    )
+
+    try:
+        result = router.resolve(signals)
+    except (ProviderNotDetectedError, ProviderAmbiguityError) as exc:
+        logger.warning("anthropic_provider_detection_failed", error=str(exc))
+        return JSONResponse(
+            {
+                "type": "error",
+                "error": {
+                    "type": "provider_detection_failed",
+                    "message": str(exc),
+                },
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    provider_name = result.provider
+
+    # ------------------------------------------------------------------
+    # 4. Base URL — MUST be explicitly configured
+    # ------------------------------------------------------------------
+    base_url = provider.provider_base_urls.get(provider_name)
+    if not base_url:
+        return JSONResponse(
+            {
+                "type": "error",
+                "error": {
+                    "type": "provider_not_configured",
+                    "message": (
+                        f"No base URL configured for provider '{provider_name}'. "
+                        f"Set provider_base_urls['{provider_name}'] or "
+                        f"LATTICE_PROVIDER_BASE_URLS env var."
+                    ),
+                },
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    upstream_url = f"{base_url.rstrip('/')}{path}"
+    query = str(fastapi_request.query_params)
+    if query:
+        upstream_url = f"{upstream_url}?{query}"
+
+    # ------------------------------------------------------------------
+    # 5. Derive model_used from actual request
+    # ------------------------------------------------------------------
+    model_used = body_json.get("model", "") if body_json else ""
+    if "/" in model_used:
+        model_used = model_used.split("/", 1)[1]
+    if not model_used:
+        model_used = "unknown"
+
+    # ------------------------------------------------------------------
+    # 6. Streaming detection
+    # ------------------------------------------------------------------
+    is_streaming = False
+    if body_json:
+        is_streaming = body_json.get("stream", False)
 
     logger.info(
         "anthropic_passthrough_start",
         url=upstream_url,
+        provider=provider_name,
+        confidence=result.confidence.name,
+        reason=result.reason,
         is_streaming=is_streaming,
-        has_auth=bool(headers.get("authorization") or headers.get("Authorization")),
+        has_auth=bool(headers.get("authorization")),
         body_bytes=len(body),
     )
 
     client = provider.pool.get_client(provider_name, base_url)
     http_version = provider.pool.get_http_version(provider_name, base_url)
+
+    # ------------------------------------------------------------------
+    # 7. Streaming path
+    # ------------------------------------------------------------------
     if is_streaming:
 
         async def _stream_relay() -> Any:
@@ -944,15 +1028,25 @@ async def anthropic_passthrough(
                         return
                     async for chunk in resp.aiter_text():
                         yield chunk
-            except Exception as exc:
+            except httpx.TimeoutException as exc:
                 logger.error(
-                    "anthropic_passthrough_stream_exception",
+                    "anthropic_passthrough_stream_timeout",
+                    error=str(exc),
+                )
+                yield (
+                    f"event: error\ndata: "
+                    f'{{"type":"error","error":{{"type":"timeout_error",'
+                    f'"message":"{str(exc)}"}}}}\n\n'
+                )
+            except httpx.HTTPError as exc:
+                logger.error(
+                    "anthropic_passthrough_stream_http_error",
                     error=str(exc),
                     error_type=type(exc).__name__,
                 )
                 yield (
                     f"event: error\ndata: "
-                    f'{{"type":"error","error":{{"type":"stream_error",'
+                    f'{{"type":"error","error":{{"type":"upstream_error",'
                     f'"message":"{str(exc)}"}}}}\n\n'
                 )
 
@@ -963,7 +1057,7 @@ async def anthropic_passthrough(
             _stream_relay(),
             media_type="text/event-stream",
             headers=build_routing_headers(
-                model_used="claude",
+                model_used=model_used,
                 compressed_tokens=compressed_tokens,
                 original_tokens=original_tokens,
                 session_id=session_id or "",
@@ -971,22 +1065,26 @@ async def anthropic_passthrough(
             ),
         )
 
+    # ------------------------------------------------------------------
+    # 8. Non-streaming path
+    # ------------------------------------------------------------------
     try:
         http_resp = await client.request(method, upstream_url, content=body, headers=headers)
-    except httpx.TimeoutException:
+    except httpx.TimeoutException as exc:
+        logger.error("anthropic_passthrough_timeout", error=str(exc))
         return JSONResponse(
             {
                 "type": "error",
                 "error": {
                     "type": "timeout_error",
-                    "message": "Upstream request timed out",
+                    "message": str(exc),
                 },
             },
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
         )
-    except Exception as exc:
+    except httpx.HTTPError as exc:
         logger.error(
-            "anthropic_passthrough_error",
+            "anthropic_passthrough_http_error",
             error=str(exc),
             error_type=type(exc).__name__,
         )
@@ -1019,7 +1117,7 @@ async def anthropic_passthrough(
     )
     response_headers.update(
         build_routing_headers(
-            model_used="claude",
+            model_used=model_used,
             compressed_tokens=compressed_tokens,
             original_tokens=original_tokens,
             session_id=session_id or "",
@@ -1053,7 +1151,6 @@ class ChatCompatDeps:
     serialize_messages: Callable[[Any], list[dict[str, Any]]]
     serialize_openai_response: Callable[[Any, Any], dict[str, Any]]
     build_routing_headers: Callable[..., dict[str, str]]
-    detect_provider: Callable[[str, str | None], str]
     detect_new_messages: Callable[[list[Any], list[Any]], list[Any]]
     get_cache_planner: Callable[[str], Any]
     message_cls: Any
@@ -1086,17 +1183,18 @@ async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any 
     await websocket.accept()
 
     import json as _json
+
     from lattice.core.config import LatticeConfig
     from lattice.core.context import TransformContext
-    from lattice.core.serialization import message_to_dict
     from lattice.core.pipeline_factory import build_default_pipeline
     from lattice.core.result import is_err, unwrap
+    from lattice.core.serialization import message_to_dict
     from lattice.gateway.compat import deserialize_openai_request
 
     try:
         json_body = await websocket.receive_text()
         body = _json.loads(json_body)
-    except Exception:
+    except (_json.JSONDecodeError, RuntimeError, KeyError):
         await websocket.close(code=1007, reason="invalid_json")
         return
 
@@ -1117,8 +1215,8 @@ async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any 
     compressed_messages = [message_to_dict(m) for m in compressed.messages]
     provider_name = model.split("/")[0] if "/" in model else "openai"
 
-    from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
     from lattice.core.credentials import CredentialResolver
+    from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
 
     registry = ProviderRegistry()
     credentials = CredentialResolver()
@@ -1167,29 +1265,42 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         if x_api_key:
             request.extra_headers["x-api-key"] = x_api_key
 
+        # ------------------------------------------------------------------
+        # Provider detection — zero defaults, zero fallbacks
+        # ------------------------------------------------------------------
+        from lattice.gateway.routing import (
+            ProviderAmbiguityError,
+            ProviderNotDetectedError,
+            ProviderRouter,
+            RequestSignals,
+        )
+
+        router = ProviderRouter(deps.provider.registry)
+        signals = RequestSignals.from_request(
+            method="POST",
+            path="/v1/chat/completions",
+            headers={
+                **request.extra_headers,
+                "authorization": authorization or "",
+                "x-api-key": x_api_key or "",
+            },
+            body=body,
+            model=request.model or body.get("model", ""),
+        )
+
         try:
-            provider_name = deps.detect_provider(
-                request.model or body.get("model", "gpt-4"),
-                x_lattice_provider,
+            result = router.resolve(signals)
+            provider_name = result.provider
+        except (ProviderNotDetectedError, ProviderAmbiguityError) as exc:
+            deps.logger.warning("chat_completion_provider_detection_failed", error=str(exc))
+            return JSONResponse(
+                {"error": "provider_detection_failed", "message": str(exc)},
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
-        except Exception as exc:
-            # If provider detection failed, check if this is a Codex request
-            # with a bare model name (e.g., "gpt-4"). Codex uses JWT tokens
-            # or plain API keys which we forward to OpenAI.
-            from lattice.integrations.codex.auth import _is_codex_jwt
 
-            if _is_codex_jwt(authorization or ""):
-                provider_name = "openai"
-                deps.logger.info(
-                    "codex_chat_completion_route_to_openai",
-                    model=request.model or body.get("model", "gpt-4"),
-                )
-            else:
-                return JSONResponse(
-                    {"error": "provider_detection_failed", "message": str(exc)},
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-
+        # ------------------------------------------------------------------
+        # Base URL, delta mode, and client profile
+        # ------------------------------------------------------------------
         delta_mode = "delta" if request.metadata.get("_delta_wire") else ""
         base_url = deps.provider.provider_base_urls.get(provider_name, "")
         http_version = deps.provider.pool.get_http_version(provider_name, base_url)
@@ -1206,8 +1317,10 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                             stale_streams_removed=result.stale_streams_removed,
                             stale_cache_entries_removed=result.stale_cache_entries_removed,
                         )
-            except Exception:
-                pass  # Never block the request path for maintenance
+            except (TypeError, AttributeError, KeyError, RuntimeError):
+                # Never block the request path for maintenance failures.
+                deps.logger.warning("maintenance_tick_failed", exc_info=True)
+                pass
 
         # ---- Sampled MILV production validation ----
         # High-risk requests are flagged for model-in-the-loop validation.
@@ -2185,7 +2298,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
             "segment_counts": {},
         }
         if hasattr(deps.store, "keys"):
-            with contextlib.suppress(Exception):
+            try:
                 session_ids = await deps.store.keys()
                 for session_id in session_ids:
                     session = await deps.store.get(session_id)
@@ -2202,6 +2315,14 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
                     if isinstance(segment_counts, dict):
                         for seg_type, count in summary["segment_counts"].items():
                             segment_counts[seg_type] = segment_counts.get(seg_type, 0) + int(count)
+            except (TypeError, AttributeError, KeyError) as exc:
+                deps.logger.warning("maintenance_manifest_summary_failed", error=str(exc))
+                manifest_stats = {
+                    "sessions_with_manifest": 0,
+                    "anchor_version_max": 0,
+                    "token_estimate_total": 0,
+                    "segment_counts": {},
+                }
         result["manifest"] = manifest_stats
         if deps.agent_stats:
             result["agents"] = deps.agent_stats.global_summary()

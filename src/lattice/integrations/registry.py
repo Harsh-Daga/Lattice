@@ -1,6 +1,6 @@
 """Provider registry for LATTICE agent integrations.
 
-Declarative pattern inspired by Headroom: register env builders and
+Declarative pattern: register env builders and
 provider-scope handlers per agent, then the init/lace system
 automatically supports them.
 

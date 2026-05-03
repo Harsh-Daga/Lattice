@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.errors import ProviderError
-from lattice.gateway.compat import ProviderDetectionError, detect_provider
+from lattice.core.errors import ProviderDetectionError, ProviderError
 from lattice.providers.capabilities import (
     CacheMode,
     Capability,
@@ -27,23 +26,23 @@ from lattice.providers.transport import (
 
 class TestExactProviderResolution:
     def test_detect_from_model_prefix(self) -> None:
-        assert detect_provider("openai/gpt-4") == "openai"
-        assert detect_provider("anthropic/claude-3") == "anthropic"
-        assert detect_provider("ollama/llama3") == "ollama"
+        assert _resolve_provider_name("openai/gpt-4") == "openai"
+        assert _resolve_provider_name("anthropic/claude-3") == "anthropic"
+        assert _resolve_provider_name("ollama/llama3") == "ollama"
 
     def test_detect_from_explicit_hint(self) -> None:
-        assert detect_provider("gpt-4", provider_hint="openai") == "openai"
-        assert detect_provider("claude-3", provider_hint="anthropic") == "anthropic"
+        assert _resolve_provider_name("gpt-4", provider_name="openai") == "openai"
+        assert _resolve_provider_name("claude-3", provider_name="anthropic") == "anthropic"
 
     def test_bare_model_rejected(self) -> None:
-        with pytest.raises(ProviderDetectionError):
-            detect_provider("gpt-4")
-        with pytest.raises(ProviderDetectionError):
-            detect_provider("claude-3-sonnet")
+        with pytest.raises(ProviderError):
+            _resolve_provider_name("gpt-4")
+        with pytest.raises(ProviderError):
+            _resolve_provider_name("claude-3-sonnet")
 
     def test_unknown_prefix_rejected(self) -> None:
-        with pytest.raises(ProviderDetectionError):
-            detect_provider("unknown/model")
+        with pytest.raises(ProviderError):
+            _resolve_provider_name("unknown/model")
 
     def test_resolve_provider_name_explicit(self) -> None:
         assert _resolve_provider_name("openai/gpt-4", "anthropic") == "anthropic"
@@ -101,24 +100,33 @@ class TestMissingProviderConfig:
 
 class TestOllamaDistinction:
     def test_ollama_local_base_url(self) -> None:
-        provider = DirectHTTPProvider()
+        provider = DirectHTTPProvider(
+            provider_base_urls={"ollama": "http://127.0.0.1:11434"},
+        )
         base = provider._resolve_base_url("ollama")
         assert base == "http://127.0.0.1:11434"
 
     def test_ollama_cloud_base_url(self) -> None:
-        provider = DirectHTTPProvider()
+        provider = DirectHTTPProvider(
+            provider_base_urls={"ollama-cloud": "https://ollama.com"},
+        )
         base = provider._resolve_base_url("ollama-cloud")
         assert base == "https://ollama.com"
 
     def test_ollama_cloud_different_from_ollama(self) -> None:
-        provider = DirectHTTPProvider()
+        provider = DirectHTTPProvider(
+            provider_base_urls={
+                "ollama": "http://127.0.0.1:11434",
+                "ollama-cloud": "https://ollama.com",
+            },
+        )
         local_base = provider._resolve_base_url("ollama")
         cloud_base = provider._resolve_base_url("ollama-cloud")
         assert local_base != cloud_base
 
     def test_ollama_prefix_resolution(self) -> None:
-        assert detect_provider("ollama/llama3") == "ollama"
-        assert detect_provider("ollama-cloud/llama3") == "ollama-cloud"
+        assert _resolve_provider_name("ollama/llama3") == "ollama"
+        assert _resolve_provider_name("ollama-cloud/llama3") == "ollama-cloud"
 
 
 # =============================================================================

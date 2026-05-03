@@ -25,7 +25,7 @@ from lattice.core.session import MemorySessionStore, SessionManager
 from lattice.core.store import RedisSessionStore
 from lattice.core.telemetry import DowngradeTelemetry
 from lattice.core.transport import Message, Request, Response
-from lattice.gateway.compat import HTTPCompatHandler, detect_provider, serialize_messages
+from lattice.gateway.compat import HTTPCompatHandler, serialize_messages
 from lattice.gateway.server import LLMTPGateway
 from lattice.protocol.framing import BinaryFramer
 from lattice.protocol.resume import StreamManager
@@ -155,7 +155,9 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
             idx: int, _cid: str, messages: list[Message]
         ) -> tuple[dict[str, Any], dict[str, int]]:
             serialized = [message_to_dict(m) for m in messages]
-            provider_name = detect_provider(batched.key.model)
+            from lattice.providers.transport import _resolve_provider_name
+
+            provider_name = _resolve_provider_name(batched.key.model)
             resp = await provider.completion(
                 model=batched.key.model,
                 messages=serialized,
@@ -210,7 +212,9 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
 
     async def _speculative_provider_call(req: Request) -> Response:
         messages = serialize_messages(req)
-        provider_name = detect_provider(req.model)
+        from lattice.providers.transport import _resolve_provider_name
+
+        provider_name = _resolve_provider_name(req.model)
         return await provider.completion(
             model=req.model,
             messages=messages,

@@ -292,7 +292,9 @@ class TestEndToEndRoundTrip:
                     },
                 )
             )
-            provider = DirectHTTPProvider()
+            provider = DirectHTTPProvider(
+                provider_base_urls={"ollama": "http://127.0.0.1:11434"},
+            )
             import asyncio
 
             resp = asyncio.run(

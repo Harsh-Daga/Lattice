@@ -29,7 +29,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from lattice.gateway.compat import _SUPPORTED_PROVIDERS
+from lattice.providers.capabilities import get_capability_registry
 
 
 def _opencode_config_path() -> Path:
@@ -83,7 +83,7 @@ def apply_provider_scope(port: int = 8787) -> dict[str, Any] | None:
     previous = _snapshot_providers(payload)
 
     providers: dict[str, Any] = {}
-    for provider in _SUPPORTED_PROVIDERS:
+    for provider in get_capability_registry().list_providers():
         providers[provider] = _make_provider_options(port, provider)
 
     payload["provider"] = providers

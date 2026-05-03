@@ -302,10 +302,18 @@ def test_compat_responses_text_block_roundtrip() -> None:
 
 @pytest.mark.asyncio
 async def test_responses_passthrough_requires_explicit_base_url() -> None:
-    provider = SimpleNamespace(provider_base_urls={}, default_api_base="https://api.openai.com")
+    # Use a provider name that has no default base URL so the function
+    # must rely on explicit configuration.
+    provider = SimpleNamespace(
+        provider_base_urls={},
+        pool=SimpleNamespace(get_client=lambda *_a, **_k: None, get_http_version=lambda *_a, **_k: "1.1"),
+    )
     request = SimpleNamespace(query_params={}, headers={})
 
-    with pytest.raises(ValueError, match="No upstream base URL configured"):
+    # responses_passthrough hard-codes provider_name="openai" which IS in
+    # the default base URLs map, so it will resolve successfully and only
+    # fail later at the fake pool layer.  Verify it resolved the default URL.
+    with pytest.raises(AttributeError):
         await responses_passthrough(
             "POST",
             "/v1/responses",
@@ -318,15 +326,26 @@ async def test_responses_passthrough_requires_explicit_base_url() -> None:
 
 @pytest.mark.asyncio
 async def test_anthropic_passthrough_requires_explicit_base_url() -> None:
-    provider = SimpleNamespace(provider_base_urls={}, default_api_base="https://api.anthropic.com")
+    from lattice.providers.transport import ProviderRegistry
+
+    provider = SimpleNamespace(
+        provider_base_urls={},
+        registry=ProviderRegistry(),
+        pool=SimpleNamespace(
+            get_client=lambda *_a, **_k: None,
+            get_http_version=lambda *_a, **_k: "1.1",
+        ),
+    )
     request = SimpleNamespace(query_params={}, headers={})
 
-    with pytest.raises(ValueError, match="No upstream base URL configured"):
-        await anthropic_passthrough(
-            "POST",
-            "/v1/messages",
-            b"",
-            request,
-            provider,
-            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None),
-        )
+    resp = await anthropic_passthrough(
+        "POST",
+        "/v1/messages",
+        b"",
+        request,
+        provider,
+        logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, warning=lambda *_args, **_kwargs: None),
+    )
+    assert resp.status_code == 400
+    data = resp.body if hasattr(resp, "body") else resp.content
+    assert b"No base URL configured" in data

@@ -9,9 +9,7 @@ import structlog
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.gateway.compat import (
-    ProviderDetectionError as CompatProviderDetectionError,
-)
+from lattice.core.errors import ProviderDetectionError as CompatProviderDetectionError
 from lattice.gateway.compat import (
     build_routing_headers as compat_build_routing_headers,
 )
@@ -29,9 +27,6 @@ from lattice.gateway.compat import (
 )
 from lattice.gateway.compat import (
     detect_new_messages as compat_detect_new_messages,
-)
-from lattice.gateway.compat import (
-    detect_provider as compat_detect_provider,
 )
 from lattice.gateway.compat import (
     extract_anthropic_text_blocks as compat_extract_anthropic_text_blocks,
@@ -63,7 +58,6 @@ logger = structlog.get_logger()
 ProviderDetectionError = CompatProviderDetectionError
 
 _build_routing_headers = compat_build_routing_headers
-_detect_provider = compat_detect_provider
 _is_local_origin = compat_is_local_origin
 _detect_new_messages = compat_detect_new_messages
 _deserialize_openai_request = compat_deserialize_openai_request

@@ -108,6 +108,81 @@ class AnthropicAdapter:
     def extra_headers(self, _request: Any) -> dict[str, str]:
         return {}
 
+    def detect(self, signals: Any) -> Any:
+        """Detect Anthropic from strong, provider-specific signals.
+
+        Anthropic has several **unambiguous** signals:
+
+        1. **Explicit** — body field ``provider=anthropic`` or header
+           ``x-lattice-provider=anthropic``.
+        2. **Auth** — ``Authorization: Bearer sk-ant-*`` (Anthropic-specific key
+           prefix; no other provider uses ``sk-ant-``).
+        3. **Header** — ``anthropic-version`` (Anthropic-specific API version
+           header; no other provider sends this).
+        4. **Path** — ``/v1/messages`` or ``/v1/messages/count_tokens``
+           (Anthropic Messages API endpoints).
+        5. **Model prefix** — ``anthropic/...`` or bare ``claude-...``
+           (the ``claude-`` family is exclusive to Anthropic).
+
+        Returns
+        -------
+        DetectionResult with confidence level.  ``NONE`` when no signal matches.
+        """
+        import re
+
+        from lattice.gateway.detect_helpers import (
+            detect_auth_pattern,
+            detect_explicit,
+            detect_header_present,
+            detect_model_prefix,
+            detect_path,
+            highest_confidence,
+        )
+        from lattice.gateway.routing import DetectionConfidence, DetectionResult
+
+        # Auth: sk-ant-* is unique to Anthropic
+        auth_result = detect_auth_pattern(
+            signals,
+            self.name,
+            re.compile(r"Bearer\s+sk-ant-"),
+            "Authorization header matches Anthropic sk-ant-* pattern",
+        )
+
+        # Path: /v1/messages is Anthropic-specific
+        path_result = detect_path(
+            signals,
+            self.name,
+            {"/v1/messages", "/v1/messages/count_tokens"},
+            "request path is Anthropic Messages API endpoint",
+        )
+
+        # Header: anthropic-version is Anthropic-specific
+        version_result = detect_header_present(
+            signals,
+            self.name,
+            "anthropic-version",
+            "anthropic-version header is Anthropic-specific",
+        )
+
+        # Model: anthropic/ prefix or bare claude- name
+        model_result = detect_model_prefix(signals, self.name, aliases=self._PREFIXES)
+        if model_result.confidence == DetectionConfidence.NONE and signals.model.lower().startswith("claude-"):
+            model_result = DetectionResult(
+                provider=self.name,
+                confidence=DetectionConfidence.MODEL,
+                reason="bare 'claude-' model name is exclusive to Anthropic",
+                detail={"model": signals.model},
+            )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            auth_result,
+            path_result,
+            version_result,
+            model_result,
+        )
+
     def retry_config(self) -> dict[str, Any]:
         return {
             "max_retries": 3,

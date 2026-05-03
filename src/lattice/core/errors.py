@@ -180,7 +180,18 @@ class ProviderTimeoutError(ProxyError):
         self.timeout_seconds = timeout_seconds
 
 
+class ProviderDetectionError(ProxyError):
+    """Provider cannot be determined from request signals.
+
+    Raised when no explicit provider field, header, path, auth heuristic,
+    or model prefix is present to disambiguate the upstream.
+    """
+
+    pass
+
+
 class ProviderError(ProxyError):
+    """Provider returned an error response."""
     """Provider returned an error response."""
 
     def __init__(

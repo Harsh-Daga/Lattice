@@ -34,7 +34,6 @@ def apply_provider_scope(port: int = 8787) -> dict[str, str] | None:
     path.parent.mkdir(parents=True, exist_ok=True)
     section = (
         f"{_CODEX_MARKER_START}\n"
-        'model_provider = "lattice"\n\n'
         "[model_providers.lattice]\n"
         'name = "LATTICE proxy"\n'
         f'base_url = "http://127.0.0.1:{port}/v1"\n'

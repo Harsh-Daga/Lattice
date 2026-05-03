@@ -111,13 +111,15 @@ class ProviderAdapter(Protocol):
         """
         ...
 
-    def retry_config(self) -> dict[str, Any]:
-        """Return retry policy for this provider.
+    def detect(self, signals: Any) -> Any:
+        """Detect whether this adapter should handle *signals*.
 
-        Returns a dict with:
-        - max_retries: int (default 3)
-        - backoff_factor: float (default 1.0)
-        - retry_on: tuple of HTTP status codes (default (429, 502, 503, 504))
+        Returns a :class:`~lattice.gateway.routing.DetectionResult` with a
+        confidence level.  :data:`~lattice.gateway.routing.DetectionConfidence.NONE`
+        means "this adapter does not believe the request belongs to me".
+
+        Every concrete adapter MUST implement this method.  There are no
+        defaults — a missing ``detect()`` raises :exc:`AttributeError`.
         """
         ...
 

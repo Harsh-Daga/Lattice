@@ -17,15 +17,18 @@ def _decode_openai_bearer_payload(authorization: str) -> dict[str, Any] | None:
 
     Returns the payload dict, or *None* if the token is not a JWT or
     cannot be parsed.  No cryptographic verification is performed.
+
+    This intentionally accepts JWTs with at least 2 dots (header.payload)
+    rather than exactly 3, because some tokens have trailing periods or
+    unconventional signing segments.
     """
     if not authorization or not authorization.startswith("Bearer "):
         return None
     token = authorization[7:]
-    parts = token.split(".")
-    if len(parts) != 3:
-        # Not a JWT — could be a plain API key
+    if token.count(".") < 2:
+        # Not a JWT — could be a plain API key like sk-...
         return None
-    payload_b64 = parts[1]
+    payload_b64 = token.split(".", 2)[1]
     # Pad base64 if needed
     padding_needed = 4 - len(payload_b64) % 4
     if padding_needed != 4:
@@ -47,6 +50,9 @@ def _resolve_codex_routing_headers(
     Prefers an explicit ``ChatGPT-Account-ID`` when provided, otherwise
     extracts ``chatgpt_account_id`` from the JWT payload and forwards it as
     ``ChatGPT-Account-ID`` so the upstream Codex endpoint can route correctly.
+
+    The Codex OAuth JWT nests the account ID under the claim
+    ``https://api.openai.com/auth`` → ``chatgpt_account_id``.
     """
     headers: dict[str, str] = {}
     if authorization:
@@ -60,9 +66,11 @@ def _resolve_codex_routing_headers(
 
     payload = _decode_openai_bearer_payload(authorization)
     if payload is not None:
-        account_id = payload.get("chatgpt_account_id")
-        if account_id:
-            headers["ChatGPT-Account-ID"] = str(account_id)
+        auth_claims = payload.get("https://api.openai.com/auth")
+        if isinstance(auth_claims, dict):
+            account_id = auth_claims.get("chatgpt_account_id")
+            if account_id:
+                headers["ChatGPT-Account-ID"] = str(account_id)
 
     return headers
 
@@ -70,9 +78,30 @@ def _resolve_codex_routing_headers(
 def _is_codex_jwt(authorization: str) -> bool:
     """Return *True* if the Authorization header contains a Codex JWT.
 
-    Heuristic: the decoded payload contains ``chatgpt_account_id``.
+    Heuristic: the decoded JWT payload has a nested claim
+    ``https://api.openai.com.auth.chatgpt_account_id`` (OpenAI Codex
+    OAuth JWT structure).
     """
     payload = _decode_openai_bearer_payload(authorization)
     if payload is None:
         return False
-    return "chatgpt_account_id" in payload
+    auth_claims = payload.get("https://api.openai.com/auth")
+    if isinstance(auth_claims, dict):
+        account_id = auth_claims.get("chatgpt_account_id")
+        return isinstance(account_id, str) and bool(account_id.strip())
+    return False
+
+
+def _account_id_from_auth(authorization: str) -> str | None:
+    """Extract ChatGPT account ID from any form of auth (JWT or explicit).
+
+    Returns the account ID string, or *None* if not found.
+    """
+    payload = _decode_openai_bearer_payload(authorization)
+    if payload is not None:
+        auth_claims = payload.get("https://api.openai.com/auth")
+        if isinstance(auth_claims, dict):
+            account_id = auth_claims.get("chatgpt_account_id")
+            if isinstance(account_id, str) and account_id.strip():
+                return account_id.strip()
+    return None

@@ -177,24 +177,25 @@ class TestProxyProviderDetection:
     """Proxy correctly detects provider from header and model prefix."""
 
     def test_detect_provider_from_header(self) -> None:
-        from lattice.proxy.server import _detect_provider
+        from lattice.providers.transport import _resolve_provider_name
 
-        assert _detect_provider("gpt-4", provider_hint="groq") == "groq"
-        assert _detect_provider("llama-3.1-70b", provider_hint="groq") == "groq"
+        assert _resolve_provider_name("gpt-4", provider_name="groq") == "groq"
+        assert _resolve_provider_name("llama-3.1-70b", provider_name="groq") == "groq"
 
     def test_detect_provider_from_prefix(self) -> None:
-        from lattice.proxy.server import _detect_provider
+        from lattice.providers.transport import _resolve_provider_name
 
-        assert _detect_provider("groq/llama-3.1-70b") == "groq"
-        assert _detect_provider("anthropic/claude-3-opus") == "anthropic"
+        assert _resolve_provider_name("groq/llama-3.1-70b") == "groq"
+        assert _resolve_provider_name("anthropic/claude-3-opus") == "anthropic"
 
     def test_detect_provider_fallback_raises(self) -> None:
-        from lattice.proxy.server import ProviderDetectionError, _detect_provider
+        from lattice.core.errors import ProviderError
+        from lattice.providers.transport import _resolve_provider_name
 
-        with pytest.raises(ProviderDetectionError, match="Provider not specified"):
-            _detect_provider("gpt-4")
-        with pytest.raises(ProviderDetectionError, match="Provider not specified"):
-            _detect_provider("llama-3.1-70b")
+        with pytest.raises(ProviderError, match="Provider not specified"):
+            _resolve_provider_name("gpt-4")
+        with pytest.raises(ProviderError, match="Provider not specified"):
+            _resolve_provider_name("llama-3.1-70b")
 
 
 class TestProxySerialization:

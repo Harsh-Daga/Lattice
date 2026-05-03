@@ -70,7 +70,14 @@ class ProviderRegistry:
     def __init__(self, adapters: list[ProviderAdapter] | None = None) -> None:
         self._adapters = list(adapters) if adapters else []
         if not self._adapters:
+            # Defer ChatGPT import to avoid circular dependency:
+            # lattice.integrations.codex.adapter → lattice.providers.openai
+            # and lattice.integrations.__init__ → lattice.proxy → lattice.providers.transport
+            from lattice.integrations.codex.adapter import ChatGPTAdapter
+
             self._adapters = [
+                # ChatGPT / Codex (must be before OpenAIAdapter to intercept Codex JWTs)
+                ChatGPTAdapter(),  # chatgpt/ prefix, Codex JWT auth
                 # OpenAI-compatible providers (prefix matching)
                 GroqAdapter(),  # groq/ prefix
                 TogetherAdapter(),  # together/ prefix
@@ -128,40 +135,16 @@ class ProviderRegistry:
     def list_adapters(self) -> list[str]:
         return [a.name for a in self._adapters]
 
+    def iter_adapters(self):
+        """Yield every registered adapter in priority order."""
+        yield from self._adapters
+
 
 # =============================================================================
-# Default defaults
-# =============================================================================
-
 # Provider aliases — same API format, different endpoint.
 # Used when a provider slug should reuse the adapter of another provider.
+# =============================================================================
 _PROVIDER_ALIASES: dict[str, str] = {}
-
-_DEFAULT_BASE_URLS: dict[str, str] = {
-    "openai": "https://api.openai.com",
-    "anthropic": "https://api.anthropic.com",
-    "ollama": "http://127.0.0.1:11434",
-    "ollama-cloud": "https://ollama.com",
-    # OpenAI-compatible providers
-    "groq": "https://api.groq.com/openai",
-    "together": "https://api.together.xyz",
-    "deepseek": "https://api.deepseek.com",
-    "perplexity": "https://api.perplexity.ai",
-    "mistral": "https://api.mistral.ai",
-    "fireworks": "https://api.fireworks.ai/inference",
-    "openrouter": "https://openrouter.ai/api",
-    "cohere": "https://api.cohere.com/compatibility/v1",
-    "ai21": "https://api.ai21.com/studio/v1",
-    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
-    "google": "https://generativelanguage.googleapis.com/v1beta/openai",
-}
-
-_DEFAULT_API_KEYS: dict[str, str | None] = {
-    "openai": None,
-    "anthropic": None,
-    "ollama": None,
-    "ollama-cloud": None,
-}
 
 
 def _resolve_provider_name(model: str, provider_name: str | None = None) -> str:
@@ -182,7 +165,9 @@ def _resolve_provider_name(model: str, provider_name: str | None = None) -> str:
         return provider_name.lower()
     if "/" in model:
         prefix = model.split("/", 1)[0].lower()
-        if prefix in _DEFAULT_BASE_URLS:
+        # Check against the canonical list of registered provider names
+        from lattice.providers.capabilities import get_capability_registry
+        if prefix in get_capability_registry().list_providers():
             return prefix
     raise ProviderError(
         provider="unknown",
@@ -923,19 +908,23 @@ class DirectHTTPProvider:
 
         Resolution order:
         1. explicit API base passed by caller
-        2. per-provider configured base URL
-        3. provider-specific default base URL
+        2. per-provider configured base URL (``provider_base_urls``)
 
-        If none exists, fail instead of silently routing to another provider.
+        There is no step 3.  Base URLs MUST be configured explicitly via
+        ``provider_base_urls`` or the ``LATTICE_PROVIDER_BASE_URLS`` env var.
+        If none is configured, the request fails with a clear error so the
+        operator knows exactly which provider needs a base URL.
         """
         base_url = api_base or self.provider_base_urls.get(provider_name)
-        if not base_url:
-            base_url = _DEFAULT_BASE_URLS.get(provider_name)
         if not base_url:
             raise ProviderError(
                 provider=provider_name,
                 status_code=400,
-                message=f"No base URL configured for provider '{provider_name}'",
+                message=(
+                    f"No base URL configured for provider '{provider_name}'. "
+                    f"Set it via provider_base_urls['{provider_name}'] or "
+                    f"LATTICE_PROVIDER_BASE_URLS env var."
+                ),
             )
         return base_url
 

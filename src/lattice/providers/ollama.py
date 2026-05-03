@@ -55,6 +55,29 @@ class OllamaAdapter:
     def extra_headers(self, _request: Any) -> dict[str, str]:
         return {}
 
+    def detect(self, signals: Any) -> Any:
+        """Detect Ollama from explicit signals.
+
+        Ollama is a **local** inference server.  It has no universal auth
+        pattern, no unique endpoint paths, and no exclusive model names.
+        The only reliable signals are:
+
+        1. Explicit body/header naming the provider.
+        2. Model prefix ``ollama/...``.
+        3. The ``x-lattice-provider: ollama`` header (low confidence).
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_explicit,
+            detect_model_prefix,
+            highest_confidence,
+        )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases={self._PREFIX}),
+            detect_model_prefix(signals, self.name, aliases={self._PREFIX}),
+        )
+
     def retry_config(self) -> dict[str, Any]:
         return {
             "max_retries": 3,
@@ -393,9 +416,28 @@ class OllamaCloudAdapter(OpenAIAdapter):
     """Ollama Cloud — OpenAI-compatible API format with ollama-cloud base URL."""
 
     name = "ollama-cloud"
-    _PREFIXES = {"openai", "azure", "ollama-cloud"}
+    _PREFIXES = {"ollama-cloud"}
 
     def supports(self, model: str) -> bool:
         """Matches ``ollama-cloud/...``."""
         prefix = model.split("/", 1)[0].lower() if "/" in model else ""
         return prefix == "ollama-cloud"
+
+    def detect(self, signals: Any) -> Any:
+        """Detect Ollama Cloud from explicit signals only.
+
+        Ollama Cloud has no unique auth pattern or endpoint path.
+        The only reliable signals are explicit declarations and the
+        ``ollama-cloud/`` model prefix.
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_explicit,
+            detect_model_prefix,
+            highest_confidence,
+        )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
+        )

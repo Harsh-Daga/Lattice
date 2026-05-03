@@ -99,25 +99,6 @@ _PROVIDER_ENV_VARS: dict[str, dict[str, str]] = {
     },
 }
 
-_DEFAULT_BASE_URLS: dict[str, str] = {
-    "openai": "https://api.openai.com",
-    "anthropic": "https://api.anthropic.com",
-    "ollama": "http://127.0.0.1:11434",
-    "ollama-cloud": "https://ollama.com",
-    # OpenAI-compatible providers
-    "groq": "https://api.groq.com/openai",
-    "together": "https://api.together.xyz",
-    "deepseek": "https://api.deepseek.com",
-    "perplexity": "https://api.perplexity.ai",
-    "mistral": "https://api.mistral.ai",
-    "fireworks": "https://api.fireworks.ai/inference",
-    "openrouter": "https://openrouter.ai/api",
-    "cohere": "https://api.cohere.com/compatibility/v1",
-    "ai21": "https://api.ai21.com/studio/v1",
-    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
-    "google": "https://generativelanguage.googleapis.com/v1beta/openai",
-}
-
 
 # =============================================================================
 # Provider credentials dataclass
@@ -242,10 +223,6 @@ class CredentialResolver:
         creds.aws_access_key_id = self._resolve_field("aws_access_key_id", cfg, env_map)
         creds.aws_secret_access_key = self._resolve_field("aws_secret_access_key", cfg, env_map)
         creds.aws_region = self._resolve_field("aws_region", cfg, env_map)
-
-        # Default base URL
-        if creds.base_url is None:
-            creds.base_url = _DEFAULT_BASE_URLS.get(provider)
 
         # Extras (any config fields not in the standard schema)
         known = {

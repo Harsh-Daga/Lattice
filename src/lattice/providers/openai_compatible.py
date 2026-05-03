@@ -66,10 +66,29 @@ class OpenAICompatibleAdapter(OpenAIAdapter):
     def extra_headers(self, _request: Request) -> dict[str, str]:
         return {}
 
+    def detect(self, signals: Any) -> Any:
+        """Detect this OpenAI-compatible provider from explicit signals.
 
-# =============================================================================
-# Concrete adapters
-# =============================================================================
+        OpenAI-compatible providers share the same wire format and auth
+        pattern (``Bearer sk-...``).  The only reliable signals are:
+
+        1. Explicit body/header naming the provider.
+        2. Model prefix ``provider/...``.
+
+        We NEVER match on auth or path because those are shared across
+        the entire OpenAI-compatible ecosystem.
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_explicit,
+            detect_model_prefix,
+            highest_confidence,
+        )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
+        )
 
 
 class GroqAdapter(OpenAICompatibleAdapter):

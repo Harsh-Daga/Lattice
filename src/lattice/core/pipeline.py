@@ -566,9 +566,9 @@ class CompressorPipeline:
             # Protects error counts, failure counts, percentages — critical for
             # debugging and analysis tasks where these are diagnostic signals.
             if _psg_text_before != _psg_text_after:
-                from lattice.core.guardrails import check_entity_preservation as _chk_entity
                 from lattice.core.guardrails import _check_numeric_preservation
                 from lattice.core.guardrails import check_critical_signal_loss as _chk_signal
+                from lattice.core.guardrails import check_entity_preservation as _chk_entity
                 from lattice.core.guardrails import check_format_preservation as _chk_format
 
                 # Numeric loss: N errors/failures/warnings/timeouts/crashes,

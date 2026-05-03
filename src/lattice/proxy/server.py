@@ -103,10 +103,12 @@ from lattice.core.errors import ProviderError, ProviderTimeoutError
 from lattice.core.transport import Message
 from lattice.gateway.compat import OperationalRouteDeps, register_operational_routes
 from lattice.gateway.compat import anthropic_passthrough as compat_anthropic_passthrough
+from lattice.gateway.compat import (
+    chat_completions_websocket_passthrough as compat_ws_chat,
+)
 from lattice.gateway.compat import responses_passthrough as compat_responses_passthrough
 from lattice.gateway.compat import (
     responses_websocket_passthrough as compat_responses_websocket_passthrough,
-    chat_completions_websocket_passthrough as compat_ws_chat,
 )
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.proxy import compat_exports as _compat_exports
@@ -129,7 +131,6 @@ _SSE_DONE = "[DONE]\n\n"
 # Compatibility exports kept for import stability.
 ProviderDetectionError = _compat_exports.ProviderDetectionError
 _build_routing_headers = _compat_exports._build_routing_headers
-_detect_provider = _compat_exports._detect_provider
 _is_local_origin = _compat_exports._is_local_origin
 _detect_new_messages = _compat_exports._detect_new_messages
 _deserialize_openai_request = _compat_exports._deserialize_openai_request
@@ -309,7 +310,6 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
             serialize_messages=_serialize_messages,
             serialize_openai_response=_serialize_openai_response,
             build_routing_headers=_build_routing_headers,
-            detect_provider=_detect_provider,
             detect_new_messages=_detect_new_messages,
             get_cache_planner=get_cache_planner,
             message_cls=Message,

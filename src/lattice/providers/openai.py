@@ -63,6 +63,27 @@ class OpenAIAdapter:
             "retry_on": (429, 502, 503, 504),
         }
 
+    def detect(self, signals: Any) -> Any:
+        """Detect OpenAI from explicit signals only.
+
+        OpenAI's auth format (``Bearer sk-...``) is shared with dozens of
+        OpenAI-compatible providers, so we NEVER match on auth alone.
+        Paths such as ``/v1/chat/completions`` are also shared, so we never
+        match on path alone.  Only explicit body/header fields or the
+        ``openai/`` model prefix are considered reliable signals.
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_explicit,
+            detect_model_prefix,
+            highest_confidence,
+        )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
+        )
+
     def serialize_request(self, request: Request) -> dict[str, Any]:
         """Internal Request → OpenAI JSON body."""
         body: dict[str, Any] = {

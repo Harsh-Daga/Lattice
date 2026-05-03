@@ -1,6 +1,5 @@
 """LATTICE lace command — route an agent through the LATTICE proxy.
 
-Like ``headroom wrap``, this command:
 1. Starts or reuses a running LATTICE proxy
 2. Configures the agent to route through the proxy (env vars only — transient)
 3. Launches the agent as a subprocess

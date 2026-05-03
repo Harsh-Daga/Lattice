@@ -29,6 +29,32 @@ class GeminiAdapter(OpenAICompatibleAdapter):
     _PREFIXES = {"gemini", "google"}
     _DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
 
+    def detect(self, signals: Any) -> Any:
+        """Detect Gemini from explicit signals and the ``x-goog-api-key`` header.
+
+        The ``x-goog-api-key`` header is **exclusive** to Google APIs
+        (Gemini and Vertex).  No other provider in the LATTICE ecosystem
+        uses this header, making it a strong auth signal.
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_explicit,
+            detect_header_present,
+            detect_model_prefix,
+            highest_confidence,
+        )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            detect_header_present(
+                signals,
+                self.name,
+                "x-goog-api-key",
+                "x-goog-api-key header is Google-specific (Gemini / Vertex)",
+            ),
+            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
+        )
+
     def serialize_request(self, request: Request) -> dict[str, Any]:
         body = super().serialize_request(request)
         cached_content = (

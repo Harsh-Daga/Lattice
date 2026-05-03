@@ -55,6 +55,25 @@ class BedrockAdapter:
     def extra_headers(self, _request: Any) -> dict[str, str]:
         return {}
 
+    def detect(self, signals: Any) -> Any:
+        """Detect Bedrock from explicit signals only.
+
+        Bedrock has no unique auth header (SigV4 is handled externally) and
+        no unique endpoint paths.  The only reliable signals are explicit
+        declarations and the ``bedrock/`` model prefix.
+        """
+        from lattice.gateway.detect_helpers import (
+            detect_explicit,
+            detect_model_prefix,
+            highest_confidence,
+        )
+
+        return highest_confidence(
+            self.name,
+            detect_explicit(signals, self.name, aliases=self._PREFIXES),
+            detect_model_prefix(signals, self.name, aliases=self._PREFIXES),
+        )
+
     def retry_config(self) -> dict[str, Any]:
         return {
             "max_retries": 3,

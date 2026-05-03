@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import json
 from typing import Any
@@ -95,11 +94,12 @@ def register_native_lattice_routes(app: FastAPI, gateway: LLMTPGateway) -> None:
             return StarletteResponse(
                 content=output, media_type="application/octet-stream", headers=response_headers
             )
-        with contextlib.suppress(Exception):
+        try:
             return JSONResponse(json.loads(output.decode("utf-8")), headers=response_headers)
-        return StarletteResponse(
-            content=output, media_type="application/json", headers=response_headers
-        )
+        except (json.JSONDecodeError, TypeError, UnicodeDecodeError):
+            return StarletteResponse(
+                content=output, media_type="application/json", headers=response_headers
+            )
 
 
 @dataclasses.dataclass(slots=True)
@@ -122,7 +122,6 @@ class ProviderCompatRouteDeps:
     serialize_messages: Any
     serialize_openai_response: Any
     build_routing_headers: Any
-    detect_provider: Any
     detect_new_messages: Any
     get_cache_planner: Any
     message_cls: Any
@@ -160,7 +159,6 @@ def register_provider_compat_routes(
             serialize_messages=deps.serialize_messages,
             serialize_openai_response=deps.serialize_openai_response,
             build_routing_headers=deps.build_routing_headers,
-            detect_provider=deps.detect_provider,
             detect_new_messages=deps.detect_new_messages,
             get_cache_planner=deps.get_cache_planner,
             message_cls=deps.message_cls,

@@ -33,6 +33,10 @@ def provider() -> DirectHTTPProvider:
         registry=ProviderRegistry(),
         pool=ConnectionPoolManager(http2=False),
         default_api_key="fake",
+        provider_base_urls={
+            "openai": "https://api.openai.com",
+            "ollama": "http://127.0.0.1:11434",
+        },
     )
 
 
