@@ -1,51 +1,65 @@
 """Optimization transforms for LATTICE."""
 
+from lattice.transforms.alias_manifest import AliasManifestTransform
+from lattice.transforms.arithmetic_sequence import ArithmeticSequenceCompressor
 from lattice.transforms.batching import BatchingEngine, BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
+from lattice.transforms.columnar_pack import ColumnarTablePack
 from lattice.transforms.content_profiler import ContentProfiler
 from lattice.transforms.context_selector import (
     InformationTheoreticSelector,
     SubmodularContextSelector,
 )
 from lattice.transforms.delta_encode import DeltaEncoder
+from lattice.transforms.diagnostic_rle import DiagnosticRLE
 from lattice.transforms.dictionary_compress import DictionaryCompressor
 from lattice.transforms.format_conv import FormatConverter
 from lattice.transforms.grammar_compress import GrammarCompressor
 from lattice.transforms.hierarchical_summary import HierarchicalSummarizer
+from lattice.transforms.json_shape import JSONShapeFactor
 from lattice.transforms.message_dedup import MessageDeduplicator
 from lattice.transforms.output_cleanup import OutputCleanup
+from lattice.transforms.path_prefix import PathPrefixCompressor
 from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.rate_distortion import RateDistortionCompressor
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.runtime_contract import RuntimeContractTransform
 from lattice.transforms.self_information import SelfInformationScorer
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform
+from lattice.transforms.stack_interning import StackTraceInterning
 from lattice.transforms.strategy_selector import StrategySelector
 from lattice.transforms.structural_fingerprint import StructuralFingerprint
 from lattice.transforms.tool_filter import ToolOutputFilter
 
 __all__ = [
-    "ReferenceSubstitution",
-    "ToolOutputFilter",
-    "PrefixOptimizer",
-    "OutputCleanup",
-    "FormatConverter",
-    "DeltaEncoder",
+    "AliasManifestTransform",
+    "ArithmeticSequenceCompressor",
     "BatchingTransform",
     "BatchingEngine",
+    "CacheArbitrageOptimizer",
+    "ColumnarTablePack",
+    "ContentProfiler",
+    "DeltaEncoder",
+    "DiagnosticRLE",
+    "DictionaryCompressor",
+    "FormatConverter",
+    "GrammarCompressor",
+    "HierarchicalSummarizer",
+    "InformationTheoreticSelector",
+    "JSONShapeFactor",
+    "MessageDeduplicator",
+    "OutputCleanup",
+    "PathPrefixCompressor",
+    "PrefixOptimizer",
+    "RateDistortionCompressor",
+    "ReferenceSubstitution",
+    "RuntimeContractTransform",
+    "SelfInformationScorer",
     "SpeculativeTransform",
     "SpeculativeExecutor",
-    "MessageDeduplicator",
-    "RateDistortionCompressor",
-    "DictionaryCompressor",
-    "GrammarCompressor",
-    "ContentProfiler",
-    "SubmodularContextSelector",
-    "InformationTheoreticSelector",
-    "CacheArbitrageOptimizer",
-    "RuntimeContractTransform",
+    "StackTraceInterning",
     "StrategySelector",
-    "SelfInformationScorer",
     "StructuralFingerprint",
-    "HierarchicalSummarizer",
+    "SubmodularContextSelector",
+    "ToolOutputFilter",
 ]

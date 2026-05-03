@@ -290,6 +290,15 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "cache_arbitrage": TransformSafetyBucket.SAFE,
     "strategy_selector": TransformSafetyBucket.SAFE,
     "runtime_contract": TransformSafetyBucket.SAFE,
+    "runtime_contractor": TransformSafetyBucket.SAFE,  # alias
+    # SAFE — new lossless transforms (Phase 2)
+    "alias_manifest": TransformSafetyBucket.SAFE,
+    "diagnostic_rle": TransformSafetyBucket.SAFE,
+    "arithmetic_sequence": TransformSafetyBucket.SAFE,
+    "columnar_pack": TransformSafetyBucket.SAFE,
+    "json_shape": TransformSafetyBucket.SAFE,
+    "path_prefix": TransformSafetyBucket.SAFE,
+    "stack_interning": TransformSafetyBucket.SAFE,
     # CONDITIONAL — lossy but recoverable; risk-gated
     "reference_sub": TransformSafetyBucket.CONDITIONAL,
     "message_dedup": TransformSafetyBucket.CONDITIONAL,

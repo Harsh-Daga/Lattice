@@ -175,6 +175,13 @@ class LatticeConfig(BaseSettings):
     transform_cache_arbitrage: bool = True
     transform_dictionary_compress: bool = True
     transform_grammar_compress: bool = True
+    transform_alias_manifest: bool = True
+    transform_diagnostic_rle: bool = True
+    transform_arithmetic_sequence: bool = True
+    transform_columnar_pack: bool = True
+    transform_json_shape: bool = True
+    transform_path_prefix: bool = True
+    transform_stack_interning: bool = True
     rate_distortion_budget: float = Field(
         default=0.02,
         ge=0.0,
@@ -380,6 +387,14 @@ class LatticeConfig(BaseSettings):
         self.transform_format_conversion = True
         self.transform_message_dedup = True
         self.transform_cache_arbitrage = True
+        # New lossless transforms — always on in all modes
+        self.transform_alias_manifest = True
+        self.transform_diagnostic_rle = False  # Only on structured diagnostic content
+        self.transform_arithmetic_sequence = True
+        self.transform_columnar_pack = True
+        self.transform_json_shape = True
+        self.transform_path_prefix = True
+        self.transform_stack_interning = True
 
         if mode == "safe":
             self.transform_structural_fingerprint = False
