@@ -79,14 +79,17 @@ _PROVIDER_FALLBACK_BASE_URLS: dict[str, str] = {
 }
 
 
-def _prepare_chatgpt_upstream_headers(headers: dict[str, str]) -> dict[str, str]:
-    """Swap Codex JWT for OPENAI_API_KEY when available.
+def _prepare_chatgpt_upstream_headers(
+    headers: dict[str, str],
+    base_url: str,
+) -> dict[str, str]:
+    """Prepare upstream headers for chatgpt provider.
 
-    Codex OAuth JWTs have narrow scopes (``api.connectors.read/invoke``) that
-    work for chat/responses endpoints but often fail for ``/v1/models``.
-    When ``OPENAI_API_KEY`` is set, we use it for upstream auth so all
-    OpenAI endpoints succeed.  The ``ChatGPT-Account-ID`` claim is still
-    extracted from the JWT and forwarded for upstream routing.
+    * When upstream is ``chatgpt.com`` (Codex chat/responses endpoints),
+      extract ``ChatGPT-Account-ID`` from the JWT and forward the JWT as-is.
+    * When upstream is ``api.openai.com`` (models, embeddings, etc.),
+      strip chatgpt-specific headers and swap to ``OPENAI_API_KEY`` env var
+      so endpoints that need broader scopes succeed.
     """
     import os
 
@@ -96,20 +99,27 @@ def _prepare_chatgpt_upstream_headers(headers: dict[str, str]) -> dict[str, str]
     if not _is_codex_jwt(auth):
         return headers
 
-    # Always extract ChatGPT-Account-ID from the JWT for upstream routing
-    resolved = _resolve_codex_routing_headers(
-        auth,
-        headers.get("openai-beta", ""),
-        headers.get("chatgpt-account-id", ""),
-    )
-    headers = {**headers, **resolved}
+    is_chatgpt_backend = "chatgpt.com" in base_url
 
-    # Swap to OPENAI_API_KEY for broader scope access (e.g. /v1/models)
+    if is_chatgpt_backend:
+        # chatgpt.com needs ChatGPT-Account-ID for routing; keep JWT as auth
+        resolved = _resolve_codex_routing_headers(
+            auth,
+            headers.get("openai-beta", ""),
+            headers.get("chatgpt-account-id", ""),
+        )
+        return {**headers, **resolved}
+
+    # api.openai.com — strip chatgpt-specific headers, swap to OPENAI_API_KEY
+    cleaned = {
+        k: v
+        for k, v in headers.items()
+        if k.lower() not in {"chatgpt-account-id", "openai-beta"}
+    }
     api_key = os.environ.get("OPENAI_API_KEY")
     if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-
-    return headers
+        cleaned["Authorization"] = f"Bearer {api_key}"
+    return cleaned
 
 
 # =============================================================================
@@ -747,7 +757,7 @@ async def responses_passthrough(
         )
 
     if provider_name == "chatgpt":
-        headers = _prepare_chatgpt_upstream_headers(headers)
+        headers = _prepare_chatgpt_upstream_headers(headers, base_url)
 
     upstream_url = f"{base_url.rstrip('/')}{path}"
     query = str(fastapi_request.query_params)
