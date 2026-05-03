@@ -172,14 +172,13 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
     for attempt in range(_WS_CONNECT_RETRY_MAX):
         try:
             use_ssl: bool | None = True if upstream_url.startswith("wss://") else None
+            _subprotocols: list[Any] | None = None
+            if client_subprotocols and hasattr(_ws_lib, "Subprotocol"):
+                _subprotocols = [_ws_lib.Subprotocol(p) for p in client_subprotocols]
             upstream_ws = await _ws_lib.connect(
                 upstream_url,
                 additional_headers=upstream_headers,
-                subprotocols=(
-                    [_ws_lib.Subprotocol(p) for p in client_subprotocols]
-                    if client_subprotocols and hasattr(_ws_lib, "Subprotocol")
-                    else client_subprotocols or None
-                ),
+                subprotocols=_subprotocols,
                 ssl=use_ssl,
                 open_timeout=_WS_CONNECT_TIMEOUT,
                 close_timeout=10,
@@ -208,15 +207,22 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
         )
         # WS → HTTP/SSE fallback
         fallback_http_url = upstream_url.replace("wss://", "https://").replace("ws://", "http://")
-        await _ws_http_fallback(
-            websocket,
-            first_msg_raw,
-            fallback_http_url,
-            upstream_headers,
-            is_chatgpt_auth,
-            logger,
-            request_id,
-        )
+        if first_msg_raw is not None:
+            await _ws_http_fallback(
+                websocket,
+                first_msg_raw,
+                fallback_http_url,
+                upstream_headers,
+                is_chatgpt_auth,
+                logger,
+                request_id,
+            )
+        return
+
+    if first_msg_raw is None:
+        logger.warning("ws_first_frame_missing", request_id=request_id)
+        with contextlib.suppress(Exception):
+            await upstream_ws.close()
         return
 
     try:
@@ -280,9 +286,9 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
             t.cancel()
         # Re-raise CancelledError so callers can propagate it
         for t in done:
-            exc = t.exception()
-            if isinstance(exc, asyncio.CancelledError):
-                raise exc
+            task_exc = t.exception()
+            if isinstance(task_exc, asyncio.CancelledError):
+                raise task_exc
     finally:
         for t in {c2u_task, u2c_task}:
             if not t.done():
@@ -371,29 +377,32 @@ async def _ws_http_fallback(
                     return
 
                 # Relay SSE data: lines as WS text messages
-                buffer = ""
-                async for chunk in resp.aiter_text():
-                    buffer += chunk
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        line = line.strip()
-                        if not line:
+                _sse_buffer: str = ""
+                async for _chunk_obj in resp.aiter_text():
+                    _text_chunk = str(_chunk_obj)
+                    _sse_buffer += _text_chunk
+                    while "\n" in _sse_buffer:
+                        _line, _sse_buffer = _sse_buffer.split("\n", 1)
+                        _line = _line.strip()
+                        if not _line:
                             continue
-                        if line.startswith("data: "):
-                            data = line[6:]
-                            if data == "[DONE]":
+                        if _line.startswith("data: "):
+                            _data = _line[6:]
+                            if _data == "[DONE]":
                                 continue
                             try:
-                                await websocket.send_text(data)
-                            except Exception:
+                                await websocket.send_text(_data)
+                            except (RuntimeError, ConnectionError):
                                 return
 
                 # Flush remainder
-                for line in buffer.strip().splitlines():
-                    line = line.strip()
-                    if line.startswith("data: ") and line[6:] != "[DONE]":
-                        with contextlib.suppress(Exception):
-                            await websocket.send_text(line[6:])
+                for _line in _sse_buffer.strip().splitlines():
+                    _line = _line.strip()
+                    if _line.startswith("data: ") and _line[6:] != "[DONE]":
+                        try:
+                            await websocket.send_text(_line[6:])
+                        except (RuntimeError, ConnectionError):
+                            pass
     except Exception as exc:
         logger.error("ws_http_fallback_failed", request_id=request_id, error=str(exc))
         error_event = {
@@ -403,8 +412,12 @@ async def _ws_http_fallback(
                 "message": f"Fallback failed: {exc!s}"[:200],
             },
         }
-        with contextlib.suppress(Exception):
+        try:
             await websocket.send_text(_json.dumps(error_event))
+        except (RuntimeError, ConnectionError):
+            pass
     finally:
-        with contextlib.suppress(Exception):
+        try:
             await websocket.close()
+        except (RuntimeError, ConnectionError):
+            pass

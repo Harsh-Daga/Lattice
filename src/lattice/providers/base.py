@@ -123,6 +123,16 @@ class ProviderAdapter(Protocol):
         """
         ...
 
+    def retry_config(self) -> dict[str, Any]:
+        """Return retry policy for this provider.
+
+        Keys:
+        * ``max_retries`` — integer (default 3)
+        * ``backoff_factor`` — float multiplier (default 1.0)
+        * ``retry_on`` — tuple of HTTP status codes
+        """
+        ...
+
 
 # =============================================================================
 # Shared helpers (all adapters can import these)

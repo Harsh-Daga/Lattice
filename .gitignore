@@ -38,3 +38,4 @@ dist/
 benchmarks/results/
 uv.lock
 repomix-output.txt
+.claude/*

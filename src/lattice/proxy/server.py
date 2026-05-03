@@ -285,9 +285,6 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
         await compat_responses_websocket_passthrough(websocket, logger=logger)
 
     async def _chat_completions_ws_passthrough(websocket: Any) -> None:
-        await compat.chat_completions_websocket_passthrough(websocket, logger=logger)
-
-    async def _chat_completions_ws_passthrough(websocket: Any) -> None:
         await compat_ws_chat(websocket, logger=logger)
 
     register_provider_compat_routes(
