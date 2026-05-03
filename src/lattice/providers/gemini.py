@@ -86,6 +86,8 @@ class VertexAdapter(OpenAICompatibleAdapter):
         Vertex uses GCP service-account bearer tokens (``Authorization: Bearer ya29.``)
         which are distinct from Gemini's API key (``x-goog-api-key``).
         """
+        import re
+
         from lattice.gateway.detect_helpers import (
             detect_auth_pattern,
             detect_explicit,
@@ -93,7 +95,6 @@ class VertexAdapter(OpenAICompatibleAdapter):
             detect_model_prefix,
             highest_confidence,
         )
-        import re
 
         return highest_confidence(
             self.name,
