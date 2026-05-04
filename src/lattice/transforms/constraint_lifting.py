@@ -80,7 +80,7 @@ class ConstraintLiftingTransform(ReversibleSyncTransform):
 
 def _lift_constraints(text: str) -> str:
     lines = text.splitlines()
-    if len(lines) < 3:
+    if not lines:
         return text
 
     constraint_lines: list[str] = []
@@ -101,7 +101,7 @@ def _lift_constraints(text: str) -> str:
             format_lines.append(line)
             scored = True
 
-        if _CONSTRAINT_RE.search(stripped) and not scored:
+        if _CONSTRAINT_RE.search(stripped):
             if _PRESERVE_RE.search(stripped):
                 preserve_lines.append(line)
                 scored = True
@@ -115,8 +115,15 @@ def _lift_constraints(text: str) -> str:
         if not scored:
             remaining.append(line)
 
-    all_constraints = format_lines + preserve_lines + constraint_lines + length_lines
-    if len(all_constraints) < 2 or len(remaining) >= len(lines) * 0.5:
+    seen: set[str] = set()
+    all_constraints: list[str] = []
+    for lst in (format_lines, preserve_lines, constraint_lines, length_lines):
+        for ln in lst:
+            key = ln.strip()
+            if key and key not in seen:
+                seen.add(key)
+                all_constraints.append(ln)
+    if not all_constraints or len(remaining) >= len(lines) * 0.7:
         return text
 
     parts: list[str] = []

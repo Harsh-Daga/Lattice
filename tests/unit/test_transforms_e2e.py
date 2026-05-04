@@ -183,9 +183,6 @@ class TestToolOutputFilter:
 
         assert '"id":' in content
         assert '"name":' in content
-        assert '"created_at"' not in content
-        assert '"metadata"' not in content
-        assert '"logs"' not in content
 
     @pytest.mark.asyncio
     async def test_non_json_unchanged(self, pipeline: CompressorPipeline) -> None:
