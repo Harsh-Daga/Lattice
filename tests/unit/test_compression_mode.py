@@ -18,8 +18,9 @@ def test_safe_mode_disables_lossy() -> None:
     assert cfg.transform_semantic_compress is False
     assert cfg.transform_hierarchical_summary is False
     assert cfg.transform_context_selector is False
-    assert cfg.transform_reference_sub is True
-    assert cfg.transform_tool_filter is True
+    assert cfg.transform_reference_sub is False  # CONDITIONAL, disabled in safe
+    assert cfg.transform_tool_filter is False  # RISKY, disabled in safe
+    assert cfg.transform_output_cleanup is True  # SAFE, always on
 
 
 def test_balanced_mode_enables_selective() -> None:
@@ -30,7 +31,8 @@ def test_balanced_mode_enables_selective() -> None:
     assert cfg.transform_code_factoring is True
     assert cfg.transform_extractive_compress is True
     assert cfg.transform_tool_projection is True
-    assert cfg.transform_self_information is True
+    assert cfg.transform_self_information is False  # RISKY, disabled in balanced
+    assert cfg.transform_reference_sub is True  # CONDITIONAL, enabled in balanced
     assert cfg.transform_hierarchical_summary is False
     assert cfg.transform_semantic_compress is False
 

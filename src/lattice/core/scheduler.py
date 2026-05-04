@@ -39,22 +39,23 @@ _REASONING_DISABLED: frozenset[str] = frozenset(
     }
 )
 
-# Per-task transform matrix — which transforms are allowed per task class.
+# Per-task transform matrix — final conservative gating.
 # True = allowed by default, False = blocked, None = allowed only if safe mode off.
 _TASK_TRANSFORM_MATRIX: dict[str, dict[str, bool | None]] = {
-    # Retrieval / simple Q&A
-    TaskClass.RETRIEVAL.value: {
+    TaskClass.REASONING.value: {
         "rate_distortion": False,
+        "semantic_compress": False,
         "hierarchical_summary": False,
         "structural_fingerprint": False,
-        "message_dedup": None,
-        "semantic_compress": False,
+        "message_dedup": False,
+        "self_information": False,
+        "dictionary_compress": False,
+        "grammar_compress": False,
+        "tool_filter": False,
+        "reference_sub": False,
+        "context_selector": False,
+        "information_theoretic_selector": False,
     },
-    TaskClass.SIMPLE.value: {
-        "rate_distortion": False,
-        "hierarchical_summary": False,
-    },
-    # Debugging / root cause
     TaskClass.DEBUGGING.value: {
         "rate_distortion": False,
         "semantic_compress": False,
@@ -62,17 +63,32 @@ _TASK_TRANSFORM_MATRIX: dict[str, dict[str, bool | None]] = {
         "structural_fingerprint": False,
         "message_dedup": False,
         "grammar_compress": False,
+        "tool_filter": False,
+        "reference_sub": False,
+        "self_information": False,
+        "dictionary_compress": False,
+        "context_selector": False,
+        "information_theoretic_selector": False,
     },
-    # Reasoning
-    TaskClass.REASONING.value: {
+    TaskClass.STRUCTURED.value: {
         "rate_distortion": False,
         "semantic_compress": False,
         "hierarchical_summary": False,
-        "structural_fingerprint": False,
-        "message_dedup": False,
     },
-    # Structured data / tables
-    TaskClass.STRUCTURED.value: {
+    TaskClass.ANALYSIS.value: {
+        "rate_distortion": False,
+        "hierarchical_summary": False,
+    },
+    TaskClass.RETRIEVAL.value: {
+        "rate_distortion": False,
+        "hierarchical_summary": False,
+        "structural_fingerprint": False,
+        "semantic_compress": False,
+    },
+    TaskClass.SUMMARIZATION.value: {
+        "structural_fingerprint": False,
+    },
+    TaskClass.SIMPLE.value: {
         "rate_distortion": False,
         "hierarchical_summary": False,
     },

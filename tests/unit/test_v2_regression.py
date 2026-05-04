@@ -76,7 +76,7 @@ class TestSchedulerV2:
         )
         assert "message_dedup" in decision.blocked_transforms
         assert "rate_distortion" in decision.blocked_transforms
-        assert "tool_filter" in decision.allowed_transforms
+        assert "tool_filter" in decision.blocked_transforms  # blocked in new conservative matrix
 
     def test_reasoning_allows_reversible_conditionals(self) -> None:
         task = TaskClassification(
@@ -89,9 +89,10 @@ class TestSchedulerV2:
             task=task,
             risk=risk,
         )
-        assert "reference_sub" not in decision.blocked_transforms
-        assert "dictionary_compress" not in decision.blocked_transforms
-        assert "grammar_compress" not in decision.blocked_transforms
+        # All CONDITIONAL transforms are blocked on REASONING in conservative matrix
+        assert "reference_sub" in decision.blocked_transforms
+        assert "dictionary_compress" in decision.blocked_transforms
+        assert "grammar_compress" in decision.blocked_transforms
 
     def test_debugging_uses_reasoning_tier(self) -> None:
         task = TaskClassification(

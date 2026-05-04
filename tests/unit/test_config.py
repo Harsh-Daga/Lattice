@@ -80,7 +80,8 @@ class TestApplyCompressionMode:
         cfg.apply_compression_mode()
         assert cfg.transform_semantic_compress is False
         assert cfg.transform_hierarchical_summary is False
-        assert cfg.transform_reference_sub is True
+        assert cfg.transform_content_profiler is True
+        assert cfg.transform_reference_sub is False  # CONDITIONAL, disabled in safe
 
     def test_balanced_mode(self):
         cfg = LatticeConfig(compression_mode="balanced")

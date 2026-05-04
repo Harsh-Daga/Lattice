@@ -96,6 +96,21 @@ class CompressorPipeline:
 
     transforms: list[ReversibleSyncTransform]
     config: LatticeConfig
+
+    # Transforms that may legitimately increase token count because they
+    # improve quality rather than saving tokens.
+    _quality_only_transforms: frozenset[str] = frozenset(
+        {
+            "content_profiler",
+            "runtime_contract",
+            "strategy_selector",
+            "constraint_lifting",
+            "instruction_context_sep",
+            "causal_chain",
+            "stable_prefix",
+        }
+    )
+
     _budget_sensitive_transforms: frozenset[str] = frozenset(
         {
             "self_information",
@@ -488,11 +503,14 @@ class CompressorPipeline:
 
             # ---- Negative savings guard ----
             # A transform that increases tokens without an explicit quality
-            # justification is a net negative. Skip it.
+            # justification is a net negative. Skip it. QUALITY_ONLY transforms
+            # (content_profiler, constraint_lifting, causal_chain, etc.) are
+            # exempt — they improve model comprehension, not compression.
             if (
                 tokens_before > 0
                 and working_tokens > tokens_before
                 and transform.name not in self._placeholder_using_transforms
+                and transform.name not in self._quality_only_transforms
             ):
                 self._log.warning(
                     "transform_negative_savings",

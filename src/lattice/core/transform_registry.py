@@ -135,6 +135,14 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Reorders messages for KV-cache alignment",
     ),
     TransformSpec(
+        canonical_name="constraint_lifting",
+        config_flag="transform_constraint_lifting",
+        priority=6,
+        safety_bucket=SAFE,
+        factory_path="lattice.transforms.constraint_lifting.ConstraintLiftingTransform",
+        description="Extracts buried constraints and format requirements",
+    ),
+    TransformSpec(
         canonical_name="stable_prefix",
         config_flag="transform_stable_prefix",
         priority=7,
@@ -149,6 +157,14 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         safety_bucket=SAFE,
         factory_path="lattice.transforms.instruction_context.InstructionContextSeparator",
         description="Instruction/context/task separation for better comprehension",
+    ),
+    TransformSpec(
+        canonical_name="causal_chain",
+        config_flag="transform_causal_chain",
+        priority=9,
+        safety_bucket=SAFE,
+        factory_path="lattice.transforms.causal_chain.CausalChainExtractor",
+        description="Causal chain extraction for reasoning and debugging",
     ),
     TransformSpec(
         canonical_name="prefix_optimizer",

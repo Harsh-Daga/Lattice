@@ -4,8 +4,10 @@ from lattice.transforms.alias_manifest import AliasManifestTransform
 from lattice.transforms.arithmetic_sequence import ArithmeticSequenceCompressor
 from lattice.transforms.batching import BatchingEngine, BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
+from lattice.transforms.causal_chain import CausalChainExtractor
 from lattice.transforms.code_factoring import CodeFactoringTransform
 from lattice.transforms.columnar_pack import ColumnarTablePack
+from lattice.transforms.constraint_lifting import ConstraintLiftingTransform
 from lattice.transforms.content_profiler import ContentProfiler
 from lattice.transforms.context_selector import (
     InformationTheoreticSelector,
@@ -42,8 +44,10 @@ __all__ = [
     "BatchingTransform",
     "BatchingEngine",
     "CacheArbitrageOptimizer",
+    "CausalChainExtractor",
     "CodeFactoringTransform",
     "ColumnarTablePack",
+    "ConstraintLiftingTransform",
     "ContentProfiler",
     "DeltaEncoder",
     "DiagnosticRLE",

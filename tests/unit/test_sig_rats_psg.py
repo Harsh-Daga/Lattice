@@ -170,15 +170,16 @@ class TestSchedulerDecision:
         assert "output_cleanup" in decision.allowed_transforms
 
     def test_dangerous_blocked_on_debugging(self) -> None:
-        task = TaskClassification(task_class=TaskClass.DEBUGGING)
-        risk = SemanticRiskScore(strict_instructions=5)
+        task = TaskClassification(task_class=TaskClass.DEBUGGING, debug_heavy=True)
+        risk = SemanticRiskScore()
         decision = decide_schedule(
-            transform_names=["hierarchical_summary", "tool_filter"],
+            transform_names=["tool_filter"],
             task=task,
             risk=risk,
         )
-        assert "hierarchical_summary" in decision.blocked_transforms
-        assert "tool_filter" in decision.allowed_transforms
+        assert (
+            "tool_filter" in decision.blocked_transforms
+        )  # blocked in conservative DEBUGGING matrix
 
     def test_schedule_sort_order(self) -> None:
         task = TaskClassification(task_class=TaskClass.RETRIEVAL)
@@ -315,7 +316,9 @@ class TestRATSSafetyIntegration:
         assert "hierarchical_summary" in decision.blocked_transforms
         # structural_fingerprint: blocked for DEBUGGING via per-task matrix
         assert "structural_fingerprint" in decision.blocked_transforms
-        assert "tool_filter" in decision.allowed_transforms
+        assert (
+            "tool_filter" in decision.blocked_transforms
+        )  # blocked in conservative DEBUGGING matrix
 
     def test_retrieval_prompt_allows_aggressive(self) -> None:
         task = TaskClassification(task_class=TaskClass.RETRIEVAL)

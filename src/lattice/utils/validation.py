@@ -305,6 +305,8 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "tool_projection": TransformSafetyBucket.SAFE,
     "stable_prefix": TransformSafetyBucket.SAFE,
     "instruction_context_sep": TransformSafetyBucket.SAFE,
+    "constraint_lifting": TransformSafetyBucket.SAFE,
+    "causal_chain": TransformSafetyBucket.SAFE,
     # CONDITIONAL — lossy but recoverable; risk-gated
     "reference_sub": TransformSafetyBucket.CONDITIONAL,
     "message_dedup": TransformSafetyBucket.CONDITIONAL,

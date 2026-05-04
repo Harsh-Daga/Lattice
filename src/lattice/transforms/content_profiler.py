@@ -131,7 +131,17 @@ class ContentProfiler(ReversibleSyncTransform):
         # Build SIG — Semantic Importance Graph
         sig = _build_importance_graph(request)
 
-        # Build scheduler decision from SIG + RATS + risk
+        # Build PromptIR — canonical structured representation
+        from lattice.core.compiler import get_compiler
+
+        compiler = get_compiler()
+        ir = compiler.compile(request, context)
+        request.metadata["_lattice_ir_summary"] = ir.summary()
+        request.metadata["_lattice_ir_sections"] = ir.section_types
+        if ir.protected_spans > 0:
+            request.metadata[METADATA_KEY_PROTECTED_SPANS] = ir.protected_span_ids()
+
+        # Build scheduler decision from SIG + RATS + risk + IR spans
         transform_names = [
             t for t in strategy if isinstance(strategy.get(t), bool) and strategy.get(t) is True
         ]

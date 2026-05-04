@@ -47,8 +47,9 @@ class TestSDKCompressionAPI:
             model="openai/gpt-4",
             mode="safe",
         )
-        # safe mode should have fewer transforms than balanced/aggressive
-        assert "reference_sub" in result.transforms_applied
+        # safe mode should only include SAFE transforms (no CONDITIONAL or RISKY)
+        assert "prefix_optimizer" in result.transforms_applied
+        assert "reference_sub" not in result.transforms_applied  # CONDITIONAL, disabled in safe
 
     def test_compress_preserves_tool_calls(self) -> None:
         client = LatticeClient()
