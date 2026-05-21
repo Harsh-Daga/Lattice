@@ -53,7 +53,7 @@ class ColumnarTablePack(ReversibleSyncTransform):
 # Matches a contiguous block of markdown table rows:
 # header row + separator row + data rows. Each line starts with |.
 _MD_TABLE_BLOCK_RE = re.compile(
-    r"(^\|.+?\|\s*$\n"       # header
+    r"(^\|.+?\|\s*$\n"  # header
     r"^\|[\s\-:|]+\|\s*$\n"  # separator
     r"(?:^\|.+?\|\s*$\n?)+)",  # data rows (one or more)
     re.MULTILINE,

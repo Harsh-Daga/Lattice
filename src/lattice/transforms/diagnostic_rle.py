@@ -58,7 +58,9 @@ class DiagnosticRLE(ReversibleSyncTransform):
             new_msg = msg.copy()
             new_msg.content = after
             new_messages.append(new_msg)
-            context.record_metric(self.name, "groups_created", sum(len(v) for v in grouped.values()))
+            context.record_metric(
+                self.name, "groups_created", sum(len(v) for v in grouped.values())
+            )
 
         context.record_metric(self.name, "chars_saved", total_saved)
         new_req = request.copy()

@@ -137,7 +137,7 @@ async def execute_with_fallback(
             is_retryable = _is_retryable_error(exc, status_code)
 
             if attempt < retry_count:
-                wait = min(2 ** attempt, max_wait)
+                wait = min(2**attempt, max_wait)
                 logger.warning(
                     "provider_attempt_failed",
                     provider=current_provider,
@@ -263,7 +263,7 @@ async def execute_with_fallback_stream(
             is_retryable = _is_retryable_error(exc, status_code)
 
             if attempt < retry_count:
-                wait = min(2 ** attempt, max_wait)
+                wait = min(2**attempt, max_wait)
                 logger.warning(
                     "provider_stream_init_failed",
                     provider=current_provider,

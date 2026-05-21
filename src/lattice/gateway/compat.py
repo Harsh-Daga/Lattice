@@ -1396,7 +1396,9 @@ def _ensure_ws_lib() -> None:
         _ws_lib = _impl
 
 
-async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any = None, pipeline: Any = None, provider: Any = None) -> None:
+async def chat_completions_websocket_passthrough(
+    websocket: Any, *, logger: Any = None, pipeline: Any = None, provider: Any = None
+) -> None:
     """Relay chat completions WS traffic through Lattice pipeline.
 
     Uses injected pipeline and provider from the runtime (not rebuilding)."""
@@ -1572,9 +1574,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         # Low-risk requests are sampled at 1% for continuous quality monitoring.
         risk_data = get_canonical_request_value(request, None, "_lattice_risk_score", {})
         risk_level = risk_data.get("level", "unknown") if isinstance(risk_data, dict) else "unknown"
-        task_data = get_canonical_request_value(
-            request, None, "_lattice_task_classification", {}
-        )
+        task_data = get_canonical_request_value(request, None, "_lattice_task_classification", {})
         task_class = (
             task_data.get("task_class", "unknown") if isinstance(task_data, dict) else "unknown"
         )
@@ -1654,6 +1654,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             prev = session.metadata.get("_lattice_execution_plan")
             if prev is not None:
                 from lattice.planner.execution_plan import ExecutionPlan as _ExecPlan
+
                 restored = _ExecPlan.from_dict(prev)
                 # Preserve sticky fields from previous turn in the new plan
                 execution_plan.provider = restored.provider
@@ -1664,8 +1665,12 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 new_allowed = set(execution_plan.allowed_optimizers)
                 execution_plan.allowed_optimizers = list(prev_allowed | new_allowed)
                 # Use stricter quality_floor and budget across turns
-                execution_plan.quality_floor = max(execution_plan.quality_floor, restored.quality_floor)
-                execution_plan.latency_budget_ms = max(execution_plan.latency_budget_ms, restored.latency_budget_ms)
+                execution_plan.quality_floor = max(
+                    execution_plan.quality_floor, restored.quality_floor
+                )
+                execution_plan.latency_budget_ms = max(
+                    execution_plan.latency_budget_ms, restored.latency_budget_ms
+                )
         # Persist merged plan back
         persist_session_plan_state(
             session.metadata,
@@ -2313,7 +2318,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 provider=provider_name,
                 model=requested_model,
                 error=str(exc),
-                fallback_plan=execution_plan.fallback_plan.to_dict() if hasattr(execution_plan.fallback_plan, "to_dict") else {},
+                fallback_plan=execution_plan.fallback_plan.to_dict()
+                if hasattr(execution_plan.fallback_plan, "to_dict")
+                else {},
                 retry_count=execution_plan.fallback_plan.retry_count if execution_plan else 0,
             )
             return JSONResponse(
@@ -2327,7 +2334,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 model=requested_model,
                 error=str(exc),
                 status_code=getattr(exc, "status_code", None),
-                fallback_plan=execution_plan.fallback_plan.to_dict() if hasattr(execution_plan.fallback_plan, "to_dict") else {},
+                fallback_plan=execution_plan.fallback_plan.to_dict()
+                if hasattr(execution_plan.fallback_plan, "to_dict")
+                else {},
             )
             return JSONResponse(
                 {"error": "provider_error", "message": str(exc)},
@@ -2340,7 +2349,9 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 model=requested_model,
                 error=str(exc),
                 error_type=type(exc).__name__,
-                fallback_plan=execution_plan.fallback_plan.to_dict() if hasattr(execution_plan.fallback_plan, "to_dict") else {},
+                fallback_plan=execution_plan.fallback_plan.to_dict()
+                if hasattr(execution_plan.fallback_plan, "to_dict")
+                else {},
             )
             return JSONResponse(
                 {"error": "provider_error", "message": str(exc)},

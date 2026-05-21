@@ -112,9 +112,7 @@ class AutoContinuation:
                     stream=False,
                     stop=request.stop,
                     provider_name=provider_name,
-                    api_key=get_canonical_request_value(
-                        request, None, "_lattice_client_api_key"
-                    ),
+                    api_key=get_canonical_request_value(request, None, "_lattice_client_api_key"),
                     metadata=request.metadata,
                     extra_headers=request.extra_headers,
                     extra_body=request.extra_body,
@@ -198,9 +196,7 @@ class AutoContinuation:
                 stream=False,
                 stop=request.stop,
                 provider_name=request.metadata.get("provider_name", "openai"),
-                api_key=get_canonical_request_value(
-                    request, None, "_lattice_client_api_key"
-                ),
+                api_key=get_canonical_request_value(request, None, "_lattice_client_api_key"),
                 metadata=request.metadata,
                 extra_headers=request.extra_headers,
                 extra_body=request.extra_body,

@@ -187,9 +187,7 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
                 stream=False,
                 stop=batched.metadata.get("stop"),
                 provider_name=provider_name,
-                api_key=get_canonical_request_value(
-                    batched, None, "_lattice_client_api_key"
-                ),
+                api_key=get_canonical_request_value(batched, None, "_lattice_client_api_key"),
                 metadata=batched.metadata.get("request_metadata", {}),
                 extra_headers=batched.metadata.get("extra_headers"),
                 extra_body=batched.metadata.get("extra_body"),

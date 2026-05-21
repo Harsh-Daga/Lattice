@@ -19,9 +19,9 @@ class ProviderStrategy:
     provider: str
     preferred_optimizers: tuple[str, ...]
     cache_mode: str
-    prefix_stable: bool          # OpenAI-style stable prefix caching
-    supports_breakpoints: bool   # Anthropic-style explicit breakpoints
-    supports_cached_content: bool # Gemini/Vertex cachedContent
+    prefix_stable: bool  # OpenAI-style stable prefix caching
+    supports_breakpoints: bool  # Anthropic-style explicit breakpoints
+    supports_cached_content: bool  # Gemini/Vertex cachedContent
     max_context_tokens: int
     notes: str = ""
 

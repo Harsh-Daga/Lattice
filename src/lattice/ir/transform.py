@@ -5,6 +5,7 @@ returns new PromptIRV2 instances. It does NOT mutate Request.messages directly.
 
 Legacy transforms (ReversibleSyncTransform) are wrapped by IRTransformAdapter.
 """
+
 from __future__ import annotations
 
 from typing import Any, Protocol
@@ -186,7 +187,10 @@ class CandidateScorer:
         # Rule 1: Expansion without gain → REJECT
         if tokens_after > tokens_before:
             if cache_gain <= 0 and transport_gain <= 0:
-                return False, f"tokens_after ({tokens_after}) > tokens_before ({tokens_before}) with no gain"
+                return (
+                    False,
+                    f"tokens_after ({tokens_after}) > tokens_before ({tokens_before}) with no gain",
+                )
 
         # Rule 2: Quality below floor → REJECT
         if quality_estimate < quality_floor:
@@ -249,6 +253,7 @@ class CandidateSearch:
                         continue
 
                     import time
+
                     start = time.perf_counter()
                     search_context = context.copy()
                     result = tx.optimize(cand.ir, request, search_context)

@@ -271,35 +271,36 @@ def _get_allowed_optimizers(context: TransformContext) -> list[str]:
     # 5. Fallback: content_profile
     profile = get_canonical_state_value(context, "_lattice_profile")
     profile_to_optimizers: dict[str, list[str]] = {
-        "table_heavy":       ["structure_optimizer", "reference_optimizer"],
-        "tool_output":         ["tool_optimizer", "reference_optimizer"],
-        "code_heavy":        ["reference_optimizer", "structure_optimizer"],
-        "log_output":        ["diagnostic_optimizer", "reference_optimizer"],
-        "diff_output":       ["reference_optimizer"],
-        "stack_trace":       ["reference_optimizer", "diagnostic_optimizer"],
-        "grep_output":       ["structure_optimizer", "reference_optimizer"],
-        "file_tree":         ["reference_optimizer"],
-        "mcp_output":        ["tool_optimizer", "reference_optimizer"],
-        "narrative_long":    ["context_optimizer", "reference_optimizer"],
+        "table_heavy": ["structure_optimizer", "reference_optimizer"],
+        "tool_output": ["tool_optimizer", "reference_optimizer"],
+        "code_heavy": ["reference_optimizer", "structure_optimizer"],
+        "log_output": ["diagnostic_optimizer", "reference_optimizer"],
+        "diff_output": ["reference_optimizer"],
+        "stack_trace": ["reference_optimizer", "diagnostic_optimizer"],
+        "grep_output": ["structure_optimizer", "reference_optimizer"],
+        "file_tree": ["reference_optimizer"],
+        "mcp_output": ["tool_optimizer", "reference_optimizer"],
+        "narrative_long": ["context_optimizer", "reference_optimizer"],
     }
     if profile and profile in profile_to_optimizers:
         return profile_to_optimizers[profile]
 
     # Default production optimizers
     from lattice.optimizer import PRODUCTION_OPTIMIZERS
+
     return list(PRODUCTION_OPTIMIZERS)
 
 
 _SEG_OPTIMIZER_MAP: dict[str, list[str]] = {
-    "code":       ["structure_optimizer", "reference_optimizer"],
-    "json":       ["structure_optimizer", "ir_structure_optimizer", "reference_optimizer"],
-    "table":      ["structure_optimizer", "ir_structure_optimizer", "reference_optimizer"],
-    "log":        ["diagnostic_optimizer", "reference_optimizer"],
+    "code": ["structure_optimizer", "reference_optimizer"],
+    "json": ["structure_optimizer", "ir_structure_optimizer", "reference_optimizer"],
+    "table": ["structure_optimizer", "ir_structure_optimizer", "reference_optimizer"],
+    "log": ["diagnostic_optimizer", "reference_optimizer"],
     "tool_output": ["tool_optimizer", "ir_structure_optimizer", "reference_optimizer"],
-    "reasoning":  ["structure_optimizer", "reference_optimizer"],
-    "narrative":  ["context_optimizer", "reference_optimizer"],
+    "reasoning": ["structure_optimizer", "reference_optimizer"],
+    "narrative": ["context_optimizer", "reference_optimizer"],
     "instructions": ["reference_optimizer"],
-    "short":       [],
+    "short": [],
 }
 
 

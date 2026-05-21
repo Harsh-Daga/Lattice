@@ -25,6 +25,7 @@ Usage:
         def _do_something(self, span):
             return span.text.replace("old", "new")
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -149,6 +150,7 @@ class IRNativeOptimizer(ReversibleSyncTransform):
         # 4. Compile fresh (lazy)
         try:
             from lattice.ir.builder import compile_request_ir
+
             ir = compile_request_ir(request)
             # Cache in session state for reuse by other IR-native optimizers
             context.session_state["_lattice_ir"] = ir
@@ -181,9 +183,8 @@ class IRNativeOptimizer(ReversibleSyncTransform):
         else:
             # Create a new user message if none exists
             from lattice.core.transport import Message
-            request.messages.append(
-                Message(role="user", content=text)
-            )
+
+            request.messages.append(Message(role="user", content=text))
 
         # Record that we produced IR in transport so downstream
         # optimizers or the proxy can see it
@@ -223,9 +224,7 @@ class PromptIrLoader:
                         structure=sp_data.get("structure", {}),
                         protected=sp_data.get("protected", False),
                         compressible=sp_data.get("compressible", False),
-                        compression_modes_allowed=sp_data.get(
-                            "compression_modes_allowed", []
-                        ),
+                        compression_modes_allowed=sp_data.get("compression_modes_allowed", []),
                         metadata=sp_data.get("metadata", {}),
                     )
                 )

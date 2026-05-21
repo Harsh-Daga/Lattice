@@ -127,8 +127,10 @@ class MessageDeduplicator(ReversibleSyncTransform):
                 continue
 
             # Skip sections too short to deduplicate
-            sec_text = sec.serialize() if hasattr(sec, "serialize") else "\n".join(
-                sp.text for sp in sec.spans
+            sec_text = (
+                sec.serialize()
+                if hasattr(sec, "serialize")
+                else "\n".join(sp.text for sp in sec.spans)
             )
             if len(sec_text) < self.min_message_length:
                 new_sections.append(sec)
@@ -156,8 +158,7 @@ class MessageDeduplicator(ReversibleSyncTransform):
             context.record_metric(self.name, "removed_count", removed_count)
             context.record_metric(self.name, "original_count", original_count)
             tokens_saved = sum(
-                len("\n".join(sp.text for sp in sec.spans))
-                for sec in ir.sections[:removed_count]
+                len("\n".join(sp.text for sp in sec.spans)) for sec in ir.sections[:removed_count]
             )
             context.record_metric(self.name, "tokens_saved_estimate", tokens_saved // 4)
 

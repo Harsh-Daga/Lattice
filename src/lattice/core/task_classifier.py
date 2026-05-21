@@ -213,9 +213,7 @@ def classify_task(request: Request) -> TaskClassification:
     # Only scan user/assistant/system messages — tool output data containing
     # "error" fields is data payload, not a debugging signal.
     query_text_for_debug = "\n".join(
-        m.content or ""
-        for m in request.messages
-        if m.role in ("user", "assistant", "system")
+        m.content or "" for m in request.messages if m.role in ("user", "assistant", "system")
     ).lower()
     has_debug_context = any(
         re.search(rf"\b{pat}\b", query_text_for_debug)
@@ -263,11 +261,7 @@ def classify_task(request: Request) -> TaskClassification:
     # Hard rule 3: why-fail questions WITH reasoning AND debugging context → REASONING.
     # Narrowed: requires BOTH explicit debugging context AND root-cause language.
     # Without both, simple "why did X fail?" is just retrieval/analysis.
-    elif (
-        re.search(r"\bwhy.*\bfail(?:ed|ure)?\b", lowered)
-        and has_root_cause
-        and has_debug_context
-    ):
+    elif re.search(r"\bwhy.*\bfail(?:ed|ure)?\b", lowered) and has_root_cause and has_debug_context:
         task_class = TaskClass.REASONING
         execution_tier = ExecutionTier.REASONING
         hard_override = True

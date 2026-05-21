@@ -35,7 +35,7 @@ _OPTIMIZER_MAP: dict[str, TransformSpec] = {s.canonical_name: s for s in OPTIMIZ
 # representation_optimizer is the GLOBAL orchestrator.
 _DEFAULT_OPTIMIZERS = [
     "representation_optimizer",  # priority 19
-    "diagnostic_optimizer",         # priority 17
+    "diagnostic_optimizer",  # priority 17
 ]
 
 

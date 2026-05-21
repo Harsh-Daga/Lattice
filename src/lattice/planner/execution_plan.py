@@ -19,11 +19,11 @@ from lattice.core.transport import Request
 class ExecutionTier(enum.Enum):
     """Tiered latency budgets for optimization."""
 
-    SIMPLE = "simple"          # 10ms
-    MEDIUM = "medium"          # 50ms
-    COMPLEX = "complex"        # 100ms
-    REASONING = "reasoning"    # 150ms
-    DEBUGGING = "debugging"    # 150ms, no lossy transforms
+    SIMPLE = "simple"  # 10ms
+    MEDIUM = "medium"  # 50ms
+    COMPLEX = "complex"  # 100ms
+    REASONING = "reasoning"  # 150ms
+    DEBUGGING = "debugging"  # 150ms, no lossy transforms
 
 
 class RiskLevel(enum.Enum):
@@ -55,10 +55,10 @@ class RepresentationCandidate:
     request: Request
     token_cost: int
     latency_ms: float
-    quality_estimate: float   # 0-1, higher is better
-    cache_gain: float         # estimated cache hit improvement
-    transport_gain: float     # estimated wire/transport savings
-    semantic_risk: float      # 0-1, lower is better
+    quality_estimate: float  # 0-1, higher is better
+    cache_gain: float  # estimated cache hit improvement
+    transport_gain: float  # estimated wire/transport savings
+    semantic_risk: float  # 0-1, lower is better
     rollback_reason: str | None = None
 
     @property
@@ -79,7 +79,7 @@ class CachePlanEntry:
     """Per-segment cache plan."""
 
     segment_index: int
-    provider_mode: str         # auto_prefix, explicit_breakpoint, etc.
+    provider_mode: str  # auto_prefix, explicit_breakpoint, etc.
     expected_cached_tokens: int
     annotations: dict[str, Any] = dataclasses.field(default_factory=dict)
 
@@ -101,7 +101,7 @@ class TransportPlanEntry:
     use_framing: bool
     resume_enabled: bool
     compression_codec: str | None  # dictionary, gzip, etc.
-    wire_format: str               # binary, json, sse
+    wire_format: str  # binary, json, sse
 
 
 @dataclasses.dataclass(slots=True)

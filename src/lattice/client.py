@@ -109,13 +109,9 @@ class LatticeClient:
             compressed_tokens=compressed_tokens,
             transforms_applied=[t.name for t in self._pipeline.transforms],
             elapsed_ms=elapsed_ms,
-            runtime=dict(
-                get_canonical_request_value(compressed, None, "_lattice_runtime", {})
-            ),
+            runtime=dict(get_canonical_request_value(compressed, None, "_lattice_runtime", {})),
             runtime_budget=dict(
-                get_canonical_request_value(
-                    compressed, None, "_lattice_runtime_budget", {}
-                )
+                get_canonical_request_value(compressed, None, "_lattice_runtime_budget", {})
             ),
         )
 

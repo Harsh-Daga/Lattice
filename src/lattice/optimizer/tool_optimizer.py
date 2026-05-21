@@ -30,6 +30,7 @@ try:
 except Exception:
     ToolOutputFilter = None  # type: ignore[misc,assignment]
 
+
 @dataclasses.dataclass(slots=True)
 class _Candidate:
     request: Request
@@ -42,11 +43,7 @@ class _Candidate:
     @property
     def score(self) -> float:
         savings = max(0, self.tokens_before - self.tokens_after)
-        return (
-            self.quality_estimate
-            + (savings / 50.0)
-            - (self.latency_ms / 100.0)
-        )
+        return self.quality_estimate + (savings / 50.0) - (self.latency_ms / 100.0)
 
 
 class ToolOptimizer(ReversibleSyncTransform):

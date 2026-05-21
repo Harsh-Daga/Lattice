@@ -212,9 +212,7 @@ class ContentProfiler(ReversibleSyncTransform):
 
         # Build or reuse the canonical execution plan.
         plan = _coerce_execution_plan(
-            get_canonical_request_value(
-                request, context, "_lattice_execution_plan"
-            )
+            get_canonical_request_value(request, context, "_lattice_execution_plan")
         )
         if plan is None:
             profile_v2 = SemanticProfile(
@@ -279,9 +277,7 @@ class ContentProfiler(ReversibleSyncTransform):
         context.session_state["_lattice_optimizer_schedule"] = optimizer_schedule
         request.metadata["_lattice_optimizer_schedule"] = schedule_to_dict(optimizer_schedule)
 
-        cache_plan = get_canonical_request_value(
-            request, context, "_lattice_cache_plan"
-        )
+        cache_plan = get_canonical_request_value(request, context, "_lattice_cache_plan")
         if not isinstance(cache_plan, list):
             cache_plan = build_cache_plan_for_provider(
                 context.provider or "generic",
@@ -644,7 +640,15 @@ def _derive_optimizer_schedule_from_plan(
     allowed = [name for name in getattr(plan, "transforms", ()) if name.endswith("_optimizer")]
     blocked = {
         name: "plan_excludes"
-        for name in ("representation_optimizer", "structure_optimizer", "reference_optimizer", "tool_optimizer", "context_optimizer", "diagnostic_optimizer", "ir_structure_optimizer")
+        for name in (
+            "representation_optimizer",
+            "structure_optimizer",
+            "reference_optimizer",
+            "tool_optimizer",
+            "context_optimizer",
+            "diagnostic_optimizer",
+            "ir_structure_optimizer",
+        )
         if name not in allowed
     }
     return OptimizerSchedule(

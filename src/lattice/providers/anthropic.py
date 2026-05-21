@@ -444,9 +444,7 @@ class AnthropicAdapter:
         if any(msg.metadata.get("cache_control") for msg in request.messages):
             return True
         # Check _lattice_cache_plan from ExecutionPlan
-        exec_plan_cache = get_canonical_request_value(
-            request, None, "_lattice_cache_plan"
-        )
+        exec_plan_cache = get_canonical_request_value(request, None, "_lattice_cache_plan")
         if isinstance(exec_plan_cache, list):
             provider = getattr(request, "provider", "")
             for entry in exec_plan_cache:

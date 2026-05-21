@@ -367,7 +367,7 @@ class StrategySelector(ReversibleSyncTransform):
         max_dim = self.feature_dim
         features = [
             min(1.0, total_chars / 10000.0),  # normalized length
-            min(1.0, num_sections / 20.0),     # section count
+            min(1.0, num_sections / 20.0),  # section count
             min(1.0, (num_sections - num_protected) / max(1, num_sections)),  # editable ratio
             has_json,
             has_table,

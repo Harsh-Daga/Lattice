@@ -14,6 +14,7 @@ Key design:
 
 This replaces pipeline.py's 13 gate layers with clean execution.
 """
+
 from __future__ import annotations
 
 import time
@@ -72,7 +73,10 @@ class TransformRegistryV2:
     _FACTORIES: dict[str, tuple[str, str]] = {
         "content_profiler": ("lattice.transforms.content_profiler", "ContentProfiler"),
         "runtime_contract": ("lattice.transforms.runtime_contract", "RuntimeContractTransform"),
-        "constraint_lifting": ("lattice.transforms.constraint_lifting", "ConstraintLiftingTransform"),
+        "constraint_lifting": (
+            "lattice.transforms.constraint_lifting",
+            "ConstraintLiftingTransform",
+        ),
         "message_dedup": ("lattice.transforms.message_dedup", "MessageDeduplicator"),
         "cache_arbitrage": ("lattice.transforms.cache_arbitrage", "CacheArbitrageOptimizer"),
         "causal_chain": ("lattice.transforms.causal_chain", "CausalChainExtractor"),
@@ -84,7 +88,10 @@ class TransformRegistryV2:
         "tool_projection": ("lattice.transforms.tool_projection", "QueryAwareProjection"),
         "reference_optimizer": ("lattice.optimizer.reference_optimizer", "ReferenceOptimizer"),
         "structure_optimizer": ("lattice.optimizer.structure_optimizer", "StructureOptimizer"),
-        "ir_structure_optimizer": ("lattice.optimizer.ir_structure_optimizer", "IRStructureOptimizer"),
+        "ir_structure_optimizer": (
+            "lattice.optimizer.ir_structure_optimizer",
+            "IRStructureOptimizer",
+        ),
         "diagnostic_optimizer": ("lattice.optimizer.diagnostic_optimizer", "DiagnosticOptimizer"),
         "context_optimizer": ("lattice.optimizer.context_optimizer", "ContextOptimizer"),
         "tool_optimizer": ("lattice.optimizer.tool_optimizer", "ToolOptimizer"),
@@ -281,9 +288,7 @@ class PipelineV2:
                     context.record_metric(
                         "pipeline_v2", "beam_search_latency_ms", round(search_ms, 3)
                     )
-                    context.record_metric(
-                        "pipeline_v2", "beam_candidates", len(search.transforms)
-                    )
+                    context.record_metric("pipeline_v2", "beam_candidates", len(search.transforms))
                     context.record_metric(
                         "pipeline_v2",
                         "ir_sections",

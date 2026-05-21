@@ -14,6 +14,7 @@ Usage:
     plan = UnifiedPlanner().plan(request, profile, config)
     pipeline.execute(plan, context)  # executes verbatim
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -28,9 +29,9 @@ from lattice.ir.primitives import ExecutionPlan
 class Tier(enum.Enum):
     """Execution tier derived from task complexity + risk."""
 
-    FAST = "fast"          # Simple requests, low latency
+    FAST = "fast"  # Simple requests, low latency
     STANDARD = "standard"  # Normal requests
-    SAFE = "safe"          # Conservative, no lossy
+    SAFE = "safe"  # Conservative, no lossy
     REASONING = "reasoning"  # Reasoning/debugging, extra conservative
     EMERGENCY = "emergency"  # High risk, transforms disabled
 
@@ -84,27 +85,27 @@ class UnifiedPlanner:
 
     # Canonical request-side transform ordering (response-only excluded).
     _TRANSFORM_ORDER: tuple[str, ...] = (
-        "content_profiler",      # 1 — always runs first
-        "runtime_contract",      # 2
-        "constraint_lifting",    # 6
-        "cache_arbitrage",       # 9
-        "causal_chain",          # 9
-        "prefix_optimizer",      # 10
-        "message_dedup",         # 15
+        "content_profiler",  # 1 — always runs first
+        "runtime_contract",  # 2
+        "constraint_lifting",  # 6
+        "cache_arbitrage",  # 9
+        "causal_chain",  # 9
+        "prefix_optimizer",  # 10
+        "message_dedup",  # 15
         "diagnostic_optimizer",  # 17
-        "strategy_selector",     # 19 (bandit arms)
+        "strategy_selector",  # 19 (bandit arms)
         "representation_optimizer",  # 19 (beam search orchestrator)
-        "structure_optimizer",   # 20
-        "ir_structure_optimizer", # 20 (IR-native pair)
-        "reference_optimizer",   # 21
-        "rate_distortion",       # 22
-        "path_prefix",           # 23
-        "format_conversion",     # 25
-        "tool_projection",       # 29
-        "context_optimizer",     # 22 (lossy, gated)
-        "tool_optimizer",        # 30
-        "reference_sub",         # 20
-        "tool_filter",           # 30
+        "structure_optimizer",  # 20
+        "ir_structure_optimizer",  # 20 (IR-native pair)
+        "reference_optimizer",  # 21
+        "rate_distortion",  # 22
+        "path_prefix",  # 23
+        "format_conversion",  # 25
+        "tool_projection",  # 29
+        "context_optimizer",  # 22 (lossy, gated)
+        "tool_optimizer",  # 30
+        "reference_sub",  # 20
+        "tool_filter",  # 30
     )
 
     # Safety mapping: which transforms are safe at which tier.
@@ -230,15 +231,11 @@ class UnifiedPlanner:
         allowed = self._TIER_ALLOWED[tier]
 
         # Filter to those registered in our ordered list
-        transforms = tuple(
-            name for name in self._TRANSFORM_ORDER if name in allowed
-        )
+        transforms = tuple(name for name in self._TRANSFORM_ORDER if name in allowed)
 
         # Contextually add conditional transforms
         if profile.has_tool_calls and "tool_optimizer" in allowed:
-            transforms = self._insert_after(
-                transforms, "reference_optimizer", "tool_optimizer"
-            )
+            transforms = self._insert_after(transforms, "reference_optimizer", "tool_optimizer")
 
         if profile.context_length > 4000:
             if not profile.is_reasoning and not profile.is_debugging:
@@ -247,9 +244,7 @@ class UnifiedPlanner:
                 )
 
         # Derive budget and quality floor
-        quality_floor = self._QUALITY_FLOOR.get(
-            profile.task_class, 0.85
-        )
+        quality_floor = self._QUALITY_FLOOR.get(profile.task_class, 0.85)
         budget_ms = self._TIER_BUDGET_MS[tier]
 
         # Streaming adjusts budget
@@ -268,9 +263,7 @@ class UnifiedPlanner:
         )
 
     @staticmethod
-    def _insert_after(
-        transforms: tuple[str, ...], after: str, what: str
-    ) -> tuple[str, ...]:
+    def _insert_after(transforms: tuple[str, ...], after: str, what: str) -> tuple[str, ...]:
         """Insert *what* after the first occurrence of *after*.
 
         If *after* is not in the transforms list, *what* is NOT inserted.
@@ -337,6 +330,7 @@ def profile_from_legacy(legacy: Any) -> SemanticProfile | None:
     if isinstance(legacy, dict):
         getter = legacy.get
     else:
+
         def getter(key: str, default: Any = None) -> Any:
             return getattr(legacy, key, default)
 
