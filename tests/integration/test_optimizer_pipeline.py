@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.result import is_ok, unwrap
+from lattice.pipeline.factory import build_optimizer_pipeline
 from lattice.transport.types import Message, Request, Response
 
 
@@ -96,7 +96,7 @@ class TestOptimizerPipelineEndToEnd:
 
     def test_hard_rollback_rejects_bad_candidates(self) -> None:
         """If an optimizer expands tokens without cache/transport gain, reject."""
-        from lattice.optimizer.representation_optimizer import _validate_beam_candidate
+        from lattice.pipeline.representation_optimizer import _validate_beam_candidate
 
         class FakeReq:
             token_estimate = 100

@@ -20,9 +20,9 @@ import structlog
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.policy import OptimizationPolicy, Reject, Skip
 from lattice.core.result import Err, Ok, Result, is_err, unwrap, unwrap_err
 from lattice.core.runtime_state import get_canonical_request_value
+from lattice.pipeline.policy import OptimizationPolicy, Reject, Skip
 from lattice.transport.types import Request, Response
 
 logger = structlog.get_logger()
@@ -660,7 +660,7 @@ class CompressorPipeline:
                 _text_before = "\n".join(m.content for m in backup.messages)
                 _text_after = "\n".join(m.content for m in working.messages)
                 if _text_before != _text_after:
-                    from lattice.core.guardrails import check_placeholder_leakage
+                    from lattice.pipeline.guardrails import check_placeholder_leakage
 
                     pl_decision = check_placeholder_leakage(_text_before, _text_after)
                     if pl_decision.action.value == "rollback":
@@ -694,10 +694,10 @@ class CompressorPipeline:
             # Protects error counts, failure counts, percentages — critical for
             # debugging and analysis tasks where these are diagnostic signals.
             if _psg_text_before != _psg_text_after:
-                from lattice.core.guardrails import _check_numeric_preservation
-                from lattice.core.guardrails import check_critical_signal_loss as _chk_signal
-                from lattice.core.guardrails import check_entity_preservation as _chk_entity
-                from lattice.core.guardrails import check_format_preservation as _chk_format
+                from lattice.pipeline.guardrails import _check_numeric_preservation
+                from lattice.pipeline.guardrails import check_critical_signal_loss as _chk_signal
+                from lattice.pipeline.guardrails import check_entity_preservation as _chk_entity
+                from lattice.pipeline.guardrails import check_format_preservation as _chk_format
 
                 # Numeric loss: N errors/failures/warnings/timeouts/crashes,
                 # percentages — these are diagnostic signals, not noise.
@@ -819,8 +819,8 @@ class CompressorPipeline:
             ):
                 compression = (tokens_before - working_tokens) / tokens_before
                 placeholder_used = transform.name in self._placeholder_using_transforms
-                from lattice.core.milv import should_trigger_milv, validate_transform
                 from lattice.core.task_classifier import TaskClass, TaskClassification
+                from lattice.pipeline.milv import should_trigger_milv, validate_transform
 
                 _tdata = get_canonical_request_value(
                     working, context, "_lattice_task_classification", {}

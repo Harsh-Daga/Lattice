@@ -92,7 +92,7 @@ def _parse_args() -> argparse.Namespace:
         "--use-v2-pipeline",
         action="store_true",
         default=False,
-        help="Use the v2 immutable pipeline (UnifiedPlanner + PipelineV2) for evals. "
+        help="Use the v2 immutable pipeline (UnifiedPlanner + Pipeline) for evals. "
         "When set, the benchmark builds build_v2_pipeline() instead of the optimizer pipeline.",
     )
     return parser.parse_args()

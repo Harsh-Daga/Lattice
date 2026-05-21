@@ -16,9 +16,9 @@ import pytest
 from lattice.client import LatticeClient
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline_factory import build_default_pipeline
 from lattice.core.result import unwrap
 from lattice.integrations.mcp import LatticeMCPTools
+from lattice.pipeline.factory import build_default_pipeline
 from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.types import Request
 

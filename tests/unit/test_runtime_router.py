@@ -1,7 +1,7 @@
 """Tests for runtime router."""
 
 from lattice.core.context import TransformContext
-from lattice.core.policy import OptimizationPolicy, Skip
+from lattice.pipeline.policy import OptimizationPolicy, Skip
 from lattice.runtime.router import RuntimeRouter, Tier
 from lattice.transforms.runtime_contract import RuntimeContractTransform
 from lattice.transport.types import Message, Request

@@ -9,7 +9,7 @@ import pytest
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.policy import (
+from lattice.pipeline.policy import (
     Allow,
     OptimizationPolicy,
     Reject,

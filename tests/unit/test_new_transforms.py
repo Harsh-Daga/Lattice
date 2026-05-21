@@ -72,7 +72,7 @@ class TestColumnarPack:
 class TestNumericPreservationWithoutArithmeticSequence:
     def test_pipeline_passes_numeric_content_unchanged(self) -> None:
         config = LatticeConfig()
-        from lattice.core.pipeline_factory import build_default_pipeline
+        from lattice.pipeline.factory import build_default_pipeline
 
         pipeline = build_default_pipeline(config)
         messages = [
@@ -129,7 +129,7 @@ class TestDiagnosticRLEStillHandlesTraces:
 
 class TestSafetyGates:
     def test_placeholder_leakage_rolls_back(self) -> None:
-        from lattice.core.guardrails import GuardAction, check_placeholder_leakage
+        from lattice.pipeline.guardrails import GuardAction, check_placeholder_leakage
 
         before = "The error was in module X"
         after = "The error was <ref_17> in module <d_36>"
@@ -137,14 +137,14 @@ class TestSafetyGates:
         assert decision.action in (GuardAction.ROLLBACK, GuardAction.REJECT)
 
     def test_negative_savings_rolls_back(self) -> None:
-        from lattice.core.guardrails import GuardAction, check_negative_savings
+        from lattice.pipeline.guardrails import GuardAction, check_negative_savings
 
         decision = check_negative_savings(100, 200)
         assert decision.action in (GuardAction.ROLLBACK, GuardAction.REJECT)
 
     def test_numeric_preservation_after_transform(self) -> None:
         config = LatticeConfig()
-        from lattice.core.pipeline_factory import build_default_pipeline
+        from lattice.pipeline.factory import build_default_pipeline
 
         pipeline = build_default_pipeline(config)
         messages = [

@@ -1,4 +1,4 @@
-"""PipelineV2 wrapper — adapts PipelineV2 into CompressorPipeline-compatible transform."""
+"""Pipeline wrapper — adapts Pipeline into CompressorPipeline-compatible transform."""
 
 from __future__ import annotations
 
@@ -6,19 +6,19 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
-from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
 from lattice.core.result import Ok
 from lattice.core.runtime_state import coerce_execution_plan, get_canonical_state_value
 from lattice.core.task_classifier import TaskClass
 from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner, profile_from_legacy
+from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
 from lattice.transport.types import Request, Response
 
 
 class PipelineV2Wrapper(ReversibleSyncTransform):
-    """Adapts PipelineV2 into CompressorPipeline-compatible transform.
+    """Adapts Pipeline into CompressorPipeline-compatible transform.
 
     Reads ExecutionPlan from context (set by content_profiler when
-    UnifiedPlanner is attached) and executes it verbatim via PipelineV2.
+    UnifiedPlanner is attached) and executes it verbatim via Pipeline.
     """
 
     name = "pipeline_v2"
@@ -27,7 +27,7 @@ class PipelineV2Wrapper(ReversibleSyncTransform):
     enabled = True
 
     def __init__(self) -> None:
-        self._pipeline_v2 = PipelineV2(registry=TransformRegistryV2())
+        self._pipeline_v2 = Pipeline(registry=PipelineTransformRegistry())
 
     def process(self, request: Request, context: TransformContext) -> Any:
         context.session_state["_lattice_last_request"] = request.copy()

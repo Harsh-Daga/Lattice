@@ -14,8 +14,8 @@ import asyncio
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.result import is_ok, unwrap
+from lattice.pipeline.factory import build_optimizer_pipeline
 from lattice.transport.types import Message, Request, Response
 
 

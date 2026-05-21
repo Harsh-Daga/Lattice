@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.result import is_ok, unwrap
+from lattice.pipeline.factory import build_optimizer_pipeline
 from lattice.planner.execution_plan import ExecutionPlan
 from lattice.planner.provider_strategy import get_provider_strategy
 from lattice.planner.request_classifier import RequestClassifier
@@ -115,7 +115,7 @@ class TestRepresentationOptimizerLayer:
         assert "blocked" in schedule
 
     def test_hard_rollback_rejects_expansion(self) -> None:
-        from lattice.optimizer.representation_optimizer import _validate_beam_candidate
+        from lattice.pipeline.representation_optimizer import _validate_beam_candidate
 
         candidate = type(
             "Cand",
@@ -251,7 +251,7 @@ class TestGovernanceAndRollback:
     """Phase 7 — hard rollback, safety, placeholder leakage."""
 
     def test_placeholder_leakage_blocked(self) -> None:
-        from lattice.core.guardrails import GuardAction, check_placeholder_leakage
+        from lattice.pipeline.guardrails import GuardAction, check_placeholder_leakage
 
         before = "The error was in module X with ID 123"
         after = "The error was <ref_17> in module <d_36>"

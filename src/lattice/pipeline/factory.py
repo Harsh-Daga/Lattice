@@ -92,7 +92,7 @@ def build_v2_pipeline(
 
     When config.use_v2_pipeline is True, this pipeline:
       - Uses UnifiedPlanner inside content_profiler for scheduling
-      - Uses PipelineV2 for verbatim execution of ExecutionPlan
+      - Uses Pipeline for verbatim execution of ExecutionPlan
       - Has a flattened optimizer hierarchy (no nested representation_optimizer)
 
     If use_v2_pipeline is False, falls back to build_optimizer_pipeline().
@@ -130,9 +130,9 @@ def build_v2_pipeline(
     if config.is_transform_enabled("prefix_optimizer"):
         pipeline.register(PrefixOptimizer())
 
-    # 5. PipelineV2 wrapper — reads ExecutionPlan from context set by content_profiler.
+    # 5. Pipeline wrapper — reads ExecutionPlan from context set by content_profiler.
     # This handles ALL transforms via beam search and serializes results.
-    # No legacy output tail needed — PipelineV2 executes everything from the plan.
+    # No legacy output tail needed — Pipeline executes everything from the plan.
     from lattice.core.pipeline_v2_wrapper import PipelineV2Wrapper
 
     pipeline.register(PipelineV2Wrapper())
@@ -231,7 +231,7 @@ def build_benchmark_pipeline(config: LatticeConfig) -> CompressorPipeline:
     """Build a pipeline that exercises ALL enabled transforms + optimizers.
 
     Used by benchmarks and evals.  If ``use_v2_pipeline`` is True, builds
-    the v2 path (UnifiedPlanner + PipelineV2).  Otherwise builds the optimizer
+    the v2 path (UnifiedPlanner + Pipeline).  Otherwise builds the optimizer
     path (representation_optimizer beam search).
     """
     # Clone config so we don't mutate the caller's instance

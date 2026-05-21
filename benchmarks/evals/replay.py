@@ -23,7 +23,7 @@ from benchmarks.metrics.quality import evaluate_response
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import build_benchmark_pipeline
+from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.core.result import unwrap
 from lattice.transforms.batching import BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer

@@ -16,7 +16,7 @@ from lattice.core.context import TransformContext
 from lattice.core.cost_estimator import CostEstimator
 from lattice.core.credentials import CredentialResolver
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import build_benchmark_pipeline
+from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.core.result import is_err, unwrap, unwrap_err
 from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
 from lattice.transport.serialization import message_from_dict, message_to_dict

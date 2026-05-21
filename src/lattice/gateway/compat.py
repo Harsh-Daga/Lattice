@@ -18,7 +18,6 @@ from starlette.responses import Response as StarletteResponse
 from lattice.core.agent_stats import identify_agent
 from lattice.core.context import TransformContext
 from lattice.core.cost_estimator import normalize_usage
-from lattice.core.pipeline_factory import pipeline_summary
 from lattice.core.result import is_err, unwrap
 from lattice.core.runtime_state import (
     get_canonical_request_value,
@@ -29,6 +28,7 @@ from lattice.core.runtime_state import (
 from lattice.core.semantic_cache import assemble_cached_response, compute_cache_key
 from lattice.core.telemetry import TransportOutcome
 from lattice.gateway.server import LLMTPGateway
+from lattice.pipeline.factory import pipeline_summary
 from lattice.protocol.manifest import manifest_summary
 from lattice.providers.capabilities import Capability, get_capability_registry
 from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
@@ -1432,7 +1432,7 @@ async def chat_completions_websocket_passthrough(
     if pipeline is None:
         # Fallback: build a default pipeline (for standalone testing)
         from lattice.core.config import LatticeConfig
-        from lattice.core.pipeline_factory import build_default_pipeline
+        from lattice.pipeline.factory import build_default_pipeline
 
         config = LatticeConfig.auto()
         pipeline = build_default_pipeline(config)

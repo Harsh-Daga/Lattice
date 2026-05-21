@@ -183,8 +183,8 @@ class TestReachability:
     def test_pipeline_produces_reachability_metadata(self) -> None:
         from lattice.core.config import LatticeConfig
         from lattice.core.context import TransformContext
-        from lattice.core.pipeline_factory import build_default_pipeline
         from lattice.core.result import is_ok, unwrap
+        from lattice.pipeline.factory import build_default_pipeline
 
         async def run():
             config = LatticeConfig()
@@ -205,8 +205,8 @@ class TestReachability:
     def test_safety_decision_recorded(self) -> None:
         from lattice.core.config import LatticeConfig
         from lattice.core.context import TransformContext
-        from lattice.core.pipeline_factory import build_default_pipeline
         from lattice.core.result import is_ok, unwrap
+        from lattice.pipeline.factory import build_default_pipeline
 
         async def run():
             config = LatticeConfig()
@@ -229,8 +229,8 @@ class TestProductionGuards:
     def test_compression_limit_guard_exists(self) -> None:
         from lattice.core.config import LatticeConfig
         from lattice.core.context import TransformContext
-        from lattice.core.pipeline_factory import build_default_pipeline
         from lattice.core.result import is_ok
+        from lattice.pipeline.factory import build_default_pipeline
 
         async def run():
             config = LatticeConfig(graceful_degradation=True)
