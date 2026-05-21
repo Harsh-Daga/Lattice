@@ -1,4 +1,5 @@
 """End-to-end test for v2 proxy pipeline + reverse path."""
+
 from __future__ import annotations
 
 import asyncio
@@ -7,8 +8,8 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline_factory import build_v2_pipeline
 from lattice.core.result import is_ok
-from lattice.core.transport import Message, Request, Response
 from lattice.proxy.bootstrap import build_proxy_runtime
+from lattice.transport.types import Message, Request, Response
 
 
 def _req(content: str, role: str = "user") -> Message:

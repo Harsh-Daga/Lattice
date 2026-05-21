@@ -18,8 +18,8 @@ from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
-from lattice.core.transport import Message, Request, Response
 from lattice.ir.primitives import PromptIRV2
+from lattice.transport.types import Message, Request, Response
 
 _DEFAULT_REQUIRED_FIELDS = frozenset(
     {

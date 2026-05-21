@@ -26,12 +26,12 @@ import pytest
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.transport import Message, Request
 from lattice.providers.transport import DirectHTTPProvider
 from lattice.transforms.output_cleanup import OutputCleanup
 from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.tool_filter import ToolOutputFilter
+from lattice.transport.types import Message, Request
 from lattice.utils.token_count import TiktokenCounter
 
 

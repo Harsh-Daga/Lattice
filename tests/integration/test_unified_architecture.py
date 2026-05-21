@@ -13,11 +13,11 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request, Response
 from lattice.planner.execution_plan import ExecutionPlan
 from lattice.planner.provider_strategy import get_provider_strategy
 from lattice.planner.request_classifier import RequestClassifier
 from lattice.planner.transport_planner import build_transport_plan
+from lattice.transport.types import Message, Request, Response
 
 
 def _req(content: str, role: str = "user") -> Message:
@@ -39,7 +39,13 @@ class TestRequestIntelligenceLayer:
         result = classifier.classify(request)
         # Task class is determined by the classifier — could be debugging, retrieval, etc.
         assert result["task_class"] in (
-            "debugging", "retrieval", "reasoning", "analysis", "structured", "simple", "summarization"
+            "debugging",
+            "retrieval",
+            "reasoning",
+            "analysis",
+            "structured",
+            "simple",
+            "summarization",
         )
         assert result["budget_ms"] > 0
         assert result["quality_floor"] >= 0.80
@@ -158,8 +164,8 @@ class TestTransportOptimizerLayer:
     """Layer 3 — delta, cache alignment, binary framing, multiplex, resume."""
 
     def test_delta_wire_decoder_exists(self) -> None:
-        from lattice.core.delta_wire import DeltaWireDecoder
         from lattice.core.session import MemorySessionStore
+        from lattice.transport.delta_wire import DeltaWireDecoder
 
         store = MemorySessionStore(ttl_seconds=3600, max_sessions=100)
         decoder = DeltaWireDecoder(store)

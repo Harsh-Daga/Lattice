@@ -18,6 +18,7 @@ from benchmarks.framework.types import QualityMeasurement, TaskEquivalenceScore
 # Semantic Similarity (keyword-based fallback, embedding-ready)
 # =============================================================================
 
+
 def _tokenize(text: str) -> set[str]:
     """Extract meaningful tokens from text."""
     # Strip LATTICE artifacts
@@ -73,6 +74,7 @@ def compute_semantic_similarity(baseline: str, optimized: str) -> float:
 # =============================================================================
 # JSON Validation
 # =============================================================================
+
 
 def validate_json(text: str) -> bool | None:
     """Check if text contains valid JSON. Returns None if no JSON detected."""
@@ -130,6 +132,7 @@ def validate_json_schema(text: str, schema: dict[str, Any] | None = None) -> boo
 # Tool Call Equivalence
 # =============================================================================
 
+
 def tool_calls_equivalent(
     baseline_calls: list[dict[str, Any]] | None,
     optimized_calls: list[dict[str, Any]] | None,
@@ -153,8 +156,16 @@ def tool_calls_equivalent(
             return False
         # Arguments should have same keys (structure check)
         try:
-            b_args = json.loads(b_fn.get("arguments", "{}")) if isinstance(b_fn.get("arguments"), str) else b_fn.get("arguments", {})
-            o_args = json.loads(o_fn.get("arguments", "{}")) if isinstance(o_fn.get("arguments"), str) else o_fn.get("arguments", {})
+            b_args = (
+                json.loads(b_fn.get("arguments", "{}"))
+                if isinstance(b_fn.get("arguments"), str)
+                else b_fn.get("arguments", {})
+            )
+            o_args = (
+                json.loads(o_fn.get("arguments", "{}"))
+                if isinstance(o_fn.get("arguments"), str)
+                else o_fn.get("arguments", {})
+            )
             if set(b_args.keys()) != set(o_args.keys()):
                 return False
         except (json.JSONDecodeError, ValueError):
@@ -166,6 +177,7 @@ def tool_calls_equivalent(
 # =============================================================================
 # Main Evaluation Entry Point
 # =============================================================================
+
 
 def evaluate_response(
     baseline_response: str,

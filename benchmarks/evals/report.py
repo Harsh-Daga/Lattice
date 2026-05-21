@@ -85,7 +85,14 @@ def _render_special_details(lines: list[str], details: dict[str, Any]) -> bool:
                 "| --- | ---: |",
             ]
         )
-        for key in ("scenario_count", "proof_passed", "proof_failed", "feature_failed", "tier_failed", "budget_failed"):
+        for key in (
+            "scenario_count",
+            "proof_passed",
+            "proof_failed",
+            "feature_failed",
+            "tier_failed",
+            "budget_failed",
+        ):
             lines.append(f"| {key} | {coverage_summary.get(key, 0)} |")
         tiers = coverage_summary.get("tiers") or {}
         for tier in ("SIMPLE", "MEDIUM", "COMPLEX", "REASONING"):
@@ -122,7 +129,7 @@ def _render_special_details(lines: list[str], details: dict[str, Any]) -> bool:
                     ]
                 )
                 + " |"
-        )
+            )
         rendered = True
 
     scenario_proof = details.get("scenario_proof")
@@ -296,9 +303,9 @@ def _render_special_details(lines: list[str], details: dict[str, Any]) -> bool:
         )
         for r in validation_results:
             expansion = r.get("expansion_ratios") or {}
-            expansion_summary = ", ".join(
-                f"{k}:{v:.2f}x" for k, v in expansion.items()
-            ) if expansion else "none"
+            expansion_summary = (
+                ", ".join(f"{k}:{v:.2f}x" for k, v in expansion.items()) if expansion else "none"
+            )
             lines.append(
                 "| "
                 + " | ".join(
@@ -429,7 +436,9 @@ def render_markdown(report: ProductionEvalReport) -> str:
                             "tool_calls": str(bool(safety.get("has_tool_calls", False))),
                             "high_stakes": str(bool(safety.get("has_high_stakes_entities", False))),
                             "long_form": str(bool(safety.get("long_form", False))),
-                            "lossy_ok": str(bool(prompt_meta.get("lossy_transform_allowed", False))),
+                            "lossy_ok": str(
+                                bool(prompt_meta.get("lossy_transform_allowed", False))
+                            ),
                         }
                     )
 

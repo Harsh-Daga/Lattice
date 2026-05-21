@@ -158,13 +158,17 @@ async def run_protocol_eval() -> EvalSectionReport:
     )
 
     mux = MultiStreamMux(max_streams=4)
-    primary = mux.create_stream(StreamType.PRIMARY, priority=0, reliability=ReliabilityMode.RELIABLE)
+    primary = mux.create_stream(
+        StreamType.PRIMARY, priority=0, reliability=ReliabilityMode.RELIABLE
+    )
     tool = mux.create_stream(StreamType.TOOL, priority=1, reliability=ReliabilityMode.PARTIAL)
     migrated = mux.migrate_stream(tool.stream_id)
     mux.close_stream(tool.stream_id)
     reliability = SelectiveReliability(max_retries=3)
     critical = reliability.should_retransmit(boundary_frame, 0)
-    low = reliability.should_retransmit(framer.encode_frame_with_boundary(b"x", "sentence", "low"), 0)
+    low = reliability.should_retransmit(
+        framer.encode_frame_with_boundary(b"x", "sentence", "low"), 0
+    )
 
     stream_manager = StreamManager(window_capacity=3, token_ttl_seconds=30)
     stream_id = stream_manager.create_stream()
@@ -181,7 +185,8 @@ async def run_protocol_eval() -> EvalSectionReport:
         "manifest_segments": manifest_info["segment_count"] >= 2,
         "cache_plans": all(v["breakpoints"] >= 1 for v in cache_plans.values()),
         "dictionary_roundtrip": restored == payload and replayed == payload,
-        "frame_roundtrip": decoded.frame_type == FrameType.REQUEST and bool(decoded.flags & FrameFlags.DICT_COMPRESSED),
+        "frame_roundtrip": decoded.frame_type == FrameType.REQUEST
+        and bool(decoded.flags & FrameFlags.DICT_COMPRESSED),
         "chunking": len(frames) >= 1,
         "boundary_flags": bool(boundary_frame.flags & FrameFlags.BOUNDARY_REASONING),
         "mux_primary_active": primary.stream_id == 0 and mux.active_count == 1,
@@ -292,7 +297,9 @@ async def run_transport_eval() -> EvalSectionReport:
                 + b"\r\n0\r\n\r\n"
             )
         else:
-            payload = json.dumps({"ok": True, "path": path, "host": headers.get("host", "")}).encode("utf-8")
+            payload = json.dumps(
+                {"ok": True, "path": path, "host": headers.get("host", "")}
+            ).encode("utf-8")
             writer.write(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-Type: application/json\r\n"
@@ -380,9 +387,7 @@ async def run_transport_eval() -> EvalSectionReport:
             writer.close()
             return
         writer.write(
-            b"HTTP/1.1 101 Switching Protocols\r\n"
-            b"Upgrade: websocket\r\n"
-            b"Connection: Upgrade\r\n\r\n"
+            b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"
         )
         await writer.drain()
         try:
@@ -412,14 +417,22 @@ async def run_transport_eval() -> EvalSectionReport:
 
     checks = {
         "connection_pool_reuse": client_a is client_b and http_version in {"http/2", "http/1.1"},
-        "framing_roundtrip": decoded.frame_type == FrameType.REQUEST and bool(decoded.flags & FrameFlags.DICT_COMPRESSED),
+        "framing_roundtrip": decoded.frame_type == FrameType.REQUEST
+        and bool(decoded.flags & FrameFlags.DICT_COMPRESSED),
         "negotiation_roundtrip": accepted is True and reason == "",
-        "resume_window": token_valid and resume_meta["resumed"] is True and resume_meta["replay_chunks"] == 2,
+        "resume_window": token_valid
+        and resume_meta["resumed"] is True
+        and resume_meta["replay_chunks"] == 2,
         "replay_buffer": replay_ok,
         "local_socket": socket_received == [frame] and socket_echo == b"wire",
-        "proxy_roundtrip": proxied["status"].startswith("HTTP/1.1 200") and backend_requests and backend_requests[0]["headers"].get("host", "").endswith(f":{backend_port}"),
-        "proxy_streaming": "data: stream-one" in streamed["body"] and "data: stream-two" in streamed["body"],
-        "websocket_tunnel": ws_connected is True and tunnel.state == "disconnected" and bool(ws_events),
+        "proxy_roundtrip": proxied["status"].startswith("HTTP/1.1 200")
+        and backend_requests
+        and backend_requests[0]["headers"].get("host", "").endswith(f":{backend_port}"),
+        "proxy_streaming": "data: stream-one" in streamed["body"]
+        and "data: stream-two" in streamed["body"],
+        "websocket_tunnel": ws_connected is True
+        and tunnel.state == "disconnected"
+        and bool(ws_events),
         "sidecar_connect_url": sidecar.connect_url == "http://127.0.0.1:8799",
     }
     return EvalSectionReport(
@@ -490,10 +503,14 @@ async def run_integration_eval() -> EvalSectionReport:
             revert(cast(Any, mutations[name]))
 
         reverted = {
-            "claude": not patch_paths["claude"].exists() or '"ANTHROPIC_BASE_URL"' not in patch_paths["claude"].read_text(),
-            "codex": patch_paths["codex"].exists() and "# --- LATTICE persistent provider ---" not in patch_paths["codex"].read_text(),
-            "opencode": patch_paths["opencode"].exists() and "x-lattice-provider" not in patch_paths["opencode"].read_text(),
-            "copilot": patch_paths["copilot"].exists() and "lattice_init" not in patch_paths["copilot"].read_text(),
+            "claude": not patch_paths["claude"].exists()
+            or '"ANTHROPIC_BASE_URL"' not in patch_paths["claude"].read_text(),
+            "codex": patch_paths["codex"].exists()
+            and "# --- LATTICE persistent provider ---" not in patch_paths["codex"].read_text(),
+            "opencode": patch_paths["opencode"].exists()
+            and "x-lattice-provider" not in patch_paths["opencode"].read_text(),
+            "copilot": patch_paths["copilot"].exists()
+            and "lattice_init" not in patch_paths["copilot"].read_text(),
         }
 
     checks = {
@@ -562,9 +579,18 @@ async def run_capability_eval() -> EvalSectionReport:
 
     checks = {
         "matrix_size": len(rows) >= 10,
-        "openai_cache": any(row["provider"] == "openai" and row["cache_mode"] == CacheMode.AUTO_PREFIX.value for row in rows),
-        "anthropic_cache": any(row["provider"] == "anthropic" and row["cache_mode"] == CacheMode.EXPLICIT_BREAKPOINT.value for row in rows),
-        "explicit_context": any(row["cache_mode"] == CacheMode.EXPLICIT_CONTEXT.value for row in rows),
+        "openai_cache": any(
+            row["provider"] == "openai" and row["cache_mode"] == CacheMode.AUTO_PREFIX.value
+            for row in rows
+        ),
+        "anthropic_cache": any(
+            row["provider"] == "anthropic"
+            and row["cache_mode"] == CacheMode.EXPLICIT_BREAKPOINT.value
+            for row in rows
+        ),
+        "explicit_context": any(
+            row["cache_mode"] == CacheMode.EXPLICIT_CONTEXT.value for row in rows
+        ),
         "cache_modes_present": len(cache_modes) >= 3,
     }
     return EvalSectionReport(

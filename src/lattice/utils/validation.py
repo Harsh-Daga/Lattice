@@ -15,7 +15,7 @@ import json
 import re
 from typing import Any
 
-from lattice.core.transport import Request
+from lattice.transport.types import Request
 
 _STRICT_INSTRUCTION_PATTERNS = (
     r"\bdo not\b",

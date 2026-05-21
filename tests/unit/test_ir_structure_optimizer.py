@@ -1,10 +1,11 @@
 """Unit tests for IR-native structure optimizer."""
+
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
-from lattice.core.transport import Request
 from lattice.ir.types import PromptIR, Section, SectionType, Span, SpanRole
 from lattice.optimizer.ir_structure_optimizer import IRStructureOptimizer
+from lattice.transport.types import Request
 
 
 def _make_request(content: str) -> Request:
@@ -61,9 +62,7 @@ class TestIRStructureOptimizer:
         assert isinstance(modified, Request)
 
     def test_group_logs(self) -> None:
-        req = _make_request(
-            "ERROR: connection refused\nWARN: slow query\nERROR: timeout\n"
-        )
+        req = _make_request("ERROR: connection refused\nWARN: slow query\nERROR: timeout\n")
         ctx = TransformContext(request_id="t3", provider="openai", model="gpt-4")
         opt = IRStructureOptimizer()
         result = opt.process(req, ctx)

@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from lattice.core.runtime_state import get_canonical_request_value
-from lattice.core.transport import Message, Request, Response
+from lattice.transport.types import Message, Request, Response
 
 
 @dataclass(slots=True)

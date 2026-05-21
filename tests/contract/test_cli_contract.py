@@ -57,10 +57,17 @@ _NONSTANDARD_HELP = {"health", "benchmark"}
 
 @pytest.mark.parametrize(
     "command",
-    [c["name"] for c in __import__("json").loads(
-        (__import__("pathlib").Path(__file__).resolve().parents[2]
-         / "docs" / "refactor" / "api-surface.json").read_text()
-    )["cli"]["commands"]],
+    [
+        c["name"]
+        for c in __import__("json").loads(
+            (
+                __import__("pathlib").Path(__file__).resolve().parents[2]
+                / "docs"
+                / "refactor"
+                / "api-surface.json"
+            ).read_text()
+        )["cli"]["commands"]
+    ],
 )
 def test_subcommand_help(command: str) -> None:
     result = run_lattice([command, "--help"])

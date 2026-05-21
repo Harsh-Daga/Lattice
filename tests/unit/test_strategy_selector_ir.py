@@ -1,11 +1,12 @@
 """Unit tests for StrategySelector.optimize() (IR-native path)."""
+
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.result import Ok
-from lattice.core.transport import Request
 from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
 from lattice.transforms.strategy_selector import StrategySelector
+from lattice.transport.types import Request
 
 
 class TestStrategySelectorIR:

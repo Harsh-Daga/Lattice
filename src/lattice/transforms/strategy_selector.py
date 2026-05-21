@@ -40,8 +40,8 @@ from lattice.core.runtime_state import (
     get_ir_metadata_value,
     thaw_value,
 )
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import PromptIRV2
+from lattice.transport.types import Request, Response
 
 logger = structlog.get_logger()
 

@@ -7,7 +7,7 @@ import asyncio
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 
 
 class TestDiagnosticRLE:
@@ -193,9 +193,6 @@ class TestExtractiveCompress:
         assert is_ok(result)
         out = unwrap(result)
         assert "error" in out.messages[0].content.lower()
-
-
-
 
 
 class TestFrontierScoring:

@@ -17,12 +17,12 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.core.transport import Message, Request, Response
 from lattice.transforms.output_cleanup import OutputCleanup
 from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.rate_distortion import RateDistortionCompressor
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.tool_filter import ToolOutputFilter
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # Pipeline fixture

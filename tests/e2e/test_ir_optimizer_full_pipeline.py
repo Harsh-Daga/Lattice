@@ -1,4 +1,5 @@
 """End-to-end test for IR optimizer through full pipeline."""
+
 from __future__ import annotations
 
 import asyncio
@@ -7,7 +8,7 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 
 
 def _req(content: str, role: str = "user") -> Message:

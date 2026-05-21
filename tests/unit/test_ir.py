@@ -6,11 +6,11 @@ import json
 
 import pytest
 
-from lattice.core.transport import Message, Request
 from lattice.ir.builder import build_ir, compile_request_ir
 from lattice.ir.normalizer import normalize_ir
 from lattice.ir.serializer import serialize_ir_to_text
 from lattice.ir.types import PromptIR, SectionType
+from lattice.transport.types import Message, Request
 
 
 def _make_request(messages: list[dict]) -> Request:

@@ -6,9 +6,9 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request, Response
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
 from lattice.transforms.content_profiler import ContentProfiler
+from lattice.transport.types import Message, Request, Response
 
 
 def test_cache_arbitrage_reorders_system_first() -> None:

@@ -31,7 +31,6 @@ import structlog
 
 from lattice.core.errors import ProviderError, ProviderTimeoutError
 from lattice.core.runtime_state import get_canonical_request_value
-from lattice.core.transport import Request, Response
 from lattice.providers.anthropic import AnthropicAdapter
 from lattice.providers.azure import AzureAdapter
 from lattice.providers.base import ProviderAdapter
@@ -52,6 +51,7 @@ from lattice.providers.openai_compatible import (
 )
 from lattice.providers.stall_detector import StreamStallDetector
 from lattice.transport.congestion import TACCController
+from lattice.transport.types import Request, Response
 
 logger = structlog.get_logger()
 
@@ -993,7 +993,7 @@ class DirectHTTPProvider:
         extra_headers: dict[str, str] | None = None,
         extra_body: dict[str, Any] | None = None,
     ) -> Request:
-        from lattice.core.serialization import message_from_dict
+        from lattice.transport.serialization import message_from_dict
 
         resolved_stop: list[str] | None = None
         if isinstance(stop, str):

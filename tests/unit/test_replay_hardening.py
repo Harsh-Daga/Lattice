@@ -1,4 +1,5 @@
 """Tests for replay hardening canonical fingerprints in ScenarioResult."""
+
 from __future__ import annotations
 
 from benchmarks.framework.types import (
@@ -58,9 +59,7 @@ class TestReplayHardeningFields:
         from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
 
         ir = PromptIRV2(
-            sections=(
-                SectionV2(type="context", spans=(SpanV2(span_id="s1", text="hello"),)),
-            )
+            sections=(SectionV2(type="context", spans=(SpanV2(span_id="s1", text="hello"),)),)
         )
         fp = ir.canonical_fingerprint()
         assert len(fp) == 64

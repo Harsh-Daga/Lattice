@@ -14,7 +14,6 @@ import json as _json
 import re
 from typing import Any
 
-from lattice.core.transport import Message, Request
 from lattice.ir.types import (
     PromptIR,
     Section,
@@ -22,6 +21,7 @@ from lattice.ir.types import (
     Span,
     SpanRole,
 )
+from lattice.transport.types import Message, Request
 
 _INDENT = re.compile(r"^\s+")
 _FENCE_START = re.compile(r"^```(\w+)?$")

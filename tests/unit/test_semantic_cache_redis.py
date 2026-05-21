@@ -12,7 +12,7 @@ from lattice.core.semantic_cache import (
     SemanticCache,
     compute_cache_key,
 )
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 
 
 class TestRedisCacheBackend:

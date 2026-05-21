@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.transport import Message, Request
 from lattice.providers.anthropic import AnthropicAdapter
 from lattice.providers.tool_sanitizer import ANTHROPIC_TOOL_ID_PATTERN
+from lattice.transport.types import Message, Request
 
 # =============================================================================
 # Routing

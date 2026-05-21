@@ -33,8 +33,8 @@ from fastapi.testclient import TestClient
 
 from lattice.core.config import LatticeConfig
 from lattice.core.errors import ProviderError, ProviderTimeoutError
-from lattice.core.transport import Message, Request, Response
 from lattice.proxy.server import create_app
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # Fixtures

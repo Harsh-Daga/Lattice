@@ -17,7 +17,7 @@ import dataclasses
 import re
 from typing import Any
 
-from lattice.core.transport import Request
+from lattice.transport.types import Request
 
 # =============================================================================
 # Tier definitions

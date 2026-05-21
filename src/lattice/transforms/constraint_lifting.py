@@ -16,8 +16,8 @@ from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import PromptIRV2
+from lattice.transport.types import Request, Response
 
 _CONSTRAINT_RE = re.compile(
     r"(?:\b(?:must|required|mandatory|essential|shall|should|should\s+not|must\s+not"

@@ -28,7 +28,7 @@ from lattice.core.runtime_state import (
     get_ir_metadata_value,
     thaw_value,
 )
-from lattice.core.transport import Request
+from lattice.transport.types import Request
 
 
 class QualityEstimate:

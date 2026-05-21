@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from lattice.core.runtime_state import get_canonical_request_value
-from lattice.core.transport import Request, Response
+from lattice.transport.types import Request, Response
 
 
 class OpenAIAdapter:

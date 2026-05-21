@@ -6,7 +6,7 @@ import asyncio
 
 from lattice.core.scheduler import decide_schedule
 from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 from lattice.utils.validation import SemanticRiskScore
 
 
@@ -133,10 +133,10 @@ class TestSIGContrastive:
     """Phase 3: Contrastive SIG with top-k protection."""
 
     def test_counts_are_force_protected(self) -> None:
-        from lattice.core.transport import Message, Request
         from lattice.transforms.content_profiler import (
             _build_importance_graph,
         )
+        from lattice.transport.types import Message, Request
 
         req = Request(
             messages=[
@@ -148,8 +148,8 @@ class TestSIGContrastive:
         assert len(protected_ids) > 0
 
     def test_boilerplate_is_not_protected(self) -> None:
-        from lattice.core.transport import Message, Request
         from lattice.transforms.content_profiler import _build_importance_graph
+        from lattice.transport.types import Message, Request
 
         req = Request(
             messages=[
@@ -161,8 +161,8 @@ class TestSIGContrastive:
         assert graph.protected_count <= max(1, int(0.3 * graph.total_spans))
 
     def test_sig_produces_compressible_spans(self) -> None:
-        from lattice.core.transport import Message, Request
         from lattice.transforms.content_profiler import _build_importance_graph
+        from lattice.transport.types import Message, Request
 
         req = Request(
             messages=[

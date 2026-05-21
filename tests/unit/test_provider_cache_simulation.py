@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.runtime_state import persist_execution_plan_state
-from lattice.core.transport import Request
 from lattice.planner.execution_plan import CachePlanEntry, ExecutionPlan
 from lattice.planner.provider_strategy import (
     build_cache_plan_for_provider,
     simulate_provider_cache,
 )
+from lattice.transport.types import Request
 
 
 class TestProviderCacheSimulation:
@@ -67,4 +67,3 @@ class TestProviderCacheSimulation:
         assert "_lattice_execution_plan" in context.session_state
         assert "_lattice_cache_plan" in context.session_state
         assert "_lattice_cache_simulation" in context.session_state
-

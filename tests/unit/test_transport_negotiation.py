@@ -8,10 +8,10 @@ from fastapi.testclient import TestClient
 
 from lattice.client import LatticeClient
 from lattice.core.config import LatticeConfig
-from lattice.core.delta_wire import DeltaWireEncoder
 from lattice.protocol.framing import BinaryFramer, FrameType
 from lattice.protocol.resume import StreamManager
 from lattice.proxy.server import create_app
+from lattice.transport.delta_wire import DeltaWireEncoder
 
 
 class TestDeltaWireReportsMetadata:
@@ -95,7 +95,7 @@ class TestProxyHeadersIncludeTransportInfo:
             "lattice.providers.transport.DirectHTTPProvider.completion",
             new_callable=AsyncMock,
         ) as mock_completion:
-            from lattice.core.transport import Response
+            from lattice.transport.types import Response
 
             mock_completion.return_value = Response(
                 content="hello",
@@ -152,7 +152,7 @@ class TestProxyDeltaHeaderReflectsUsage:
             "lattice.providers.transport.DirectHTTPProvider.completion",
             new_callable=AsyncMock,
         ) as mock_completion:
-            from lattice.core.transport import Response
+            from lattice.transport.types import Response
 
             mock_completion.return_value = Response(
                 content="hello", model="gpt-4", finish_reason="stop"

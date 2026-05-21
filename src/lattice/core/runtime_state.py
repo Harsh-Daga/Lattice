@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lattice.core.context import TransformContext
-from lattice.core.transport import Request
+from lattice.transport.types import Request
 
 
 def coerce_execution_plan(plan: Any) -> Any | None:

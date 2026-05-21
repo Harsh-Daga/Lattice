@@ -35,7 +35,7 @@ from lattice.core.segmentation import (
     segment_request,
     segment_summary,
 )
-from lattice.core.transport import (
+from lattice.transport.types import (
     Message,
     Request,
     Response,

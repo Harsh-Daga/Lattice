@@ -23,8 +23,8 @@ import secrets
 import time
 from typing import Any, Protocol
 
-from lattice.core.transport import Message, Role
 from lattice.protocol.manifest import Manifest
+from lattice.transport.types import Message, Role
 
 # =============================================================================
 # Session
@@ -95,7 +95,7 @@ class Session:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a dict for JSON storage."""
-        from lattice.core.serialization import message_to_dict
+        from lattice.transport.serialization import message_to_dict
 
         data: dict[str, Any] = {
             "session_id": self.session_id,
@@ -118,7 +118,7 @@ class Session:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Session:
         """Deserialize from a dict."""
-        from lattice.core.serialization import message_from_dict
+        from lattice.transport.serialization import message_from_dict
 
         manifest = None
         if "manifest" in data:

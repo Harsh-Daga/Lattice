@@ -49,11 +49,7 @@ def compute_frontier(
     }
     quality_threshold = quality_gate_thresholds.get(task_class, 0.85)
 
-    frontier = (
-        quality_score
-        - (0.35 * max(0.0, -compression_ratio))
-        + (0.20 * compression_ratio)
-    )
+    frontier = quality_score - (0.35 * max(0.0, -compression_ratio)) + (0.20 * compression_ratio)
 
     passed_quality = quality_score >= quality_threshold
     passed_savings = compression_ratio >= 0.0

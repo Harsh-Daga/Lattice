@@ -8,7 +8,7 @@ import pytest
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 
 
 def _req(role: str, content: str) -> Message:
@@ -21,7 +21,11 @@ class TestCausalChain:
 
         t = CausalChainExtractor()
         ctx = TransformContext(request_id="t", provider="openai", model="test")
-        req = Request(messages=[_req("user", "Service A failed, causing B timeout, which triggered C retry storm.")])
+        req = Request(
+            messages=[
+                _req("user", "Service A failed, causing B timeout, which triggered C retry storm.")
+            ]
+        )
         result = t.process(req, ctx)
         assert is_ok(result)
         out = unwrap(result)
@@ -32,7 +36,11 @@ class TestCausalChain:
 
         t = CausalChainExtractor()
         ctx = TransformContext(request_id="t", provider="openai", model="test")
-        req = Request(messages=[_req("user", "The root cause was a missing module. This caused the build to fail.")])
+        req = Request(
+            messages=[
+                _req("user", "The root cause was a missing module. This caused the build to fail.")
+            ]
+        )
         result = t.process(req, ctx)
         assert is_ok(result)
         out = unwrap(result)
@@ -56,7 +64,9 @@ class TestConstraintLifting:
 
         t = ConstraintLiftingTransform()
         ctx = TransformContext(request_id="t", provider="openai", model="test")
-        req = Request(messages=[_req("user", "Please analyze this. You must return JSON. Include all IDs.")])
+        req = Request(
+            messages=[_req("user", "Please analyze this. You must return JSON. Include all IDs.")]
+        )
         result = t.process(req, ctx)
         assert is_ok(result)
         out = unwrap(result)
@@ -93,7 +103,12 @@ class TestToolProjectionQuality:
 
         t = QueryAwareProjection()
         ctx = TransformContext(request_id="t", provider="openai", model="test")
-        data = json.dumps([{"error": f"Module {i} not found", "severity": "error", "module": i} for i in range(60)])
+        data = json.dumps(
+            [
+                {"error": f"Module {i} not found", "severity": "error", "module": i}
+                for i in range(60)
+            ]
+        )
         req = Request(
             messages=[_req("user", "Why did the build fail?"), _req("tool", data)],
         )
@@ -167,7 +182,14 @@ class TestPlaceholderSafety:
         from lattice.ir.builder import build_ir
         from lattice.ir.serializer import serialize_ir_to_text
 
-        req = Request(messages=[_req("user", "The UUID 550e8400-e29b-41d4-a716-446655440000 is duplicated. Error in module 42.")])
+        req = Request(
+            messages=[
+                _req(
+                    "user",
+                    "The UUID 550e8400-e29b-41d4-a716-446655440000 is duplicated. Error in module 42.",
+                )
+            ]
+        )
         ir = build_ir(req)
         text = serialize_ir_to_text(ir)
         opaque = re.findall(r"<(?:d_|g_|ref_)\d+>", text)

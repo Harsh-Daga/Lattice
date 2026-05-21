@@ -13,8 +13,8 @@ from __future__ import annotations
 import pytest
 
 from lattice.core.session import MemorySessionStore, Session, SessionManager
-from lattice.core.transport import Message
 from lattice.protocol.content import TextPart
+from lattice.transport.types import Message
 
 # =============================================================================
 # Fixtures

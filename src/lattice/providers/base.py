@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from lattice.core.transport import Request, Response
+from lattice.transport.types import Request, Response
 
 # =============================================================================
 # ProviderAdapter protocol

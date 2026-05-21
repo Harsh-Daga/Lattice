@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from lattice.core.transport import Message, Request, Response
 from lattice.protocol.content import (
     ContentPart,
     ImagePart,
@@ -24,6 +23,7 @@ from lattice.protocol.content import (
     ToolResultPart,
     parts_from_dict_list,
 )
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # Message ↔ dict

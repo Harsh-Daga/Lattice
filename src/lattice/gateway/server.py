@@ -16,15 +16,15 @@ from lattice.core.runtime_state import (
     persist_execution_plan_state,
     persist_session_plan_state,
 )
-from lattice.core.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.core.session import SessionManager
-from lattice.core.transport import Response
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType, MessageAssembler
 from lattice.protocol.manifest import manifest_summary
 from lattice.protocol.resume import StreamManager
 from lattice.providers.transport import DirectHTTPProvider
+from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
+from lattice.transport.types import Response
 
 
 @dataclasses.dataclass(slots=True)
@@ -456,7 +456,7 @@ class LLMTPGateway:
         }
 
     async def handle_session_start(self, body: dict[str, Any]) -> dict[str, Any]:
-        from lattice.core.serialization import message_from_dict
+        from lattice.transport.serialization import message_from_dict
 
         messages = [message_from_dict(msg) for msg in body.get("messages", [])]
         provider_name = self._resolve_provider_name(body, {}, str(body.get("model", "")))
@@ -476,8 +476,8 @@ class LLMTPGateway:
         }
 
     async def handle_session_append(self, body: dict[str, Any]) -> dict[str, Any] | None:
-        from lattice.core.serialization import message_from_dict
         from lattice.protocol.manifest import build_manifest, manifest_from_messages
+        from lattice.transport.serialization import message_from_dict
 
         session_id = body.get("session_id")
         if not session_id:

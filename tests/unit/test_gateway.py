@@ -10,7 +10,6 @@ import pytest
 
 from lattice.core.result import Ok
 from lattice.core.session import MemorySessionStore, SessionManager
-from lattice.core.transport import Response
 from lattice.gateway.compat import (
     HTTPCompatHandler,
     anthropic_passthrough,
@@ -24,6 +23,7 @@ from lattice.gateway.server import ClientConnectionInfo, LLMTPGateway
 from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType
 from lattice.protocol.resume import StreamManager
+from lattice.transport.types import Response
 
 
 class _PassthroughPipeline:

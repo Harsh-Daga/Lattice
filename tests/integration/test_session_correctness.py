@@ -12,8 +12,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lattice.core.config import LatticeConfig
-from lattice.core.transport import Response
 from lattice.proxy.server import create_app
+from lattice.transport.types import Response
 
 
 @pytest.fixture

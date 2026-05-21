@@ -16,7 +16,7 @@ from lattice.core.policy import (
     Skip,
     TransformConfig,
 )
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 
 # =============================================================================
 # Fixtures

@@ -2,9 +2,9 @@
 
 from lattice.core.context import TransformContext
 from lattice.core.policy import OptimizationPolicy, Skip
-from lattice.core.transport import Message, Request
 from lattice.runtime.router import RuntimeRouter, Tier
 from lattice.transforms.runtime_contract import RuntimeContractTransform
+from lattice.transport.types import Message, Request
 
 
 class TestRuntimeRouter:

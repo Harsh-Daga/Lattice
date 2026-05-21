@@ -9,7 +9,7 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 from lattice.providers.transport import DirectHTTPProvider
 from lattice.transforms.format_conv import FormatConverter
 from lattice.transforms.output_cleanup import OutputCleanup
@@ -76,7 +76,7 @@ async def run_single(content, label):
     compressed_text = compressed.messages[0].content
     compressed_tokens = count_tokens(compressed_text)
 
-    from lattice.core.transport import Response
+    from lattice.transport.types import Response
 
     t0 = time.perf_counter()
     r2 = await provider.completion(model=MODEL, messages=[{"role": "user", "content": compressed_text}], max_tokens=MAX_TOKENS)

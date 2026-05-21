@@ -26,6 +26,7 @@ def _normalise(path: str) -> str:
     out = path
     # FastAPI converters like {name:path}, {name:int} -> strip the suffix.
     import re as _re
+
     out = _re.sub(r"\{([a-zA-Z_]+):[a-zA-Z_]+\}", r"{\1}", out)
     # Map known synonyms to the api-surface placeholder names.
     out = out.replace("{response_id}", "{id}")
@@ -44,8 +45,10 @@ def test_every_endpoint_in_route_table(api_surface) -> None:
     from lattice.proxy.server import create_app
 
     app = create_app(LatticeConfig())
-    routes = {(_normalise(getattr(r, "path", "")) or "", tuple(sorted(getattr(r, "methods", []) or [])))
-              for r in app.routes}
+    routes = {
+        (_normalise(getattr(r, "path", "")) or "", tuple(sorted(getattr(r, "methods", []) or [])))
+        for r in app.routes
+    }
 
     # Build a flat set of "method path" pairs from the app for substring search.
     documented_paths = {_normalise(ep["path"]) for ep in api_surface["http"]["endpoints"]}
@@ -77,6 +80,7 @@ def test_health_endpoints_registered_or_documented() -> None:
 
 
 # ---- Slow contract suite (spins a real proxy) ----
+
 
 @pytest.mark.contract
 def test_chat_completions_minimal_request_shape() -> None:

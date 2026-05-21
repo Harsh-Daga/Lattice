@@ -18,9 +18,9 @@ from lattice.core.credentials import CredentialResolver
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.pipeline_factory import build_benchmark_pipeline
 from lattice.core.result import is_err, unwrap, unwrap_err
-from lattice.core.serialization import message_from_dict, message_to_dict
-from lattice.core.transport import Request, Response
 from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
+from lattice.transport.serialization import message_from_dict, message_to_dict
+from lattice.transport.types import Request, Response
 from lattice.utils.validation import (
     lossy_transform_allowed,
     request_safety_profile,
@@ -34,7 +34,9 @@ def build_full_pipeline(config: LatticeConfig | None = None) -> CompressorPipeli
     return build_benchmark_pipeline(config)
 
 
-def setup_provider(provider_name: str, base_url: str | None = None, api_key: str | None = None) -> DirectHTTPProvider:
+def setup_provider(
+    provider_name: str, base_url: str | None = None, api_key: str | None = None
+) -> DirectHTTPProvider:
     """Set up DirectHTTPProvider with resolved credentials."""
     registry = ProviderRegistry()
     credentials = CredentialResolver()
@@ -203,14 +205,26 @@ async def run_scenario(
     usage_summary: dict[str, Any] = {}
     if baseline_usage or optimized_usage:
         estimator = CostEstimator()
-        baseline_cost = estimator.compute_actual(provider=provider_name, model=model, usage=baseline_usage) if baseline_usage else None
-        optimized_cost = estimator.compute_actual(provider=provider_name, model=model, usage=optimized_usage) if optimized_usage else None
+        baseline_cost = (
+            estimator.compute_actual(provider=provider_name, model=model, usage=baseline_usage)
+            if baseline_usage
+            else None
+        )
+        optimized_cost = (
+            estimator.compute_actual(provider=provider_name, model=model, usage=optimized_usage)
+            if optimized_usage
+            else None
+        )
         usage_summary = {
             "baseline": baseline_usage,
             "optimized": optimized_usage,
             "costs": {
-                "baseline_total_usd": getattr(baseline_cost, "total_cost_usd", 0.0) if baseline_cost else 0.0,
-                "optimized_total_usd": getattr(optimized_cost, "total_cost_usd", 0.0) if optimized_cost else 0.0,
+                "baseline_total_usd": getattr(baseline_cost, "total_cost_usd", 0.0)
+                if baseline_cost
+                else 0.0,
+                "optimized_total_usd": getattr(optimized_cost, "total_cost_usd", 0.0)
+                if optimized_cost
+                else 0.0,
                 "delta_usd": (
                     (getattr(optimized_cost, "total_cost_usd", 0.0) if optimized_cost else 0.0)
                     - (getattr(baseline_cost, "total_cost_usd", 0.0) if baseline_cost else 0.0)

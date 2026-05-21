@@ -186,8 +186,8 @@ class TestCapabilityRegistry:
 
 class TestAdapterPurity:
     def test_adapters_do_not_mutate_input(self) -> None:
-        from lattice.core.transport import Message, Request
         from lattice.providers.openai import OpenAIAdapter
+        from lattice.transport.types import Message, Request
 
         adapter = OpenAIAdapter()
         original = Request(

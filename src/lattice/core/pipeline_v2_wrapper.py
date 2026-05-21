@@ -10,8 +10,8 @@ from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
 from lattice.core.result import Ok
 from lattice.core.runtime_state import coerce_execution_plan, get_canonical_state_value
 from lattice.core.task_classifier import TaskClass
-from lattice.core.transport import Request, Response
 from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner, profile_from_legacy
+from lattice.transport.types import Request, Response
 
 
 class PipelineV2Wrapper(ReversibleSyncTransform):

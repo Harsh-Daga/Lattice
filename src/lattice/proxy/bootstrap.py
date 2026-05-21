@@ -25,11 +25,9 @@ from lattice.core.pipeline_factory import (
 )
 from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.semantic_cache import SemanticCache
-from lattice.core.serialization import message_to_dict
 from lattice.core.session import MemorySessionStore, SessionManager
 from lattice.core.store import RedisSessionStore
 from lattice.core.telemetry import DowngradeTelemetry
-from lattice.core.transport import Message, Request, Response
 from lattice.gateway.compat import HTTPCompatHandler, serialize_messages
 from lattice.gateway.server import LLMTPGateway
 from lattice.protocol.framing import BinaryFramer
@@ -37,6 +35,8 @@ from lattice.protocol.resume import StreamManager
 from lattice.providers.transport import DirectHTTPProvider
 from lattice.transforms.batching import BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform
+from lattice.transport.serialization import message_to_dict
+from lattice.transport.types import Message, Request, Response
 
 
 @dataclass(slots=True)

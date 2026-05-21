@@ -131,7 +131,21 @@ def default_provider_targets(
                 reason = "missing Azure OpenAI endpoint or key"
         elif provider in {"ollama"}:
             available = True
-        elif provider in {"gemini", "vertex", "openai", "anthropic", "groq", "deepseek", "mistral", "cohere", "openrouter", "fireworks", "together", "perplexity", "ai21"}:
+        elif provider in {
+            "gemini",
+            "vertex",
+            "openai",
+            "anthropic",
+            "groq",
+            "deepseek",
+            "mistral",
+            "cohere",
+            "openrouter",
+            "fireworks",
+            "together",
+            "perplexity",
+            "ai21",
+        }:
             if not creds.api_key:
                 available = False
                 reason = "missing API key"

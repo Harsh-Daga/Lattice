@@ -21,7 +21,7 @@ from typing import Any
 
 from lattice.client import LatticeClient
 from lattice.core.config import LatticeConfig
-from lattice.core.serialization import message_to_dict
+from lattice.transport.serialization import message_to_dict
 
 # =============================================================================
 # OpenAI wrapper

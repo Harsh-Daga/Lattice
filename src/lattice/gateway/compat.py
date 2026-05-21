@@ -27,12 +27,12 @@ from lattice.core.runtime_state import (
     sum_expected_cached_tokens,
 )
 from lattice.core.semantic_cache import assemble_cached_response, compute_cache_key
-from lattice.core.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.core.telemetry import TransportOutcome
-from lattice.core.transport import Message, Request, Response
 from lattice.gateway.server import LLMTPGateway
 from lattice.protocol.manifest import manifest_summary
 from lattice.providers.capabilities import Capability, get_capability_registry
+from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
+from lattice.transport.types import Message, Request, Response
 
 Handler = Callable[..., Awaitable[Any]]
 
@@ -1409,8 +1409,8 @@ async def chat_completions_websocket_passthrough(
 
     from lattice.core.context import TransformContext
     from lattice.core.result import is_err, unwrap
-    from lattice.core.serialization import message_to_dict
     from lattice.gateway.compat import deserialize_openai_request
+    from lattice.transport.serialization import message_to_dict
 
     try:
         json_body = await websocket.receive_text()
@@ -1693,7 +1693,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             else:
                 await deps.session_manager.update_session(session.session_id, request.messages)
             # Calculate wire savings if client had used delta encoding
-            from lattice.core.delta_wire import delta_wire_bytes
+            from lattice.transport.delta_wire import delta_wire_bytes
 
             full_msgs = deps.serialize_messages(request)
             new_raw = [msg.to_dict() if hasattr(msg, "to_dict") else msg for msg in new_msgs]
@@ -1842,7 +1842,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     )
                 else:
                     # Rebuild a Response-like object for serialization
-                    from lattice.core.transport import Response
+                    from lattice.transport.types import Response
 
                     cached_response = Response(
                         content=cached.content,
@@ -2838,8 +2838,8 @@ def make_responses_handler(deps: ResponsesCompatDeps) -> Handler:
 
         from lattice.core.context import TransformContext
         from lattice.core.result import is_err, unwrap
-        from lattice.core.serialization import message_from_dict, message_to_dict
-        from lattice.core.transport import Request
+        from lattice.transport.serialization import message_from_dict, message_to_dict
+        from lattice.transport.types import Request
 
         msgs = []
         for m in body_json.get("messages", body_json.get("input", [])):
@@ -3014,7 +3014,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
 
     @app.get("/stats")
     async def _stats() -> dict[str, Any]:
-        from lattice.core.delta_wire import DeltaWireDecoder
+        from lattice.transport.delta_wire import DeltaWireDecoder
 
         capability_registry = get_capability_registry()
         cache_stats: dict[str, Any] = {}

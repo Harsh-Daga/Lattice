@@ -14,7 +14,7 @@ from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
-from lattice.core.transport import Message, Request, Response, Role
+from lattice.transport.types import Message, Request, Response, Role
 
 _WORD_RE = re.compile(r"[a-zA-Z]+")
 _STOPWORDS = frozenset(

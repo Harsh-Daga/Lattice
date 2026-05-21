@@ -13,7 +13,7 @@ import enum
 import uuid
 from typing import Any
 
-from lattice.core.transport import Request
+from lattice.transport.types import Request
 
 
 class ExecutionTier(enum.Enum):

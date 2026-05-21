@@ -9,12 +9,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lattice.core.config import LatticeConfig
-from lattice.core.delta_wire import DeltaWireDecoder
 from lattice.core.session import MemorySessionStore, Session
-from lattice.core.transport import Message, Request
 from lattice.gateway.compat import build_routing_headers
 from lattice.providers.transport import ConnectionPoolManager
 from lattice.proxy.server import create_app
+from lattice.transport.delta_wire import DeltaWireDecoder
+from lattice.transport.types import Message, Request
 
 
 class TestBuildRoutingHeadersFallbackFields:

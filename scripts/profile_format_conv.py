@@ -8,7 +8,7 @@ import pstats
 import time
 
 from lattice.core.context import TransformContext
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 from lattice.transforms.format_conv import FormatConverter
 
 

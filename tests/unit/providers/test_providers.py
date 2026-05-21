@@ -16,7 +16,6 @@ import pytest
 import respx
 from httpx import Response as HttpxResponse
 
-from lattice.core.transport import Message, Request
 from lattice.providers import (
     AI21Adapter,
     AnthropicAdapter,
@@ -37,6 +36,7 @@ from lattice.providers.openai_compatible import (
     TogetherAdapter,
 )
 from lattice.providers.transport import RateLimitTracker
+from lattice.transport.types import Message, Request
 
 # =============================================================================
 # Helpers

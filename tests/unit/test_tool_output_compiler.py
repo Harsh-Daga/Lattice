@@ -25,13 +25,13 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.core.transport import Message, Request, Response
 from lattice.transforms.content_profiler import ContentProfile, ContentProfiler
 from lattice.transforms.format_conv import FormatConverter
 from lattice.transforms.message_dedup import MessageDeduplicator
 from lattice.transforms.output_cleanup import OutputCleanup
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.tool_filter import ToolOutputFilter
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # ContentProfiler — new profile detection
