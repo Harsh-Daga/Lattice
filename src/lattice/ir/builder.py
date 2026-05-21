@@ -14,14 +14,14 @@ import json as _json
 import re
 from typing import Any
 
-from lattice.core.ir import (
+from lattice.core.transport import Message, Request
+from lattice.ir.types import (
     PromptIR,
     Section,
     SectionType,
     Span,
     SpanRole,
 )
-from lattice.core.transport import Message, Request
 
 _INDENT = re.compile(r"^\s+")
 _FENCE_START = re.compile(r"^```(\w+)?$")
@@ -222,8 +222,11 @@ _STOP_WORDS = frozenset(
 def build_ir(request: Request) -> PromptIR:
     """Build canonical PromptIR from a Request.
 
-    This is the primary entry point. The IR is stored in content_profiler
-    metadata and consumed by the scheduler, safety guards, and transforms.
+    This is the primary entry point. The IR is consumed by the scheduler,
+    safety guards, and transforms. ``build_ir`` is a pure function: it does
+    not mutate ``request`` — callers that want IR-summary metadata stored
+    back on the request should use :func:`compile_request_ir` (which runs
+    build → normalize → store).
     """
     sections: list[Section] = []
     span_counter = 0
@@ -237,6 +240,38 @@ def build_ir(request: Request) -> PromptIR:
     _derive_protection(sections)
 
     return PromptIR(sections=sections)
+
+
+def compile_request_ir(request: Request) -> PromptIR:
+    """Full IR compile path: build → normalize → store summary metadata.
+
+    Replaces the deleted ``core.compiler.PromptCompiler.compile`` from
+    Phase 1. The IR summary stored on ``request.metadata`` reflects the
+    **post-normalize** state, matching the pre-refactor behavior that
+    ``core/pipeline.py`` relies on when reading ``_lattice_protected_spans``.
+    """
+    from lattice.ir.normalizer import normalize_ir
+
+    ir = normalize_ir(build_ir(request))
+    _store_ir_metadata(request, ir)
+    return ir
+
+
+def _store_ir_metadata(request: Request, ir: PromptIR) -> None:
+    """Store IR summary in request metadata for scheduler and safety guards.
+
+    Previously lived in core/compiler.py; inlined here as part of Phase 1.
+    """
+    request.metadata["_lattice_ir_summary"] = ir.summary()
+    request.metadata["_lattice_protected_spans"] = ir.protected_span_ids()
+
+    section_types = ir.section_types
+    if "error" in section_types or "stack_trace" in section_types:
+        request.metadata["_lattice_has_errors"] = True
+
+    if ir.metadata.get("has_causal_chains"):
+        request.metadata["_lattice_has_causal"] = True
+        request.metadata["_lattice_causal_count"] = ir.metadata.get("causal_span_count", 0)
 
 
 def _partition_message(msg: Message, span_counter: int) -> tuple[list[Section], int]:

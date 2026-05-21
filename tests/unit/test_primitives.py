@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from lattice.core.primitives import (
+from lattice.ir.primitives import (
     Candidate,
     CandidateGraph,
     ExecutionPlan,

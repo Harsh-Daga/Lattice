@@ -24,7 +24,7 @@ def coerce_execution_plan(plan: Any) -> Any | None:
         return normalized
     if isinstance(plan, dict):
         try:
-            from lattice.core.primitives import ExecutionPlan as CoreExecutionPlan
+            from lattice.ir.primitives import ExecutionPlan as CoreExecutionPlan
 
             if "transforms" in plan:
                 return CoreExecutionPlan.from_dict(plan)
@@ -126,9 +126,9 @@ def _normalize_legacy_execution_plan(plan: Any) -> Any | None:
     if not hasattr(plan, "representation_plan"):
         return None
     try:
-        from lattice.core.primitives import CachePlan as CoreCachePlan
-        from lattice.core.primitives import ExecutionPlan as CoreExecutionPlan
-        from lattice.core.primitives import TransportPlan as CoreTransportPlan
+        from lattice.ir.primitives import CachePlan as CoreCachePlan
+        from lattice.ir.primitives import ExecutionPlan as CoreExecutionPlan
+        from lattice.ir.primitives import TransportPlan as CoreTransportPlan
     except Exception:
         return None
 
@@ -149,7 +149,9 @@ def _normalize_legacy_execution_plan(plan: Any) -> Any | None:
                 stable_hash = annotations.get("stable_prefix_hash")
     transport = getattr(plan, "transport_plan", None)
     if transport is not None:
-        use_delta = bool(getattr(transport, "use_delta", getattr(transport, "delta_encoding", False)))
+        use_delta = bool(
+            getattr(transport, "use_delta", getattr(transport, "delta_encoding", False))
+        )
         compression_codec = getattr(transport, "compression_codec", None)
         if cache_hint is None:
             cache_hint = getattr(transport, "provider", None)
@@ -164,7 +166,10 @@ def _normalize_legacy_execution_plan(plan: Any) -> Any | None:
         beam_width=5,
         max_depth=6,
         cache_plan=None
-        if cache_hint is None and stable_hash is None and not use_delta and compression_codec is None
+        if cache_hint is None
+        and stable_hash is None
+        and not use_delta
+        and compression_codec is None
         else CoreCachePlan(
             use_delta=use_delta,
             compression_codec=compression_codec,
@@ -172,7 +177,10 @@ def _normalize_legacy_execution_plan(plan: Any) -> Any | None:
             stable_prefix_hash=stable_hash,
         ),
         transport_plan=None
-        if cache_hint is None and stable_hash is None and not use_delta and compression_codec is None
+        if cache_hint is None
+        and stable_hash is None
+        and not use_delta
+        and compression_codec is None
         else CoreTransportPlan(
             use_delta=use_delta,
             compression_codec=compression_codec,
@@ -244,9 +252,7 @@ def persist_execution_plan_state(
 
     if cache_simulation is not None:
         normalized_sim = (
-            cache_simulation.to_dict()
-            if hasattr(cache_simulation, "to_dict")
-            else cache_simulation
+            cache_simulation.to_dict() if hasattr(cache_simulation, "to_dict") else cache_simulation
         )
         request.metadata["_lattice_cache_simulation"] = normalized_sim
         context.session_state["_lattice_cache_simulation"] = normalized_sim
@@ -269,7 +275,5 @@ def persist_session_plan_state(
         session_metadata["_lattice_cache_plan_state"] = {"plan": normalized_cache}
     if cache_simulation is not None:
         session_metadata["_lattice_cache_simulation"] = (
-            cache_simulation.to_dict()
-            if hasattr(cache_simulation, "to_dict")
-            else cache_simulation
+            cache_simulation.to_dict() if hasattr(cache_simulation, "to_dict") else cache_simulation
         )

@@ -42,29 +42,29 @@ from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
-from lattice.core.ir_builder import build_ir
-from lattice.core.ir_normalizer import normalize_ir
 from lattice.core.optimizer_scheduler import OptimizerSchedule, schedule_to_dict
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
-from lattice.core.primitives import freeze_value, prompt_ir_v2_from_legacy
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import (
     get_canonical_request_value,
     get_canonical_state_value,
     persist_execution_plan_state,
 )
-from lattice.core.semantic_graph import SemanticImportanceGraph, SemanticSpan
+from lattice.core.segmentation import (
+    segment_request,
+    segment_summary,
+)
 from lattice.core.serialization import message_to_dict
 from lattice.core.task_classifier import TaskClassification, classify_task
 from lattice.core.transport import Request, Response
 from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner
+from lattice.ir.builder import build_ir
+from lattice.ir.normalizer import normalize_ir
+from lattice.ir.primitives import freeze_value, prompt_ir_v2_from_legacy
+from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.planner.provider_strategy import (
     build_cache_plan_for_provider,
     simulate_provider_cache,
-)
-from lattice.transforms.semantic_segmenter import (
-    segment_request,
-    segment_summary,
 )
 from lattice.utils.validation import SemanticRiskScore, compute_risk_score
 
@@ -212,9 +212,7 @@ class ContentProfiler(ReversibleSyncTransform):
 
         # Build or reuse the canonical execution plan.
         plan = _coerce_execution_plan(
-            get_canonical_request_value(
-                request, context, "_lattice_execution_plan"
-            )
+            get_canonical_request_value(request, context, "_lattice_execution_plan")
         )
         if plan is None:
             profile_v2 = SemanticProfile(
@@ -279,9 +277,7 @@ class ContentProfiler(ReversibleSyncTransform):
         context.session_state["_lattice_optimizer_schedule"] = optimizer_schedule
         request.metadata["_lattice_optimizer_schedule"] = schedule_to_dict(optimizer_schedule)
 
-        cache_plan = get_canonical_request_value(
-            request, context, "_lattice_cache_plan"
-        )
+        cache_plan = get_canonical_request_value(request, context, "_lattice_cache_plan")
         if not isinstance(cache_plan, list):
             cache_plan = build_cache_plan_for_provider(
                 context.provider or "generic",
@@ -644,7 +640,15 @@ def _derive_optimizer_schedule_from_plan(
     allowed = [name for name in getattr(plan, "transforms", ()) if name.endswith("_optimizer")]
     blocked = {
         name: "plan_excludes"
-        for name in ("representation_optimizer", "structure_optimizer", "reference_optimizer", "tool_optimizer", "context_optimizer", "diagnostic_optimizer", "ir_structure_optimizer")
+        for name in (
+            "representation_optimizer",
+            "structure_optimizer",
+            "reference_optimizer",
+            "tool_optimizer",
+            "context_optimizer",
+            "diagnostic_optimizer",
+            "ir_structure_optimizer",
+        )
         if name not in allowed
     }
     return OptimizerSchedule(
@@ -972,7 +976,7 @@ def _coerce_execution_plan(plan: Any) -> Any | None:
         return None
     if isinstance(plan, dict):
         try:
-            from lattice.core.primitives import ExecutionPlan as CoreExecutionPlan
+            from lattice.ir.primitives import ExecutionPlan as CoreExecutionPlan
 
             return CoreExecutionPlan.from_dict(plan)
         except Exception:

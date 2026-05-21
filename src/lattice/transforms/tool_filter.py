@@ -20,9 +20,9 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
-from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
+from lattice.ir.primitives import PromptIRV2
 
 _INTERNAL_FIELDS = frozenset(
     {
@@ -49,11 +49,11 @@ _INTERNAL_FIELDS = frozenset(
         "request_id",
         "response_headers",
         "content_type",
-    "content_length",
-    "encoding",
-    "compression",
-    "internal_blob",
-}
+        "content_length",
+        "encoding",
+        "compression",
+        "internal_blob",
+    }
 )
 
 _ALWAYS_KEEP = frozenset(
@@ -143,7 +143,9 @@ class ToolOutputFilter(ReversibleSyncTransform):
         saved_chars = 0
 
         for section in ir.sections:
-            section_type = section.type.value if hasattr(section.type, "value") else str(section.type)
+            section_type = (
+                section.type.value if hasattr(section.type, "value") else str(section.type)
+            )
             if section_type not in {"tool_output", "json", "logs", "error"}:
                 updated_sections.append(section)
                 continue

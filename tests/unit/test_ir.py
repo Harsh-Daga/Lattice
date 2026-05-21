@@ -1,4 +1,4 @@
-"""Tests for the canonical IR layer — builder, normalizer, serializer, compiler."""
+"""Tests for the canonical IR layer — builder, normalizer, serializer."""
 
 from __future__ import annotations
 
@@ -6,13 +6,11 @@ import json
 
 import pytest
 
-from lattice.core.compiler import PromptCompiler
-from lattice.core.context import TransformContext
-from lattice.core.ir import PromptIR, SectionType
-from lattice.core.ir_builder import build_ir
-from lattice.core.ir_normalizer import normalize_ir
-from lattice.core.ir_serializer import serialize_ir_to_text
 from lattice.core.transport import Message, Request
+from lattice.ir.builder import build_ir, compile_request_ir
+from lattice.ir.normalizer import normalize_ir
+from lattice.ir.serializer import serialize_ir_to_text
+from lattice.ir.types import PromptIR, SectionType
 
 
 def _make_request(messages: list[dict]) -> Request:
@@ -214,9 +212,12 @@ class TestIRSerializer:
         assert "Hi" in text
 
 
-class TestCompiler:
-    def test_compiler_produces_valid_ir(self) -> None:
-        compiler = PromptCompiler()
+class TestCompileRequestIr:
+    """Equivalent of the old TestCompiler — the compile path is now
+    ``compile_request_ir(request)`` (which runs build → normalize → store).
+    Phase 1 deleted core/compiler.py."""
+
+    def test_compile_produces_valid_ir(self) -> None:
         req = _make_request(
             [
                 {"role": "system", "content": "You are helpful."},
@@ -226,32 +227,26 @@ class TestCompiler:
                 },
             ]
         )
-        ctx = TransformContext(request_id="test", provider="openai", model="test")
-        ir = compiler.compile(req, ctx)
+        ir = compile_request_ir(req)
         assert isinstance(ir, PromptIR)
         assert ir.total_spans > 0
 
-    def test_compiler_stores_metadata(self) -> None:
-        compiler = PromptCompiler()
+    def test_compile_stores_metadata(self) -> None:
         req = _make_request(
             [
                 {"role": "user", "content": "Debug this: 20 errors and 3 timeouts."},
             ]
         )
-        ctx = TransformContext(request_id="test", provider="openai", model="test")
-        compiler.compile(req, ctx)
+        compile_request_ir(req)
         assert "_lattice_ir_summary" in req.metadata
         assert "_lattice_protected_spans" in req.metadata
 
-    def test_compiler_is_idempotent(self) -> None:
-        compiler = PromptCompiler()
+    def test_compile_is_idempotent(self) -> None:
         req = _make_request(
             [
                 {"role": "user", "content": "Explain the error: service A failed."},
             ]
         )
-        ctx1 = TransformContext(request_id="test1", provider="openai", model="test")
-        ctx2 = TransformContext(request_id="test2", provider="openai", model="test")
-        ir1 = compiler.compile(req.copy(), ctx1)
-        ir2 = compiler.compile(req.copy(), ctx2)
+        ir1 = compile_request_ir(req.copy())
+        ir2 = compile_request_ir(req.copy())
         assert ir1.total_spans == ir2.total_spans

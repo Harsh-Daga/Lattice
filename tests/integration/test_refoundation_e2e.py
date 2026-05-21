@@ -14,15 +14,15 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
-from lattice.core.primitives import (
+from lattice.core.result import is_ok, unwrap
+from lattice.core.transport import Message, Request
+from lattice.core.unified_planner import UnifiedPlanner, profile_from_legacy
+from lattice.ir.primitives import (
     Candidate,
     PromptIRV2,
     SectionV2,
     SpanV2,
 )
-from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request
-from lattice.core.unified_planner import UnifiedPlanner, profile_from_legacy
 
 
 def _req(content: str, role: str = "user") -> Message:
@@ -112,7 +112,7 @@ class TestRefoundationEndToEnd:
 
     def test_new_components_all_green(self) -> None:
         """Smoke-test all new components work together without error."""
-        from lattice.core.ir_transform import CandidateScorer
+        from lattice.ir.transform import CandidateScorer
 
         span = SpanV2(span_id="s1", text='{"x":1}')
         section = SectionV2(type="json", spans=(span,))

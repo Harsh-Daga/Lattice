@@ -11,6 +11,7 @@ This module defines:
 All types are frozen, hashable, and copy-on-write.
 Transforms return new instances; they never mutate in place.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -122,15 +123,11 @@ class PromptIRV2:
 
     @property
     def protected_spans(self) -> int:
-        return sum(
-            1 for sec in self.sections for sp in sec.spans if sp.protected
-        )
+        return sum(1 for sec in self.sections for sp in sec.spans if sp.protected)
 
     @property
     def compressible_spans(self) -> int:
-        return sum(
-            1 for sec in self.sections for sp in sec.spans if sp.compressible
-        )
+        return sum(1 for sec in self.sections for sp in sec.spans if sp.compressible)
 
     def section_types(self) -> list[str]:
         return [s.type for s in self.sections]
@@ -210,12 +207,8 @@ class Candidate:
 
     ir: PromptIRV2
     applied: tuple[str, ...] = ()
-    metrics: frozenset[tuple[str, Any]] = dataclasses.field(
-        default_factory=frozenset
-    )
-    provenance: frozenset[tuple[str, Any]] = dataclasses.field(
-        default_factory=frozenset
-    )
+    metrics: frozenset[tuple[str, Any]] = dataclasses.field(default_factory=frozenset)
+    provenance: frozenset[tuple[str, Any]] = dataclasses.field(default_factory=frozenset)
 
     def apply(self, transform_name: str, new_ir: PromptIRV2) -> Candidate:
         """Return NEW candidate, never mutate self."""
@@ -551,7 +544,7 @@ def prompt_ir_v2_from_legacy(legacy_ir: Any) -> PromptIRV2:
 
 def prompt_ir_from_v2(v2_ir: PromptIRV2) -> Any:
     """Convert immutable PromptIRV2 back to legacy PromptIR for adapters."""
-    from lattice.core.ir import PromptIR, Section, SectionType, Span, SpanRole
+    from lattice.ir.types import PromptIR, Section, SectionType, Span, SpanRole
 
     sections: list[Section] = []
     for sec in v2_ir.sections:

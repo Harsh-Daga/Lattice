@@ -1,4 +1,5 @@
 """PipelineV2 wrapper — adapts PipelineV2 into CompressorPipeline-compatible transform."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -28,13 +29,9 @@ class PipelineV2Wrapper(ReversibleSyncTransform):
     def __init__(self) -> None:
         self._pipeline_v2 = PipelineV2(registry=TransformRegistryV2())
 
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Any:
+    def process(self, request: Request, context: TransformContext) -> Any:
         context.session_state["_lattice_last_request"] = request.copy()
-        plan = _coerce_execution_plan(
-            get_canonical_state_value(context, "_lattice_execution_plan")
-        )
+        plan = _coerce_execution_plan(get_canonical_state_value(context, "_lattice_execution_plan"))
         if plan is None:
             # Fallback: read canonical task/risk state and produce a plan
             profile = _build_profile_from_context(request, context)
@@ -49,9 +46,7 @@ class PipelineV2Wrapper(ReversibleSyncTransform):
         return self._pipeline_v2.process(request, plan, context)
 
     def reverse(self, response: Response, context: TransformContext) -> Response:
-        plan = _coerce_execution_plan(
-            get_canonical_state_value(context, "_lattice_execution_plan")
-        )
+        plan = _coerce_execution_plan(get_canonical_state_value(context, "_lattice_execution_plan"))
         if plan is None:
             last_request = get_canonical_state_value(context, "_lattice_last_request")
             profile = _build_profile_from_context(last_request, context)

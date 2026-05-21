@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
-from lattice.core.primitives import ExecutionPlan
 from lattice.core.result import is_ok
 from lattice.core.transport import Message, Request
+from lattice.ir.primitives import ExecutionPlan
 
 
 class TestTransformRegistryV2:

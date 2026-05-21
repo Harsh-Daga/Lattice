@@ -28,9 +28,7 @@ PRODUCTION_OPTIMIZERS: tuple[str, ...] = (
 )
 
 # Optional optimizers (gated by context length, task class, etc.)
-CONDITIONAL_OPTIMIZERS: tuple[str, ...] = (
-    "context_optimizer",
-)
+CONDITIONAL_OPTIMIZERS: tuple[str, ...] = ("context_optimizer",)
 
 __all__ = [
     "StructureOptimizer",

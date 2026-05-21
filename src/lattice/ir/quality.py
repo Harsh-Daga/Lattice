@@ -192,8 +192,15 @@ def estimate_quality(
     # Setting floor to 0.90 preserves that behavior while enabling
     # content-based analysis for lossy optimizers.
     applied_set = set(optimizers_applied)
-    lossless_optimizers = {"structure_optimizer", "reference_optimizer", "tool_optimizer", "diagnostic_optimizer"}
-    if applied_set & lossless_optimizers and not (applied_set & {"context_optimizer", "rate_distortion", "extractive_compress"}):
+    lossless_optimizers = {
+        "structure_optimizer",
+        "reference_optimizer",
+        "tool_optimizer",
+        "diagnostic_optimizer",
+    }
+    if applied_set & lossless_optimizers and not (
+        applied_set & {"context_optimizer", "rate_distortion", "extractive_compress"}
+    ):
         composite = max(0.90, composite)
 
     reasons: list[str] = []
@@ -306,11 +313,7 @@ def estimate_transport_gain(
     protocol_payload = thaw_value(get_ir_metadata_value(context, "protocol", {}))
     provider = ""
     if isinstance(protocol_payload, dict):
-        provider = (
-            protocol_payload.get("summary", {})
-            .get("metadata", {})
-            .get("provider", "")
-        )
+        provider = protocol_payload.get("summary", {}).get("metadata", {}).get("provider", "")
     if not provider:
         provider = str(get_ir_metadata_value(context, "_lattice_provider", "") or "")
     if not provider:
@@ -573,6 +576,7 @@ def _became_more_structured(text_before: str, text_after: str) -> bool:
         after_words = text_after.lower().split()
         if len(after_words) > 10:
             from collections import Counter
+
             word_counts = Counter(after_words)
             most_common_freq = word_counts.most_common(1)[0][1] if word_counts else 0
             if most_common_freq > len(after_words) * 0.15:
@@ -602,6 +606,7 @@ def _estimate_stable_prefix(modified: Request, context: TransformContext) -> int
 def _content_hash(request: Request) -> str:
     """Compute a simple content hash for delta detection."""
     import hashlib
+
     parts = []
     for msg in request.messages:
         parts.append(f"{msg.role}:{msg.content or ''}")

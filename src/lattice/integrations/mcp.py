@@ -114,9 +114,7 @@ class LatticeMCPTools:
                 ),
                 "transforms_applied": context.transforms_applied,
                 "content_profile": context.session_state.get("content_profile"),
-                "runtime": get_canonical_request_value(
-                    compressed, None, "_lattice_runtime", {}
-                ),
+                "runtime": get_canonical_request_value(compressed, None, "_lattice_runtime", {}),
                 "runtime_budget": get_canonical_request_value(
                     compressed, None, "_lattice_runtime_budget", {}
                 ),

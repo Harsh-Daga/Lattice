@@ -230,6 +230,7 @@ class LLMTPGateway:
         is_streaming = body.get("stream", False)
         if is_streaming:
             from lattice.planner.fallback_executor import execute_with_fallback_stream
+
             stream_kwargs = dict(
                 messages=messages,
                 temperature=compressed_request.temperature,
@@ -286,7 +287,9 @@ class LLMTPGateway:
                     sse_line = f"data: {json.dumps(chunk)}\n\n"
                     sse_lines.append(sse_line)
             except Exception as exc:
-                sse_lines.append(f"data: {json.dumps({'error': {'message': str(exc), 'type': 'stream_error'}})}\n\n")
+                sse_lines.append(
+                    f"data: {json.dumps({'error': {'message': str(exc), 'type': 'stream_error'}})}\n\n"
+                )
             finally:
                 sse_lines.append("data: [DONE]\n\n")
 
@@ -354,7 +357,11 @@ class LLMTPGateway:
             request, "session_id", None
         )
         if not session_id:
-            session_id = request.extra_headers.get("x-lattice-session-id") if hasattr(request, "extra_headers") else None
+            session_id = (
+                request.extra_headers.get("x-lattice-session-id")
+                if hasattr(request, "extra_headers")
+                else None
+            )
 
         session, was_created = await self.session_manager.get_or_create_session(
             session_id=session_id,
@@ -377,6 +384,7 @@ class LLMTPGateway:
             prev = session.metadata.get("_lattice_execution_plan")
             if prev is not None:
                 from lattice.planner.execution_plan import ExecutionPlan as _ExecPlan
+
                 restored = _ExecPlan.from_dict(prev)
                 execution_plan.provider = restored.provider
                 execution_plan.model = restored.model

@@ -339,9 +339,7 @@ class CompressorPipeline:
 
             profiler_present = any(t.name == "content_profiler" for t in self.transforms)
             if profiler_present:
-                risk_data = get_canonical_request_value(
-                    working, context, "_lattice_risk_score", {}
-                )
+                risk_data = get_canonical_request_value(working, context, "_lattice_risk_score", {})
 
                 if risk_data and isinstance(risk_data, dict):
                     risk = SemanticRiskScore(
@@ -417,9 +415,7 @@ class CompressorPipeline:
             # optimizer-level names (e.g. "representation_optimizer"). Optimizers are
             # NOT in BUILTIN_TRANSFORMS so they don't appear in `allowed`. They should
             # still run if listed in `allowed_optimizers`.
-            schedule = get_canonical_request_value(
-                working, context, "_lattice_schedule", {}
-            )
+            schedule = get_canonical_request_value(working, context, "_lattice_schedule", {})
             if schedule and isinstance(schedule, dict):
                 blocked_names = set(schedule.get("blocked", []))
                 allowed_names = set(schedule.get("allowed", []))
@@ -967,7 +963,10 @@ class CompressorPipeline:
                 # reached: any transform that passed config + policy + risk gates.
                 # Scheduler-blocked is still reached (pipeline saw it, scheduler gated it).
                 if not was_risk_blocked and (
-                    was_executed or was_deferred or was_scheduler_blocked or t_metrics.get("reached")
+                    was_executed
+                    or was_deferred
+                    or was_scheduler_blocked
+                    or t_metrics.get("reached")
                 ):
                     transforms_reached.append(t_name)
                 if not was_risk_blocked and not was_scheduler_blocked and changed:
@@ -1051,9 +1050,7 @@ class CompressorPipeline:
 
     @staticmethod
     def _runtime_budget_ms(request: Request, context: TransformContext) -> float:
-        contract = get_canonical_request_value(
-            request, context, "_lattice_runtime_contract"
-        )
+        contract = get_canonical_request_value(request, context, "_lattice_runtime_contract")
         if not isinstance(contract, dict):
             return 0.0
         value = contract.get("max_transform_latency_ms")

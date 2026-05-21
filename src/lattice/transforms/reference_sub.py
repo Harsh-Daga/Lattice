@@ -27,9 +27,9 @@ from lattice.core.context import (
 )
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
-from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
+from lattice.ir.primitives import PromptIRV2
 from lattice.utils.patterns import (
     HEX_PATTERN,
     LONG_IDENTIFIER_PATTERN,
@@ -264,7 +264,7 @@ class ReferenceSubstitution(ReversibleSyncTransform):
         context: TransformContext,
     ) -> Result[PromptIRV2, TransformError]:
         """IR-native: replace long identifiers in span text, return new PromptIRV2."""
-        from lattice.core.primitives import PromptIRV2, SectionV2
+        from lattice.ir.primitives import PromptIRV2, SectionV2
 
         # Load existing maps from IR metadata first, then context
         meta = dict(ir.metadata)

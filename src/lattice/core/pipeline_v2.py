@@ -14,6 +14,7 @@ Key design:
 
 This replaces pipeline.py's 13 gate layers with clean execution.
 """
+
 from __future__ import annotations
 
 import time
@@ -21,15 +22,15 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.ir_transform import (
+from lattice.core.result import Ok, Result, is_ok, unwrap, unwrap_err
+from lattice.core.runtime_state import get_canonical_state_value
+from lattice.core.transport import Request, Response
+from lattice.ir.primitives import Candidate, ExecutionPlan, PromptIRV2
+from lattice.ir.transform import (
     CandidateSearch,
     IRTransform,
     LegacyRequestTransformAdapter,
 )
-from lattice.core.primitives import Candidate, ExecutionPlan, PromptIRV2
-from lattice.core.result import Ok, Result, is_ok, unwrap, unwrap_err
-from lattice.core.runtime_state import get_canonical_state_value
-from lattice.core.transport import Request, Response
 
 _RESPONSE_ONLY_TRANSFORMS = {"output_cleanup"}
 
@@ -72,7 +73,10 @@ class TransformRegistryV2:
     _FACTORIES: dict[str, tuple[str, str]] = {
         "content_profiler": ("lattice.transforms.content_profiler", "ContentProfiler"),
         "runtime_contract": ("lattice.transforms.runtime_contract", "RuntimeContractTransform"),
-        "constraint_lifting": ("lattice.transforms.constraint_lifting", "ConstraintLiftingTransform"),
+        "constraint_lifting": (
+            "lattice.transforms.constraint_lifting",
+            "ConstraintLiftingTransform",
+        ),
         "message_dedup": ("lattice.transforms.message_dedup", "MessageDeduplicator"),
         "cache_arbitrage": ("lattice.transforms.cache_arbitrage", "CacheArbitrageOptimizer"),
         "causal_chain": ("lattice.transforms.causal_chain", "CausalChainExtractor"),
@@ -84,7 +88,10 @@ class TransformRegistryV2:
         "tool_projection": ("lattice.transforms.tool_projection", "QueryAwareProjection"),
         "reference_optimizer": ("lattice.optimizer.reference_optimizer", "ReferenceOptimizer"),
         "structure_optimizer": ("lattice.optimizer.structure_optimizer", "StructureOptimizer"),
-        "ir_structure_optimizer": ("lattice.optimizer.ir_structure_optimizer", "IRStructureOptimizer"),
+        "ir_structure_optimizer": (
+            "lattice.optimizer.ir_structure_optimizer",
+            "IRStructureOptimizer",
+        ),
         "diagnostic_optimizer": ("lattice.optimizer.diagnostic_optimizer", "DiagnosticOptimizer"),
         "context_optimizer": ("lattice.optimizer.context_optimizer", "ContextOptimizer"),
         "tool_optimizer": ("lattice.optimizer.tool_optimizer", "ToolOptimizer"),
@@ -281,9 +288,7 @@ class PipelineV2:
                     context.record_metric(
                         "pipeline_v2", "beam_search_latency_ms", round(search_ms, 3)
                     )
-                    context.record_metric(
-                        "pipeline_v2", "beam_candidates", len(search.transforms)
-                    )
+                    context.record_metric("pipeline_v2", "beam_candidates", len(search.transforms))
                     context.record_metric(
                         "pipeline_v2",
                         "ir_sections",

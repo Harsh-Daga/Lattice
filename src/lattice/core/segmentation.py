@@ -19,15 +19,15 @@ from lattice.core.transport import Request
 class SegmentKind(enum.Enum):
     """Semantic classification of a message region."""
 
-    INSTRUCTIONS = "instructions"       # System prompts, user commands
-    REASONING = "reasoning"           # Chain-of-thought, causal analysis
-    CODE = "code"                    # Code blocks, diffs
-    JSON = "json"                    # JSON blobs, structured data
-    TABLE = "table"                  # Markdown tables, CSV
-    LOG = "log"                      # Timestamped logs, stack traces
-    TOOL_OUTPUT = "tool_output"      # Tool/function results
-    NARRATIVE = "narrative"          # Long-form text
-    SHORT = "short"                  # Minimal content (< 50 tokens)
+    INSTRUCTIONS = "instructions"  # System prompts, user commands
+    REASONING = "reasoning"  # Chain-of-thought, causal analysis
+    CODE = "code"  # Code blocks, diffs
+    JSON = "json"  # JSON blobs, structured data
+    TABLE = "table"  # Markdown tables, CSV
+    LOG = "log"  # Timestamped logs, stack traces
+    TOOL_OUTPUT = "tool_output"  # Tool/function results
+    NARRATIVE = "narrative"  # Long-form text
+    SHORT = "short"  # Minimal content (< 50 tokens)
 
 
 @dataclasses.dataclass(slots=True)
@@ -200,7 +200,9 @@ def _classify_code_block(text: str) -> SegmentKind:
         return SegmentKind.TABLE
 
     # Log / stack trace patterns
-    if re.search(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}|\b(ERROR|WARN|INFO|DEBUG|FATAL)\b", content):
+    if re.search(
+        r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}|\b(ERROR|WARN|INFO|DEBUG|FATAL)\b", content
+    ):
         return SegmentKind.LOG
 
     return SegmentKind.CODE
@@ -217,7 +219,11 @@ def _classify_narrative(text: str) -> SegmentKind:
         return SegmentKind.LOG
 
     # Reasoning markers
-    if re.search(r"\b(therefore|thus|hence|consequently|because|as a result|root cause|determined that)\b", text, re.IGNORECASE):
+    if re.search(
+        r"\b(therefore|thus|hence|consequently|because|as a result|root cause|determined that)\b",
+        text,
+        re.IGNORECASE,
+    ):
         return SegmentKind.REASONING
 
     # Too short

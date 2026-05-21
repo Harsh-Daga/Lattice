@@ -5,20 +5,21 @@ returns new PromptIRV2 instances. It does NOT mutate Request.messages directly.
 
 Legacy transforms (ReversibleSyncTransform) are wrapped by IRTransformAdapter.
 """
+
 from __future__ import annotations
 
 from typing import Any, Protocol
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.primitives import (
+from lattice.core.result import Ok, Result
+from lattice.core.transport import Request, Response
+from lattice.ir.primitives import (
     Candidate,
     CandidateGraph,
     CandidateScore,
     PromptIRV2,
 )
-from lattice.core.result import Ok, Result
-from lattice.core.transport import Request, Response
 
 
 class IRTransform(Protocol):
@@ -70,8 +71,8 @@ class LegacyRequestTransformAdapter:
     def optimize(
         self, ir: PromptIRV2, request: Request, context: TransformContext
     ) -> Result[PromptIRV2, TransformError]:
-        from lattice.core.compiler import get_compiler
-        from lattice.core.primitives import prompt_ir_v2_from_legacy
+        from lattice.ir.builder import compile_request_ir
+        from lattice.ir.primitives import prompt_ir_v2_from_legacy
 
         req_copy = request.copy()
         before = req_copy.copy()
@@ -80,8 +81,7 @@ class LegacyRequestTransformAdapter:
             modified = result.unwrap()
             if modified is not None and modified != before:
                 try:
-                    compiler = get_compiler()
-                    legacy_ir = compiler.compile(modified, context)
+                    legacy_ir = compile_request_ir(modified)
                     return Ok(prompt_ir_v2_from_legacy(legacy_ir))
                 except Exception:
                     return Ok(ir)
@@ -187,7 +187,10 @@ class CandidateScorer:
         # Rule 1: Expansion without gain → REJECT
         if tokens_after > tokens_before:
             if cache_gain <= 0 and transport_gain <= 0:
-                return False, f"tokens_after ({tokens_after}) > tokens_before ({tokens_before}) with no gain"
+                return (
+                    False,
+                    f"tokens_after ({tokens_after}) > tokens_before ({tokens_before}) with no gain",
+                )
 
         # Rule 2: Quality below floor → REJECT
         if quality_estimate < quality_floor:
@@ -250,6 +253,7 @@ class CandidateSearch:
                         continue
 
                     import time
+
                     start = time.perf_counter()
                     search_context = context.copy()
                     result = tx.optimize(cand.ir, request, search_context)

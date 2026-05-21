@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
-from lattice.core.primitives import PromptIRV2, SectionV2, SpanV2
 from lattice.core.result import Ok
 from lattice.core.transport import Message, Request, Role
+from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
 from lattice.transforms.rate_distortion import RateDistortionCompressor
 
 

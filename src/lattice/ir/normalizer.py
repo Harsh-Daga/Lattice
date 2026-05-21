@@ -18,7 +18,7 @@ import re
 from collections import Counter
 from typing import Any
 
-from lattice.core.ir import (
+from lattice.ir.types import (
     PromptIR,
     Section,
     SectionType,

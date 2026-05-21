@@ -10,9 +10,9 @@ from lattice.core.guardrails import (
     check_format_preservation,
 )
 from lattice.core.scheduler import decide_schedule
-from lattice.core.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
 from lattice.core.transport import Message, Request
+from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.utils.validation import SemanticRiskScore
 
 

@@ -164,8 +164,8 @@ class TestPlaceholderSafety:
     def test_no_opaque_placeholders_in_output(self) -> None:
         import re
 
-        from lattice.core.ir_builder import build_ir
-        from lattice.core.ir_serializer import serialize_ir_to_text
+        from lattice.ir.builder import build_ir
+        from lattice.ir.serializer import serialize_ir_to_text
 
         req = Request(messages=[_req("user", "The UUID 550e8400-e29b-41d4-a716-446655440000 is duplicated. Error in module 42.")])
         ir = build_ir(req)

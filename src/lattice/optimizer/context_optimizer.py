@@ -73,7 +73,9 @@ class ContextOptimizer(ReversibleSyncTransform):
 
     name = "context_optimizer"
     priority = 22
-    transform_class = ReversibleSyncTransform.transform_class  # LOSSLESS_SAFE at optimizer level, but constituents are LOSSY
+    transform_class = (
+        ReversibleSyncTransform.transform_class
+    )  # LOSSLESS_SAFE at optimizer level, but constituents are LOSSY
 
     def __init__(self) -> None:
         self._constituents: list[tuple[str, Any]] = []
@@ -127,7 +129,9 @@ class ContextOptimizer(ReversibleSyncTransform):
                     tokens_before=original_tokens,
                     tokens_after=candidate_req.token_estimate,
                     transforms_used=[t_name],
-                    semantic_risk=0.2 if t_name in ("rate_distortion", "extractive_compress") else 0.1,
+                    semantic_risk=0.2
+                    if t_name in ("rate_distortion", "extractive_compress")
+                    else 0.1,
                 )
                 if _validate_candidate(candidate, quality_floor, context, t_name):
                     candidates.append(candidate)

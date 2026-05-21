@@ -41,7 +41,7 @@ _REASONING_DISABLED: frozenset[str] = frozenset(
 _TASK_TRANSFORM_MATRIX: dict[str, dict[str, bool | None]] = {
     TaskClass.REASONING.value: {
         "rate_distortion": False,
-                "message_dedup": False,
+        "message_dedup": False,
         "context_selector": False,
         "information_theoretic_selector": False,
         # tool_filter and reference_sub are reversible; allow them.
@@ -49,22 +49,21 @@ _TASK_TRANSFORM_MATRIX: dict[str, dict[str, bool | None]] = {
     },
     TaskClass.DEBUGGING.value: {
         "rate_distortion": False,
-                "message_dedup": False,
+        "message_dedup": False,
         "context_selector": False,
         "information_theoretic_selector": False,
         # reference_sub and tool_filter are reversible; allow them.
     },
     TaskClass.STRUCTURED.value: {
         "rate_distortion": False,
-            },
+    },
     TaskClass.ANALYSIS.value: {
         "rate_distortion": False,
     },
     TaskClass.RETRIEVAL.value: {
         "rate_distortion": False,
-            },
-    TaskClass.SUMMARIZATION.value: {
     },
+    TaskClass.SUMMARIZATION.value: {},
     TaskClass.SIMPLE.value: {
         "rate_distortion": False,
     },
@@ -235,10 +234,7 @@ class SchedulerDecision:
         allowed_optimizers = sorted(
             {
                 name
-                for name in (
-                    _transform_to_optimizer.get(t)
-                    for t in self.allowed_transforms
-                )
+                for name in (_transform_to_optimizer.get(t) for t in self.allowed_transforms)
                 if name is not None
             }
         )

@@ -25,18 +25,19 @@ Usage:
         def _do_something(self, span):
             return span.text.replace("old", "new")
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.ir import PromptIR, SectionType
 from lattice.core.pipeline import ReversibleSyncTransform
-from lattice.core.primitives import PromptIRV2, prompt_ir_from_v2
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.transport import Request, Response
+from lattice.ir.primitives import PromptIRV2, prompt_ir_from_v2
+from lattice.ir.types import PromptIR, SectionType
 
 
 class IRNativeOptimizer(ReversibleSyncTransform):
@@ -69,7 +70,7 @@ class IRNativeOptimizer(ReversibleSyncTransform):
         self, request: Request, context: TransformContext
     ) -> Result[Request, TransformError]:
         """Entrypoint: compile/get IR, call optimize_ir, serialize back."""
-        from lattice.core.ir_serializer import serialize_ir_to_text
+        from lattice.ir.serializer import serialize_ir_to_text
 
         ir = self._get_ir(request, context)
         if ir is None:
@@ -148,9 +149,9 @@ class IRNativeOptimizer(ReversibleSyncTransform):
 
         # 4. Compile fresh (lazy)
         try:
-            from lattice.core.compiler import get_compiler
-            compiler = get_compiler()
-            ir = compiler.compile(request, context)
+            from lattice.ir.builder import compile_request_ir
+
+            ir = compile_request_ir(request)
             # Cache in session state for reuse by other IR-native optimizers
             context.session_state["_lattice_ir"] = ir
             return ir
@@ -169,7 +170,7 @@ class IRNativeOptimizer(ReversibleSyncTransform):
 
     def _serialize_to_request(self, ir: PromptIR, original: Request) -> Request:
         """Serialize modified IR into a fresh copy of the Request."""
-        from lattice.core.ir_serializer import serialize_ir_to_text
+        from lattice.ir.serializer import serialize_ir_to_text
 
         text = serialize_ir_to_text(ir)
         request = original.copy()
@@ -182,9 +183,8 @@ class IRNativeOptimizer(ReversibleSyncTransform):
         else:
             # Create a new user message if none exists
             from lattice.core.transport import Message
-            request.messages.append(
-                Message(role="user", content=text)
-            )
+
+            request.messages.append(Message(role="user", content=text))
 
         # Record that we produced IR in transport so downstream
         # optimizers or the proxy can see it
@@ -206,7 +206,7 @@ class PromptIrLoader:
 
     @staticmethod
     def from_dict(data: dict[str, Any]) -> PromptIR:
-        from lattice.core.ir import Section, SectionType, Span, SpanRole
+        from lattice.ir.types import Section, SectionType, Span, SpanRole
 
         sections: list[Section] = []
         for sec_data in data.get("sections", []):
@@ -224,9 +224,7 @@ class PromptIrLoader:
                         structure=sp_data.get("structure", {}),
                         protected=sp_data.get("protected", False),
                         compressible=sp_data.get("compressible", False),
-                        compression_modes_allowed=sp_data.get(
-                            "compression_modes_allowed", []
-                        ),
+                        compression_modes_allowed=sp_data.get("compression_modes_allowed", []),
                         metadata=sp_data.get("metadata", {}),
                     )
                 )

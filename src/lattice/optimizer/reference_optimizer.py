@@ -32,6 +32,7 @@ try:
 except Exception:
     PathPrefixCompressor = None  # type: ignore[misc,assignment]
 
+
 @dataclasses.dataclass(slots=True)
 class _Candidate:
     request: Request

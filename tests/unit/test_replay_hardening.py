@@ -55,7 +55,7 @@ class TestReplayHardeningFields:
         assert report.scenarios[0].request_fingerprint == "fp1"
 
     def test_non_empty_fingerprint_when_ir_present(self) -> None:
-        from lattice.core.primitives import PromptIRV2, SectionV2, SpanV2
+        from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
 
         ir = PromptIRV2(
             sections=(

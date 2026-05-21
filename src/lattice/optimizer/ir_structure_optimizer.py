@@ -16,14 +16,15 @@ Why IR-native is better:
   - Protection is span-aware, not threshold-based
   - Reverse is trivial: just don't modify the IR (lossless)
 """
+
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.ir import PromptIR, SectionType
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request
-from lattice.optimizer.ir_native_optimizer import IRNativeOptimizer
+from lattice.ir.native_optimizer import IRNativeOptimizer
+from lattice.ir.types import PromptIR, SectionType
 
 
 class IRStructureOptimizer(IRNativeOptimizer):
@@ -138,9 +139,7 @@ def _factor_table(structure: dict, text: str) -> str | None:
     if not constant_cols and not sequence_cols:
         return None
 
-    lines: list[str] = [
-        f"Table: {row_count} rows, columns: {', '.join(table_columns)}"
-    ]
+    lines: list[str] = [f"Table: {row_count} rows, columns: {', '.join(table_columns)}"]
 
     if constant_cols:
         lines.append("  constant:")

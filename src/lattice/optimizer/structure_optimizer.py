@@ -36,6 +36,7 @@ try:
 except Exception:
     ColumnarTablePack = None  # type: ignore[misc,assignment]
 
+
 @dataclasses.dataclass(slots=True)
 class _Candidate:
     request: Request
@@ -241,7 +242,11 @@ def _validate_candidate(
     # Reject if quality below floor
     if candidate.quality_estimate < quality_floor:
         context.record_metric(label, "rejected_quality", True)
-        context.record_metric(label, "rejected_reason", f"quality {candidate.quality_estimate} < floor {quality_floor}")
+        context.record_metric(
+            label,
+            "rejected_reason",
+            f"quality {candidate.quality_estimate} < floor {quality_floor}",
+        )
         return False
 
     # Reject if compression is excessive (>50%)
