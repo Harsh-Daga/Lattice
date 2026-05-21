@@ -148,9 +148,8 @@ class IRNativeOptimizer(ReversibleSyncTransform):
 
         # 4. Compile fresh (lazy)
         try:
-            from lattice.ir.builder import build_ir
-            from lattice.ir.normalizer import normalize_ir
-            ir = normalize_ir(build_ir(request))
+            from lattice.ir.builder import compile_request_ir
+            ir = compile_request_ir(request)
             # Cache in session state for reuse by other IR-native optimizers
             context.session_state["_lattice_ir"] = ir
             return ir

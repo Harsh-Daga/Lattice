@@ -222,11 +222,11 @@ _STOP_WORDS = frozenset(
 def build_ir(request: Request) -> PromptIR:
     """Build canonical PromptIR from a Request.
 
-    This is the primary entry point. The IR is stored in content_profiler
-    metadata and consumed by the scheduler, safety guards, and transforms.
-
-    Also stores a summary of the IR back on request.metadata so downstream
-    transforms can read protected-span/causal info without recompiling.
+    This is the primary entry point. The IR is consumed by the scheduler,
+    safety guards, and transforms. ``build_ir`` is a pure function: it does
+    not mutate ``request`` — callers that want IR-summary metadata stored
+    back on the request should use :func:`compile_request_ir` (which runs
+    build → normalize → store).
     """
     sections: list[Section] = []
     span_counter = 0
@@ -239,7 +239,20 @@ def build_ir(request: Request) -> PromptIR:
     _classify_roles(sections)
     _derive_protection(sections)
 
-    ir = PromptIR(sections=sections)
+    return PromptIR(sections=sections)
+
+
+def compile_request_ir(request: Request) -> PromptIR:
+    """Full IR compile path: build → normalize → store summary metadata.
+
+    Replaces the deleted ``core.compiler.PromptCompiler.compile`` from
+    Phase 1. The IR summary stored on ``request.metadata`` reflects the
+    **post-normalize** state, matching the pre-refactor behavior that
+    ``core/pipeline.py`` relies on when reading ``_lattice_protected_spans``.
+    """
+    from lattice.ir.normalizer import normalize_ir
+
+    ir = normalize_ir(build_ir(request))
     _store_ir_metadata(request, ir)
     return ir
 

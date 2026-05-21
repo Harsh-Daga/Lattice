@@ -190,10 +190,9 @@ def _get_initial_ir(request: Request, context: TransformContext) -> PromptIRV2 |
             return None
 
     try:
-        from lattice.ir.builder import build_ir
-        from lattice.ir.normalizer import normalize_ir
+        from lattice.ir.builder import compile_request_ir
 
-        legacy_ir = normalize_ir(build_ir(request))
+        legacy_ir = compile_request_ir(request)
         ir_v2 = prompt_ir_v2_from_legacy(legacy_ir)
         context.session_state["_lattice_ir_v2"] = ir_v2
         return ir_v2
@@ -207,10 +206,9 @@ def _compile_request_to_ir_v2(
 ) -> PromptIRV2 | None:
     """Compile a live request back into canonical PromptIRV2."""
     try:
-        from lattice.ir.builder import build_ir
-        from lattice.ir.normalizer import normalize_ir
+        from lattice.ir.builder import compile_request_ir
 
-        legacy_ir = normalize_ir(build_ir(request))
+        legacy_ir = compile_request_ir(request)
         return prompt_ir_v2_from_legacy(legacy_ir)
     except Exception:
         return None

@@ -7,7 +7,7 @@ import json
 import pytest
 
 from lattice.core.transport import Message, Request
-from lattice.ir.builder import build_ir
+from lattice.ir.builder import build_ir, compile_request_ir
 from lattice.ir.normalizer import normalize_ir
 from lattice.ir.serializer import serialize_ir_to_text
 from lattice.ir.types import PromptIR, SectionType
@@ -212,12 +212,12 @@ class TestIRSerializer:
         assert "Hi" in text
 
 
-class TestBuildIrStoresMetadata:
-    """Equivalent of the old TestCompiler — compile path is now
-    `normalize_ir(build_ir(request))` and `build_ir` stores metadata
-    inline (Phase 1: core/compiler.py deleted)."""
+class TestCompileRequestIr:
+    """Equivalent of the old TestCompiler — the compile path is now
+    ``compile_request_ir(request)`` (which runs build → normalize → store).
+    Phase 1 deleted core/compiler.py."""
 
-    def test_build_produces_valid_ir(self) -> None:
+    def test_compile_produces_valid_ir(self) -> None:
         req = _make_request(
             [
                 {"role": "system", "content": "You are helpful."},
@@ -227,26 +227,26 @@ class TestBuildIrStoresMetadata:
                 },
             ]
         )
-        ir = normalize_ir(build_ir(req))
+        ir = compile_request_ir(req)
         assert isinstance(ir, PromptIR)
         assert ir.total_spans > 0
 
-    def test_build_stores_metadata(self) -> None:
+    def test_compile_stores_metadata(self) -> None:
         req = _make_request(
             [
                 {"role": "user", "content": "Debug this: 20 errors and 3 timeouts."},
             ]
         )
-        build_ir(req)
+        compile_request_ir(req)
         assert "_lattice_ir_summary" in req.metadata
         assert "_lattice_protected_spans" in req.metadata
 
-    def test_build_is_idempotent(self) -> None:
+    def test_compile_is_idempotent(self) -> None:
         req = _make_request(
             [
                 {"role": "user", "content": "Explain the error: service A failed."},
             ]
         )
-        ir1 = normalize_ir(build_ir(req.copy()))
-        ir2 = normalize_ir(build_ir(req.copy()))
+        ir1 = compile_request_ir(req.copy())
+        ir2 = compile_request_ir(req.copy())
         assert ir1.total_spans == ir2.total_spans

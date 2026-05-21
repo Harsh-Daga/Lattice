@@ -70,8 +70,7 @@ class LegacyRequestTransformAdapter:
     def optimize(
         self, ir: PromptIRV2, request: Request, context: TransformContext
     ) -> Result[PromptIRV2, TransformError]:
-        from lattice.ir.builder import build_ir
-        from lattice.ir.normalizer import normalize_ir
+        from lattice.ir.builder import compile_request_ir
         from lattice.ir.primitives import prompt_ir_v2_from_legacy
 
         req_copy = request.copy()
@@ -81,7 +80,7 @@ class LegacyRequestTransformAdapter:
             modified = result.unwrap()
             if modified is not None and modified != before:
                 try:
-                    legacy_ir = normalize_ir(build_ir(modified))
+                    legacy_ir = compile_request_ir(modified)
                     return Ok(prompt_ir_v2_from_legacy(legacy_ir))
                 except Exception:
                     return Ok(ir)

@@ -31,7 +31,7 @@ Consumers import everything IR-related from this single entry point:
     )
 """
 
-from lattice.ir.builder import build_ir, is_repeated_template
+from lattice.ir.builder import build_ir, compile_request_ir, is_repeated_template
 from lattice.ir.native_optimizer import IRNativeOptimizer, PromptIrLoader
 from lattice.ir.normalizer import (
     extract_causal_chains,
@@ -104,6 +104,7 @@ __all__ = [
     "thaw_dict",
     # construction & rendering
     "build_ir",
+    "compile_request_ir",
     "normalize_ir",
     "serialize_ir_to_text",
     "is_repeated_template",
