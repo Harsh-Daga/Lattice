@@ -137,7 +137,7 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         safety_bucket=SAFE,
         default_pipeline=False,  # Only active when use_v2_pipeline=True
         factory_path="lattice.core.pipeline_v2_wrapper.PipelineV2Wrapper",
-        description="V2 immutable pipeline executor (UnifiedPlanner + PipelineV2)",
+        description="V2 immutable pipeline executor (UnifiedPlanner + Pipeline)",
     ),
     # ── Execution-only (proxy hot path) ─────────────────────────
     TransformSpec(
@@ -298,7 +298,7 @@ OPTIMIZER_SPECS: tuple[TransformSpec, ...] = (
         config_flag="transform_representation_optimizer",
         priority=19,
         safety_bucket=SAFE,
-        factory_path="lattice.optimizer.representation_optimizer.RepresentationOptimizer",
+        factory_path="lattice.pipeline.representation_optimizer.RepresentationOptimizer",
         description="Global beam-search optimizer across all representation layers",
     ),
     TransformSpec(

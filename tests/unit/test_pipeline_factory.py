@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from lattice.core.config import LatticeConfig
-from lattice.core.pipeline_factory import build_default_pipeline, pipeline_summary
 from lattice.core.session import MemorySessionStore, SessionManager
+from lattice.pipeline.factory import build_default_pipeline, pipeline_summary
 
 
 def _names(config: LatticeConfig, *, execution: bool = False) -> list[str]:

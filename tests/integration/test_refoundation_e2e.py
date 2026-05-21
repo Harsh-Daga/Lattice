@@ -3,7 +3,7 @@
 Verifies the full new flow:
 1. content_profiler builds canonical PromptIRV2 + metadata
 2. UnifiedPlanner produces ExecutionPlan
-3. PipelineV2 executes plan verbatim
+3. Pipeline executes plan verbatim
 4. CandidateScorer scores results (single source)
 """
 
@@ -13,8 +13,6 @@ import asyncio
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline_factory import build_optimizer_pipeline
-from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
 from lattice.core.result import is_ok, unwrap
 from lattice.core.unified_planner import UnifiedPlanner, profile_from_legacy
 from lattice.ir.primitives import (
@@ -23,6 +21,8 @@ from lattice.ir.primitives import (
     SectionV2,
     SpanV2,
 )
+from lattice.pipeline.factory import build_optimizer_pipeline
+from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
 from lattice.transport.types import Message, Request
 
 
@@ -97,7 +97,7 @@ class TestRefoundationEndToEnd:
         planner = UnifiedPlanner()
         plan = planner.plan(request, profile)
 
-        pipeline = PipelineV2()
+        pipeline = Pipeline()
         result = pipeline.process(request, plan, ctx)
 
         assert is_ok(result)
@@ -105,7 +105,7 @@ class TestRefoundationEndToEnd:
         assert modified is not None
 
     def test_ir_optimizer_exists_in_registry(self) -> None:
-        registry = TransformRegistryV2()
+        registry = PipelineTransformRegistry()
         inst = registry.get("ir_structure_optimizer")
         assert inst is not None
         assert hasattr(inst, "process")
@@ -168,7 +168,7 @@ class TestRefoundationEndToEnd:
         planner = UnifiedPlanner()
         plan = planner.plan(request, profile)
 
-        pipeline_v2 = PipelineV2()
+        pipeline_v2 = Pipeline()
         result2 = pipeline_v2.process(request, plan, ctx)
 
         assert is_ok(result2)
@@ -179,7 +179,7 @@ class TestRefoundationEndToEnd:
 
     def test_production_v2_pipeline_full(self) -> None:
         """Use build_v2_pipeline() with use_v2_pipeline=True (proxy path)."""
-        from lattice.core.pipeline_factory import build_v2_pipeline
+        from lattice.pipeline.factory import build_v2_pipeline
 
         cfg = LatticeConfig(use_v2_pipeline=True)
         pipeline = build_v2_pipeline(cfg)

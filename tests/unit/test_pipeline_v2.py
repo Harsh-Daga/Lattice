@@ -1,27 +1,27 @@
-"""Tests for PipelineV2."""
+"""Tests for Pipeline."""
 
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
-from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
 from lattice.core.result import is_ok
 from lattice.ir.primitives import ExecutionPlan
+from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
 from lattice.transport.types import Message, Request
 
 
 class TestTransformRegistryV2:
     def test_registry_loads_content_profiler(self) -> None:
-        registry = TransformRegistryV2()
+        registry = PipelineTransformRegistry()
         inst = registry.get("content_profiler")
         assert inst is not None
         assert hasattr(inst, "process")
 
     def test_registry_missing_returns_none(self) -> None:
-        registry = TransformRegistryV2()
+        registry = PipelineTransformRegistry()
         assert registry.get("nonexistent_transform") is None
 
     def test_registry_get_names(self) -> None:
-        registry = TransformRegistryV2()
+        registry = PipelineTransformRegistry()
         names = registry.get_transform_names()
         assert "content_profiler" in names
         assert "prefix_optimizer" in names
@@ -30,8 +30,8 @@ class TestTransformRegistryV2:
 
 class TestPipelineV2Execution:
     def test_pipeline_executes_plan_verbatim(self) -> None:
-        registry = TransformRegistryV2()
-        pipeline = PipelineV2(registry)
+        registry = PipelineTransformRegistry()
+        pipeline = Pipeline(registry)
 
         plan = ExecutionPlan(
             transforms=("content_profiler", "runtime_contract", "output_cleanup"),
@@ -51,8 +51,8 @@ class TestPipelineV2Execution:
         assert modified is not None
 
     def test_pipeline_respects_budget(self) -> None:
-        registry = TransformRegistryV2()
-        pipeline = PipelineV2(registry)
+        registry = PipelineTransformRegistry()
+        pipeline = Pipeline(registry)
 
         plan = ExecutionPlan(
             transforms=("content_profiler", "runtime_contract"),
@@ -68,8 +68,8 @@ class TestPipelineV2Execution:
         assert result.unwrap() is not None
 
     def test_pipeline_tracks_transforms_applied(self) -> None:
-        registry = TransformRegistryV2()
-        pipeline = PipelineV2(registry)
+        registry = PipelineTransformRegistry()
+        pipeline = Pipeline(registry)
 
         plan = ExecutionPlan(
             transforms=("content_profiler", "runtime_contract"),
@@ -85,8 +85,8 @@ class TestPipelineV2Execution:
         assert result.unwrap() is not None
 
     def test_pipeline_runs_all_transforms(self) -> None:
-        registry = TransformRegistryV2()
-        pipeline = PipelineV2(registry)
+        registry = PipelineTransformRegistry()
+        pipeline = Pipeline(registry)
 
         plan = ExecutionPlan(
             transforms=("content_profiler", "runtime_contract"),
@@ -102,8 +102,8 @@ class TestPipelineV2Execution:
         assert result.unwrap() is not None
 
     def test_pipeline_skips_missing_transform(self) -> None:
-        registry = TransformRegistryV2()
-        pipeline = PipelineV2(registry)
+        registry = PipelineTransformRegistry()
+        pipeline = Pipeline(registry)
 
         plan = ExecutionPlan(
             transforms=("nonexistent_transform", "content_profiler"),
@@ -121,8 +121,8 @@ class TestPipelineV2Execution:
 
 class TestPipelineV2Reverse:
     def test_reverse_applies_in_reverse_order(self) -> None:
-        registry = TransformRegistryV2()
-        pipeline = PipelineV2(registry)
+        registry = PipelineTransformRegistry()
+        pipeline = Pipeline(registry)
 
         plan = ExecutionPlan(
             transforms=("reference_optimizer", "content_profiler"),

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from lattice.core.guardrails import (
+from lattice.core.scheduler import decide_schedule
+from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
+from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
+from lattice.pipeline.guardrails import (
     GuardAction,
     check_blank_output,
     check_entity_preservation,
     check_expansion_guard,
     check_format_preservation,
 )
-from lattice.core.scheduler import decide_schedule
-from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
-from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.transport.types import Message, Request
 from lattice.utils.validation import SemanticRiskScore
 

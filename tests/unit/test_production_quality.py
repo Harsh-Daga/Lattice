@@ -196,7 +196,7 @@ class TestPlaceholderSafety:
         assert len(opaque) == 0 or "ALIAS MAP" in text
 
     def test_hard_placeholder_leakage_detected(self) -> None:
-        from lattice.core.guardrails import GuardAction, check_placeholder_leakage
+        from lattice.pipeline.guardrails import GuardAction, check_placeholder_leakage
 
         before = "The error was in module X with ID 123"
         after = "The error was <ref_17> in module <d_36>"
@@ -204,7 +204,7 @@ class TestPlaceholderSafety:
         assert decision.action in (GuardAction.ROLLBACK, GuardAction.REJECT)
 
     def test_manifested_aliases_pass(self) -> None:
-        from lattice.core.guardrails import GuardAction, check_placeholder_leakage
+        from lattice.pipeline.guardrails import GuardAction, check_placeholder_leakage
 
         before = "The error was in module X"
         after = "ALIAS MAP:\nA1 = ModuleNotFoundError\n\nDATA:\nThe error was A1"
@@ -246,22 +246,22 @@ class TestTransformReputationRuntime:
 
 class TestMILVTriggers:
     def test_milv_triggers_on_high_compression(self) -> None:
-        from lattice.core.milv import should_trigger_milv
         from lattice.core.task_classifier import TaskClass, TaskClassification
+        from lattice.pipeline.milv import should_trigger_milv
 
         tc = TaskClassification(task_class=TaskClass.SIMPLE)
         assert should_trigger_milv("test", tc, compression_ratio=0.35)
 
     def test_milv_triggers_on_reasoning(self) -> None:
-        from lattice.core.milv import should_trigger_milv
         from lattice.core.task_classifier import TaskClass, TaskClassification
+        from lattice.pipeline.milv import should_trigger_milv
 
         tc = TaskClassification(task_class=TaskClass.REASONING)
         assert should_trigger_milv("test", tc, compression_ratio=0.15)
 
     def test_milv_skips_low_risk_simple(self) -> None:
-        from lattice.core.milv import should_trigger_milv
         from lattice.core.task_classifier import TaskClass, TaskClassification
+        from lattice.pipeline.milv import should_trigger_milv
 
         tc = TaskClassification(task_class=TaskClass.SIMPLE)
         assert not should_trigger_milv("prefix_optimizer", tc, compression_ratio=0.05)

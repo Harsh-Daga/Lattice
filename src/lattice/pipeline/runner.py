@@ -1,6 +1,6 @@
 """core/pipeline_v2.py — Verbatim execution of ExecutionPlan with optional beam search.
 
-PipelineV2 receives an ExecutionPlan from UnifiedPlanner and executes it
+Pipeline receives an ExecutionPlan from UnifiedPlanner and executes it
 without runtime re-decision. When the plan includes optimizer transforms,
 it runs CandidateSearch (immutable beam search) over those transforms.
 
@@ -66,7 +66,7 @@ def _serialize_ir_to_messages(ir: PromptIRV2, working: Request) -> None:
             working.messages[i].content = text
 
 
-class TransformRegistryV2:
+class PipelineTransformRegistry:
     """Lazy transform registry — loads by canonical name."""
 
     # Map canonical_name → (module_path, class_name)
@@ -131,7 +131,7 @@ class TransformRegistryV2:
         return sorted(self._FACTORIES.keys())
 
 
-class PipelineV2:
+class Pipeline:
     """Verbatim pipeline — executes plan.transforms in order without re-decision."""
 
     # Explicit allowlist: transforms that run through native IR `optimize(ir, ...)`.
@@ -154,8 +154,8 @@ class PipelineV2:
         "tool_filter",
     }
 
-    def __init__(self, registry: TransformRegistryV2 | None = None) -> None:
-        self.registry = registry or TransformRegistryV2()
+    def __init__(self, registry: PipelineTransformRegistry | None = None) -> None:
+        self.registry = registry or PipelineTransformRegistry()
 
     def process(
         self,

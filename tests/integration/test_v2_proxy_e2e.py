@@ -6,8 +6,8 @@ import asyncio
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline_factory import build_v2_pipeline
 from lattice.core.result import is_ok
+from lattice.pipeline.factory import build_v2_pipeline
 from lattice.proxy.bootstrap import build_proxy_runtime
 from lattice.transport.types import Message, Request, Response
 

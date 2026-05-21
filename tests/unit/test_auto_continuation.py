@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.auto_continuation import AutoContinuation
+from lattice.pipeline.auto_continuation import AutoContinuation
 from lattice.transport.types import Message, Request, Response
 
 

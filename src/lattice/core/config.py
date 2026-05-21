@@ -214,8 +214,8 @@ class LatticeConfig(BaseSettings):
     # V2 refoundation opt-in (Phase 5)
     use_v2_pipeline: bool = Field(
         default=True,
-        description="Enable the V2 immutable pipeline (UnifiedPlanner + PipelineV2 + flat optimizer hierarchy). "
-        "When True, content_profiler uses UnifiedPlanner, pipeline uses PipelineV2 verbatim execution, "
+        description="Enable the V2 immutable pipeline (UnifiedPlanner + Pipeline + flat optimizer hierarchy). "
+        "When True, content_profiler uses UnifiedPlanner, pipeline uses Pipeline verbatim execution, "
         "and optimizer hierarchy is flattened. Defaults to True so the canonical runtime path is production default.",
     )
 

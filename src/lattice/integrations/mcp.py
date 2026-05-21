@@ -25,14 +25,14 @@ from typing import Any
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import (
+from lattice.core.result import is_err, unwrap, unwrap_err
+from lattice.core.runtime_state import get_canonical_request_value
+from lattice.core.session import MemorySessionStore, Session
+from lattice.pipeline.factory import (
     build_default_pipeline,
     build_v2_pipeline,
     pipeline_summary,
 )
-from lattice.core.result import is_err, unwrap, unwrap_err
-from lattice.core.runtime_state import get_canonical_request_value
-from lattice.core.session import MemorySessionStore, Session
 from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.types import Request
 

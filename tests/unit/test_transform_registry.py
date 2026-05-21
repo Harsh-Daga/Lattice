@@ -7,7 +7,6 @@ on transform identity, enablement, and classification.
 from __future__ import annotations
 
 from lattice.core.config import LatticeConfig
-from lattice.core.pipeline_factory import build_default_pipeline, pipeline_summary
 from lattice.core.transform_registry import (
     BUILTIN_TRANSFORMS,
     get_transform_spec,
@@ -16,6 +15,7 @@ from lattice.core.transform_registry import (
     list_default_pipeline_names,
     list_transform_names,
 )
+from lattice.pipeline.factory import build_default_pipeline, pipeline_summary
 from lattice.utils.validation import (
     TransformSafetyBucket,
     get_transform_safety_bucket,
