@@ -9,7 +9,14 @@ import asyncio
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
+from lattice.ir.builder import build_ir
+from lattice.ir.primitives import prompt_ir_v2_from_legacy
 from lattice.transport.types import Message, Request
+
+
+def _ir_v2_for(req: Request) -> "object":
+    """Helper: build a PromptIRV2 from a Request for IR-native optimize() tests."""
+    return prompt_ir_v2_from_legacy(build_ir(req))
 
 
 class TestReferenceSubHardening:
@@ -51,12 +58,12 @@ class TestMessageDedupHardening:
             ]
         )
         ctx = TransformContext()
-        result = transform.process(req, ctx)
+        result = transform.optimize(_ir_v2_for(req), req, ctx)
         assert is_ok(result)
-        modified = unwrap(result)
-        # Last non-dup message preserved
-        last = modified.messages[-1]
-        assert "Debug" in last.content
+        modified_ir = unwrap(result)
+        # Last non-dup message content preserved somewhere in the IR text
+        all_text = " ".join(sp.text for sec in modified_ir.sections for sp in sec.spans)
+        assert "Debug" in all_text
 
     def test_allows_short_conversation(self) -> None:
         from lattice.transforms.message_dedup import MessageDeduplicator
@@ -70,7 +77,7 @@ class TestMessageDedupHardening:
             ]
         )
         ctx = TransformContext()
-        result = transform.process(req, ctx)
+        result = transform.optimize(_ir_v2_for(req), req, ctx)
         assert is_ok(result)
 
 
@@ -128,7 +135,7 @@ class TestRateDistortionHardening:
         narrative = "The system experienced a failure. The root cause was a memory leak. " * 10
         req = Request(messages=[Message(role="user", content=narrative)])
         ctx = TransformContext()
-        result = transform.process(req, ctx)
+        result = transform.optimize(_ir_v2_for(req), req, ctx)
         assert is_ok(result)
 
 
@@ -148,7 +155,7 @@ class TestFormatConvHardening:
             ]
         )
         ctx = TransformContext()
-        result = transform.process(req, ctx)
+        result = transform.optimize(_ir_v2_for(req), req, ctx)
         assert is_ok(result)
 
 
