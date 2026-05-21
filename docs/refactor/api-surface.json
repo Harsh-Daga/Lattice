@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "source": "docs/refactor/REFACTOR_PLAN.md \u00a72 (public surface lock)",
+  "cli": {
+    "global_flags": [
+      "--help",
+      "-h",
+      "-v",
+      "--version"
+    ],
+    "commands": [
+      {
+        "name": "proxy",
+        "subcommands": [
+          "run",
+          "start",
+          "stop",
+          "restart",
+          "status"
+        ],
+        "flags_per_subcommand": {
+          "run": [
+            "--host",
+            "--port",
+            "--workers",
+            "--mode",
+            "--reload",
+            "--no-ui"
+          ],
+          "start": [
+            "--host",
+            "--port",
+            "--workers",
+            "--mode"
+          ],
+          "stop": [
+            "--grace",
+            "--force"
+          ],
+          "restart": [],
+          "status": []
+        }
+      },
+      {
+        "name": "init",
+        "subcommands": [],
+        "flags": [
+          "--port",
+          "--local",
+          "--global",
+          "--start-proxy"
+        ]
+      },
+      {
+        "name": "lace",
+        "subcommands": [],
+        "flags": [
+          "--port",
+          "--no-start",
+          "--no-patch",
+          "--no-tunnel",
+          "--dry-run",
+          "--"
+        ]
+      },
+      {
+        "name": "unlace",
+        "subcommands": [],
+        "flags": []
+      },
+      {
+        "name": "info",
+        "subcommands": [],
+        "flags": []
+      },
+      {
+        "name": "config",
+        "subcommands": [],
+        "flags": [
+          "--json"
+        ]
+      },
+      {
+        "name": "health",
+        "subcommands": [],
+        "flags": [
+          "--host",
+          "--port"
+        ]
+      },
+      {
+        "name": "status",
+        "subcommands": [],
+        "flags": []
+      },
+      {
+        "name": "doctor",
+        "subcommands": [],
+        "flags": [],
+        "supported_agent_args": [
+          "claude",
+          "codex",
+          "cursor",
+          "opencode",
+          "copilot",
+          "generic"
+        ]
+      },
+      {
+        "name": "benchmark",
+        "subcommands": [],
+        "flags": []
+      }
+    ],
+    "supported_agents": [
+      "claude",
+      "codex",
+      "cursor",
+      "opencode",
+      "copilot",
+      "generic"
+    ]
+  },
+  "http": {
+    "endpoints": [
+      {
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "streaming_supported": true,
+        "format": "openai"
+      },
+      {
+        "method": "POST",
+        "path": "/v1/messages",
+        "streaming_supported": true,
+        "format": "anthropic"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/models",
+        "streaming_supported": false,
+        "format": "openai"
+      },
+      {
+        "method": "POST",
+        "path": "/v1/responses",
+        "streaming_supported": true,
+        "format": "openai_responses"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/responses/{id}",
+        "streaming_supported": false,
+        "format": "openai_responses"
+      },
+      {
+        "method": "DELETE",
+        "path": "/v1/responses/{id}",
+        "streaming_supported": false,
+        "format": "openai_responses"
+      },
+      {
+        "method": "WS",
+        "path": "/v1/responses",
+        "streaming_supported": true,
+        "format": "openai_responses"
+      },
+      {
+        "method": "WS",
+        "path": "/v1/chat/completions",
+        "streaming_supported": true,
+        "format": "openai_codex"
+      },
+      {
+        "method": "POST",
+        "path": "/lattice/session/start",
+        "streaming_supported": false
+      },
+      {
+        "method": "POST",
+        "path": "/lattice/session/append",
+        "streaming_supported": false
+      },
+      {
+        "method": "GET",
+        "path": "/lattice/session/{session_id}",
+        "streaming_supported": false
+      },
+      {
+        "method": "POST",
+        "path": "/lattice/session/invalidate",
+        "streaming_supported": false
+      },
+      {
+        "method": "POST",
+        "path": "/lattice/gateway",
+        "streaming_supported": false,
+        "format": "native"
+      },
+      {
+        "method": "GET",
+        "path": "/healthz",
+        "streaming_supported": false,
+        "kind": "health"
+      },
+      {
+        "method": "GET",
+        "path": "/readyz",
+        "streaming_supported": false,
+        "kind": "health"
+      },
+      {
+        "method": "GET",
+        "path": "/startupz",
+        "streaming_supported": false,
+        "kind": "health"
+      },
+      {
+        "method": "GET",
+        "path": "/metrics",
+        "streaming_supported": false,
+        "kind": "prometheus"
+      },
+      {
+        "method": "GET",
+        "path": "/stats",
+        "streaming_supported": false,
+        "kind": "snapshot"
+      },
+      {
+        "method": "POST",
+        "path": "/v1/codex/responses",
+        "streaming_supported": true,
+        "format": "openai_responses_alias"
+      },
+      {
+        "method": "POST",
+        "path": "/backend-api/responses",
+        "streaming_supported": true,
+        "format": "openai_responses_alias"
+      }
+    ],
+    "headers_required": [
+      "x-lattice-compression",
+      "x-lattice-session-id",
+      "x-lattice-delta",
+      "x-lattice-cost-usd",
+      "x-lattice-provider",
+      "x-lattice-transforms-applied"
+    ],
+    "headers_passthrough_prefix": [
+      "x-ratelimit-"
+    ]
+  },
+  "python_api": {
+    "toplevel_target": [
+      "LatticeClient",
+      "LatticeProxyClient",
+      "CompressResult",
+      "wrap_openai_client",
+      "__version__"
+    ],
+    "today": {
+      "from_lattice": [
+        "__version__"
+      ],
+      "from_lattice_client": [
+        "LatticeClient",
+        "CompressResult"
+      ],
+      "from_lattice_sdk": [
+        "LatticeClient",
+        "LatticeProxyClient",
+        "wrap_openai",
+        "wrap_anthropic"
+      ],
+      "from_lattice_core": [
+        "LatticeConfig",
+        "TransformContext",
+        "Result",
+        "Ok",
+        "Err",
+        "is_ok",
+        "is_err",
+        "unwrap",
+        "unwrap_err",
+        "Request",
+        "Response",
+        "Message",
+        "Role",
+        "Transform",
+        "SyncTransform",
+        "ReversibleSyncTransform",
+        "CompressorPipeline",
+        "LatticeError",
+        "ConfigurationError",
+        "ProviderError",
+        "ProviderTimeoutError",
+        "RequestTooLargeError",
+        "SessionError",
+        "SessionExpiredError",
+        "SessionNotFoundError",
+        "SessionStoreError",
+        "TransformError",
+        "TransformNotFoundError",
+        "ValidationError"
+      ]
+    },
+    "lattice_client_methods": [
+      "compress",
+      "compress_request",
+      "decompress_response",
+      "health",
+      "compression_stats",
+      "count_tokens"
+    ]
+  },
+  "notes": [
+    "wrap_openai_client (plan \u00a72.4) is named wrap_openai today; Phase 6/11 reconciles the name.",
+    "Top-level LatticeClient/LatticeProxyClient/CompressResult imports are added in Phase 6.",
+    "Many additional x-lattice-* headers are emitted today (cost/runtime/cached-tokens/etc.); only the \u00a72.3 set is contract-required."
+  ]
+}

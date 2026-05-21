@@ -57,7 +57,7 @@ The authoritative architecture document is [`docs/architecture/runtime_v2.md`](d
 
 ## Testing
 
-- Unit tests: `tests/unit/` — 1839+ tests
+- Unit tests: `tests/unit/` — 1845 tests
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
 - Run with `uv run pytest tests/ -q`
@@ -86,6 +86,6 @@ Suites: `all`, `feature`, `feature-matrix`, `provider`, `protocol`, `transport`,
 
 | Metric | Value |
 |--------|-------|
-| Tests passed | **1839/1839** |
+| Tests passed | **1845/1845** |
 | ruff errors | **0** |
 | mypy errors | **0** |
