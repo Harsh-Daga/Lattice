@@ -48,6 +48,10 @@ class TransformSpec:
     safety_bucket: str = SAFE
     default_pipeline: bool = False
     execution_only: bool = False
+    # Transforms that only have a legacy process() — no IR-native optimize().
+    # The v2 Pipeline runner skips them; v1 CompressorPipeline still calls them.
+    # Phase 2b-2b decides keep-or-delete per transform.
+    legacy_only: bool = False
     factory_path: str = ""
     factory_kwargs: dict[str, str] = dataclasses.field(default_factory=dict)
     description: str = ""
@@ -172,6 +176,7 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         config_flag="transform_constraint_lifting",
         priority=6,
         safety_bucket=SAFE,
+        legacy_only=True,
         factory_path="lattice.transforms.constraint_lifting.ConstraintLiftingTransform",
         description="Extracts buried constraints and format requirements",
     ),
@@ -216,6 +221,7 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         config_flag="transform_strategy_selector",
         priority=19,
         safety_bucket=SAFE,
+        legacy_only=True,
         factory_path="lattice.transforms.strategy_selector.StrategySelector",
         description="Bandit-based strategy selection",
     ),
@@ -421,6 +427,17 @@ def list_execution_only_names() -> tuple[str, ...]:
     return tuple(s.canonical_name for s in BUILTIN_TRANSFORMS if s.execution_only)
 
 
+def is_legacy_only(name: str) -> bool:
+    """Return True if *name* is a transform without an IR-native ``optimize()``.
+
+    The v2 Pipeline runner skips these so they don't get scheduled in the
+    canonical IR-native execution path. The v1 CompressorPipeline still
+    calls them via ``process()``.
+    """
+    spec = get_transform_spec(name)
+    return bool(spec and spec.legacy_only)
+
+
 # ---------------------------------------------------------------------------
 # Config helpers
 # ---------------------------------------------------------------------------
@@ -493,6 +510,7 @@ __all__ = [
     "list_transform_names",
     "list_default_pipeline_names",
     "list_execution_only_names",
+    "is_legacy_only",
     "resolve_config_flag",
     "is_transform_enabled",
     "build_transform_instance",
