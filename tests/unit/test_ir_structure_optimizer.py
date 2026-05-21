@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
-from lattice.core.ir import PromptIR, Section, SectionType, Span, SpanRole
 from lattice.core.transport import Request
+from lattice.ir.types import PromptIR, Section, SectionType, Span, SpanRole
 from lattice.optimizer.ir_structure_optimizer import IRStructureOptimizer
 
 

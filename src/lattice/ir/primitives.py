@@ -551,7 +551,7 @@ def prompt_ir_v2_from_legacy(legacy_ir: Any) -> PromptIRV2:
 
 def prompt_ir_from_v2(v2_ir: PromptIRV2) -> Any:
     """Convert immutable PromptIRV2 back to legacy PromptIR for adapters."""
-    from lattice.core.ir import PromptIR, Section, SectionType, Span, SpanRole
+    from lattice.ir.types import PromptIR, Section, SectionType, Span, SpanRole
 
     sections: list[Section] = []
     for sec in v2_ir.sections:

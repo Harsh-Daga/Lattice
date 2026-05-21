@@ -29,16 +29,16 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.ir_transform import (
+from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.result import Ok, Result, is_ok
+from lattice.core.runtime_state import get_canonical_state_value, thaw_value
+from lattice.core.transport import Request, Response
+from lattice.ir.primitives import PromptIRV2, prompt_ir_v2_from_legacy
+from lattice.ir.transform import (
     CandidateSearch,
     IRTransform,
     LegacyRequestTransformAdapter,
 )
-from lattice.core.pipeline import ReversibleSyncTransform
-from lattice.core.primitives import PromptIRV2, prompt_ir_v2_from_legacy
-from lattice.core.result import Ok, Result, is_ok
-from lattice.core.runtime_state import get_canonical_state_value, thaw_value
-from lattice.core.transport import Request, Response
 from lattice.optimizer import _OPTIMIZER_CLASSES
 
 
@@ -190,10 +190,10 @@ def _get_initial_ir(request: Request, context: TransformContext) -> PromptIRV2 |
             return None
 
     try:
-        from lattice.core.compiler import get_compiler
+        from lattice.ir.builder import build_ir
+        from lattice.ir.normalizer import normalize_ir
 
-        compiler = get_compiler()
-        legacy_ir = compiler.compile(request, context)
+        legacy_ir = normalize_ir(build_ir(request))
         ir_v2 = prompt_ir_v2_from_legacy(legacy_ir)
         context.session_state["_lattice_ir_v2"] = ir_v2
         return ir_v2
@@ -207,10 +207,10 @@ def _compile_request_to_ir_v2(
 ) -> PromptIRV2 | None:
     """Compile a live request back into canonical PromptIRV2."""
     try:
-        from lattice.core.compiler import get_compiler
+        from lattice.ir.builder import build_ir
+        from lattice.ir.normalizer import normalize_ir
 
-        compiler = get_compiler()
-        legacy_ir = compiler.compile(request, context)
+        legacy_ir = normalize_ir(build_ir(request))
         return prompt_ir_v2_from_legacy(legacy_ir)
     except Exception:
         return None

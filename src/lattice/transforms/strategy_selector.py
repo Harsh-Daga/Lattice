@@ -33,7 +33,6 @@ import structlog
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
-from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import (
     get_canonical_request_value,
@@ -42,6 +41,7 @@ from lattice.core.runtime_state import (
     thaw_value,
 )
 from lattice.core.transport import Request, Response
+from lattice.ir.primitives import PromptIRV2
 
 logger = structlog.get_logger()
 

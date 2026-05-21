@@ -5,7 +5,7 @@ from __future__ import annotations
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
 from lattice.core.transport import Message, Request
-from lattice.optimizer.quality_estimator import estimate_transport_gain
+from lattice.ir.quality import estimate_transport_gain
 from lattice.optimizer.representation_optimizer import _get_allowed_optimizers
 from lattice.optimizer.structure_optimizer import _get_quality_floor as structure_quality_floor
 from lattice.transforms.content_profiler import ContentProfiler

@@ -14,14 +14,14 @@ import json as _json
 import re
 from typing import Any
 
-from lattice.core.ir import (
+from lattice.core.transport import Message, Request
+from lattice.ir.types import (
     PromptIR,
     Section,
     SectionType,
     Span,
     SpanRole,
 )
-from lattice.core.transport import Message, Request
 
 _INDENT = re.compile(r"^\s+")
 _FENCE_START = re.compile(r"^```(\w+)?$")
@@ -224,6 +224,9 @@ def build_ir(request: Request) -> PromptIR:
 
     This is the primary entry point. The IR is stored in content_profiler
     metadata and consumed by the scheduler, safety guards, and transforms.
+
+    Also stores a summary of the IR back on request.metadata so downstream
+    transforms can read protected-span/causal info without recompiling.
     """
     sections: list[Section] = []
     span_counter = 0
@@ -236,7 +239,26 @@ def build_ir(request: Request) -> PromptIR:
     _classify_roles(sections)
     _derive_protection(sections)
 
-    return PromptIR(sections=sections)
+    ir = PromptIR(sections=sections)
+    _store_ir_metadata(request, ir)
+    return ir
+
+
+def _store_ir_metadata(request: Request, ir: PromptIR) -> None:
+    """Store IR summary in request metadata for scheduler and safety guards.
+
+    Previously lived in core/compiler.py; inlined here as part of Phase 1.
+    """
+    request.metadata["_lattice_ir_summary"] = ir.summary()
+    request.metadata["_lattice_protected_spans"] = ir.protected_span_ids()
+
+    section_types = ir.section_types
+    if "error" in section_types or "stack_trace" in section_types:
+        request.metadata["_lattice_has_errors"] = True
+
+    if ir.metadata.get("has_causal_chains"):
+        request.metadata["_lattice_has_causal"] = True
+        request.metadata["_lattice_causal_count"] = ir.metadata.get("causal_span_count", 0)
 
 
 def _partition_message(msg: Message, span_counter: int) -> tuple[list[Section], int]:

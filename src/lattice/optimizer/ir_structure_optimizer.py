@@ -20,10 +20,10 @@ from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.ir import PromptIR, SectionType
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request
-from lattice.optimizer.ir_native_optimizer import IRNativeOptimizer
+from lattice.ir.native_optimizer import IRNativeOptimizer
+from lattice.ir.types import PromptIR, SectionType
 
 
 class IRStructureOptimizer(IRNativeOptimizer):

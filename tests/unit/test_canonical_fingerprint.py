@@ -1,7 +1,7 @@
 """Tests for PromptIRV2.canonical_fingerprint() (determinism + replay hardening)."""
 from __future__ import annotations
 
-from lattice.core.primitives import PromptIRV2, SectionV2, SpanV2
+from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
 
 
 class TestCanonicalFingerprint:

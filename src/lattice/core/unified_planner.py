@@ -20,9 +20,9 @@ import dataclasses
 import enum
 from typing import Any
 
-from lattice.core.primitives import ExecutionPlan
 from lattice.core.task_classifier import TaskClass
 from lattice.core.transport import Request
+from lattice.ir.primitives import ExecutionPlan
 
 
 class Tier(enum.Enum):

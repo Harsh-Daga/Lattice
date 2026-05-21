@@ -24,7 +24,7 @@ def coerce_execution_plan(plan: Any) -> Any | None:
         return normalized
     if isinstance(plan, dict):
         try:
-            from lattice.core.primitives import ExecutionPlan as CoreExecutionPlan
+            from lattice.ir.primitives import ExecutionPlan as CoreExecutionPlan
 
             if "transforms" in plan:
                 return CoreExecutionPlan.from_dict(plan)
@@ -126,9 +126,9 @@ def _normalize_legacy_execution_plan(plan: Any) -> Any | None:
     if not hasattr(plan, "representation_plan"):
         return None
     try:
-        from lattice.core.primitives import CachePlan as CoreCachePlan
-        from lattice.core.primitives import ExecutionPlan as CoreExecutionPlan
-        from lattice.core.primitives import TransportPlan as CoreTransportPlan
+        from lattice.ir.primitives import CachePlan as CoreCachePlan
+        from lattice.ir.primitives import ExecutionPlan as CoreExecutionPlan
+        from lattice.ir.primitives import TransportPlan as CoreTransportPlan
     except Exception:
         return None
 

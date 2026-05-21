@@ -20,9 +20,9 @@ from collections import Counter
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
-from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
+from lattice.ir.primitives import PromptIRV2
 
 
 class PathPrefixCompressor(ReversibleSyncTransform):

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lattice.core.ir import PromptIR, Section, SectionType
+from lattice.ir.types import PromptIR, Section, SectionType
 
 
 def serialize_ir_to_text(ir: PromptIR) -> str:

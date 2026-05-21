@@ -11,14 +11,14 @@ from typing import Any, Protocol
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.primitives import (
+from lattice.core.result import Ok, Result
+from lattice.core.transport import Request, Response
+from lattice.ir.primitives import (
     Candidate,
     CandidateGraph,
     CandidateScore,
     PromptIRV2,
 )
-from lattice.core.result import Ok, Result
-from lattice.core.transport import Request, Response
 
 
 class IRTransform(Protocol):
@@ -70,8 +70,9 @@ class LegacyRequestTransformAdapter:
     def optimize(
         self, ir: PromptIRV2, request: Request, context: TransformContext
     ) -> Result[PromptIRV2, TransformError]:
-        from lattice.core.compiler import get_compiler
-        from lattice.core.primitives import prompt_ir_v2_from_legacy
+        from lattice.ir.builder import build_ir
+        from lattice.ir.normalizer import normalize_ir
+        from lattice.ir.primitives import prompt_ir_v2_from_legacy
 
         req_copy = request.copy()
         before = req_copy.copy()
@@ -80,8 +81,7 @@ class LegacyRequestTransformAdapter:
             modified = result.unwrap()
             if modified is not None and modified != before:
                 try:
-                    compiler = get_compiler()
-                    legacy_ir = compiler.compile(modified, context)
+                    legacy_ir = normalize_ir(build_ir(modified))
                     return Ok(prompt_ir_v2_from_legacy(legacy_ir))
                 except Exception:
                     return Ok(ir)
