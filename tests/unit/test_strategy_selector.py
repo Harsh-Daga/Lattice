@@ -6,8 +6,8 @@ import pytest
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_err, unwrap
-from lattice.core.transport import Message, Request, Role
 from lattice.transforms.strategy_selector import StrategySelector, _ArmState
+from lattice.transport.types import Message, Request, Role
 
 # =============================================================================
 # _ArmState unit tests
@@ -317,7 +317,7 @@ class TestProcess:
         # Should not crash
 
     def test_reverse_is_noop(self) -> None:
-        from lattice.core.transport import Response
+        from lattice.transport.types import Response
 
         sel = StrategySelector()
         resp = Response(content="hello")

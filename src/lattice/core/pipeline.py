@@ -23,7 +23,7 @@ from lattice.core.errors import TransformError
 from lattice.core.policy import OptimizationPolicy, Reject, Skip
 from lattice.core.result import Err, Ok, Result, is_err, unwrap, unwrap_err
 from lattice.core.runtime_state import get_canonical_request_value
-from lattice.core.transport import Request, Response
+from lattice.transport.types import Request, Response
 
 logger = structlog.get_logger()
 

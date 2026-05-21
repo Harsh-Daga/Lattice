@@ -15,12 +15,12 @@ from typing import Any
 class LatencyMeasurement:
     """A single latency observation with phase breakdown."""
 
-    pipeline_ms: float = 0.0       # Transform pipeline wall time
-    provider_ms: float = 0.0       # Time spent waiting on the LLM provider
-    network_ms: float = 0.0        # Network round-trip time
-    queueing_ms: float = 0.0       # Time spent in batching/speculation queues
-    retry_ms: float = 0.0          # Cumulative retry/fallback time
-    total_ms: float = 0.0          # Total end-to-end wall time
+    pipeline_ms: float = 0.0  # Transform pipeline wall time
+    provider_ms: float = 0.0  # Time spent waiting on the LLM provider
+    network_ms: float = 0.0  # Network round-trip time
+    queueing_ms: float = 0.0  # Time spent in batching/speculation queues
+    retry_ms: float = 0.0  # Cumulative retry/fallback time
+    total_ms: float = 0.0  # Total end-to-end wall time
     time_to_first_byte_ms: float | None = None
     timestamp: float = dataclasses.field(default_factory=time.time)
 
@@ -208,14 +208,14 @@ class ScenarioResult:
     optimized_response_sample: str = ""
 
     # Replay hardening — canonical fingerprints for determinism validation
-    request_fingerprint: str = ""       # PromptIRV2.canonical_fingerprint()
-    execution_plan_fingerprint: str = ""   # ExecutionPlan fingerprint
+    request_fingerprint: str = ""  # PromptIRV2.canonical_fingerprint()
+    execution_plan_fingerprint: str = ""  # ExecutionPlan fingerprint
     final_response_fingerprint: str = ""  # Canonical final response digest
-    replay_drift: float = 0.0            # max quality variance across N replays
-    determinism_score: float = 1.0      # 1.0 = identical output on identical input
-    longitudinal_index: int = 0         # position in longitudinal series
-    survivability_score: float = 1.0    # task equivalence survives cross-run
-    drift_category: str = ""            # canonical_drift / non_deterministic / survivability_drop
+    replay_drift: float = 0.0  # max quality variance across N replays
+    determinism_score: float = 1.0  # 1.0 = identical output on identical input
+    longitudinal_index: int = 0  # position in longitudinal series
+    survivability_score: float = 1.0  # task equivalence survives cross-run
+    drift_category: str = ""  # canonical_drift / non_deterministic / survivability_drop
 
     # Pipeline metrics (per-transform breakdown from last iteration)
     transform_breakdown: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)

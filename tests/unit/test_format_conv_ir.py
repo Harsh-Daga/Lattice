@@ -1,11 +1,12 @@
 """Unit tests for FormatConverter.optimize() (IR-native path)."""
+
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.result import Ok
-from lattice.core.transport import Request
 from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
 from lattice.transforms.format_conv import FormatConverter
+from lattice.transport.types import Request
 
 
 class TestFormatConverterIR:
@@ -71,9 +72,7 @@ class TestFormatConverterIR:
         assert "Alice,30" in converted or "Alice\t30" in converted
 
     def test_logs_compressed(self) -> None:
-        logs = "\n".join(
-            f"2024-01-0{i} INFO  request {i}" for i in range(1, 15)
-        )
+        logs = "\n".join(f"2024-01-0{i} INFO  request {i}" for i in range(1, 15))
         sec = SectionV2(type="log", spans=(SpanV2(span_id="s1", text=logs),))
         ir = PromptIRV2(sections=(sec,))
         request, ctx = self._make_request([sec])

@@ -16,7 +16,7 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request, Response
+from lattice.transport.types import Message, Request, Response
 
 
 def _req(content: str, role: str = "user") -> Message:
@@ -63,11 +63,13 @@ class TestIROptimizerEndToEnd:
         pipeline = build_optimizer_pipeline(cfg)
 
         request = Request(
-            messages=[_req(
-                '[{"status":"ok","name":"alpha"},'
-                '{"status":"ok","name":"beta"},'
-                '{"status":"ok","name":"gamma"}]'
-            )],
+            messages=[
+                _req(
+                    '[{"status":"ok","name":"alpha"},'
+                    '{"status":"ok","name":"beta"},'
+                    '{"status":"ok","name":"gamma"}]'
+                )
+            ],
             model="gpt-4",
         )
         ctx = TransformContext()
@@ -85,8 +87,7 @@ class TestIROptimizerEndToEnd:
             # optimizer uses to decide whether to factor.
             sections = list(getattr(ir_v2, "sections", []))
             has_structure = any(
-                "constant_fields" in dict(span.structure)
-                or "json_shape" in dict(span.structure)
+                "constant_fields" in dict(span.structure) or "json_shape" in dict(span.structure)
                 for sec in sections
                 for span in sec.spans
             )
@@ -113,11 +114,13 @@ class TestIROptimizerEndToEnd:
         # Use JSON with a constant field so the IR-native optimizer finds
         # something to factor.
         request = Request(
-            messages=[_req(
-                '[{"status":"ok","name":"alpha"},'
-                '{"status":"ok","name":"beta"},'
-                '{"status":"ok","name":"gamma"}]'
-            )],
+            messages=[
+                _req(
+                    '[{"status":"ok","name":"alpha"},'
+                    '{"status":"ok","name":"beta"},'
+                    '{"status":"ok","name":"gamma"}]'
+                )
+            ],
             model="gpt-4",
         )
         ctx = TransformContext()
@@ -140,6 +143,7 @@ class TestIROptimizerEndToEnd:
 
             # Verify it can process the request and produces factored metadata
             from lattice.optimizer.ir_structure_optimizer import IRStructureOptimizer
+
             ir_opt = IRStructureOptimizer()
             assert ir_opt.can_process(after_profiler, ctx), (
                 "ir_structure_optimizer.can_process returned False"
@@ -151,7 +155,9 @@ class TestIROptimizerEndToEnd:
 
             # When the IR optimizer actually changes text, it sets the metadata tag
             # on the new request.
-            has_tag = modified.metadata.get("_lattice_ir_native_applied") == "ir_structure_optimizer"
+            has_tag = (
+                modified.metadata.get("_lattice_ir_native_applied") == "ir_structure_optimizer"
+            )
             if has_tag:
                 # The optimizer path executed successfully. If the optimizer
                 # decided to factor the IR, the canonical IRV2 should carry
@@ -174,9 +180,7 @@ class TestIROptimizerEndToEnd:
         pipeline = build_optimizer_pipeline(cfg)
 
         original_content = (
-            '[{"status":"ok","value":1},'
-            '{"status":"ok","value":2},'
-            '{"status":"ok","value":3}]'
+            '[{"status":"ok","value":1},{"status":"ok","value":2},{"status":"ok","value":3}]'
         )
         request = Request(
             messages=[_req(original_content)],

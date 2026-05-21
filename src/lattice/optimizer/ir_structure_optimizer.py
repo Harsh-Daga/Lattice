@@ -22,9 +22,9 @@ from __future__ import annotations
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Ok, Result
-from lattice.core.transport import Request
 from lattice.ir.native_optimizer import IRNativeOptimizer
 from lattice.ir.types import PromptIR, SectionType
+from lattice.transport.types import Request
 
 
 class IRStructureOptimizer(IRNativeOptimizer):

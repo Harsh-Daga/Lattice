@@ -100,7 +100,6 @@ from fastapi import FastAPI
 from lattice._version import __version__
 from lattice.core.config import LatticeConfig
 from lattice.core.errors import ProviderError, ProviderTimeoutError
-from lattice.core.transport import Message
 from lattice.gateway import compat as _gateway_compat
 from lattice.gateway.compat import OperationalRouteDeps, register_operational_routes
 from lattice.gateway.compat import anthropic_passthrough as compat_anthropic_passthrough
@@ -123,6 +122,7 @@ from lattice.proxy.routes import (
     register_native_lattice_routes,
     register_provider_compat_routes,
 )
+from lattice.transport.types import Message
 
 logger = structlog.get_logger()
 

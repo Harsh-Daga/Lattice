@@ -55,7 +55,7 @@ from typing import Any
 import structlog
 
 from lattice.core.session import SessionStore
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 
 logger = structlog.get_logger()
 

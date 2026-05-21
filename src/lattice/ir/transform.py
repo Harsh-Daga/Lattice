@@ -13,13 +13,13 @@ from typing import Any, Protocol
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Ok, Result
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import (
     Candidate,
     CandidateGraph,
     CandidateScore,
     PromptIRV2,
 )
+from lattice.transport.types import Request, Response
 
 
 class IRTransform(Protocol):

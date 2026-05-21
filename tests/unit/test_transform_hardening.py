@@ -9,7 +9,7 @@ import asyncio
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 
 
 class TestReferenceSubHardening:

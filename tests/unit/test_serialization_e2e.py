@@ -9,16 +9,16 @@ Verifies that data flows correctly through the entire pipeline:
 
 from __future__ import annotations
 
-from lattice.core.serialization import (
+from lattice.protocol.content import ImagePart, ImageSource, ImageSourceType, TextPart
+from lattice.providers.transport import DirectHTTPProvider
+from lattice.transport.serialization import (
     message_from_dict,
     message_to_dict,
     request_from_dict,
     request_to_dict,
     response_to_dict,
 )
-from lattice.core.transport import Message, Request, Response
-from lattice.protocol.content import ImagePart, ImageSource, ImageSourceType, TextPart
-from lattice.providers.transport import DirectHTTPProvider
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # Message roundtrip

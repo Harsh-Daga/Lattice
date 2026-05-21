@@ -24,13 +24,13 @@ from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Ok, Result, is_ok, unwrap, unwrap_err
 from lattice.core.runtime_state import get_canonical_state_value
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import Candidate, ExecutionPlan, PromptIRV2
 from lattice.ir.transform import (
     CandidateSearch,
     IRTransform,
     LegacyRequestTransformAdapter,
 )
+from lattice.transport.types import Request, Response
 
 _RESPONSE_ONLY_TRANSFORMS = {"output_cleanup"}
 

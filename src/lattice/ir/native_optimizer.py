@@ -35,9 +35,9 @@ from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import get_canonical_request_value
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import PromptIRV2, prompt_ir_from_v2
 from lattice.ir.types import PromptIR, SectionType
+from lattice.transport.types import Request, Response
 
 
 class IRNativeOptimizer(ReversibleSyncTransform):
@@ -182,7 +182,7 @@ class IRNativeOptimizer(ReversibleSyncTransform):
             last_user.content = text
         else:
             # Create a new user message if none exists
-            from lattice.core.transport import Message
+            from lattice.transport.types import Message
 
             request.messages.append(Message(role="user", content=text))
 

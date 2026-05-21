@@ -63,7 +63,7 @@ class TestProviderPrefixStripping:
 
     def test_no_adapter_leaks_prefix_into_request(self) -> None:
         """Simulate the full transport path: adapter.serialize_request must not contain the prefix."""
-        from lattice.core.transport import Message, Request
+        from lattice.transport.types import Message, Request
 
         registry = ProviderRegistry()
         failures: list[str] = []

@@ -34,8 +34,8 @@ from lattice.core.pipeline_factory import (
 )
 from lattice.core.result import is_err, unwrap
 from lattice.core.runtime_state import get_canonical_request_value
-from lattice.core.serialization import message_from_dict, message_to_dict
-from lattice.core.transport import Request, Response
+from lattice.transport.serialization import message_from_dict, message_to_dict
+from lattice.transport.types import Request, Response
 
 
 @dataclasses.dataclass(slots=True)

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request, Response
 from lattice.transforms.context_selector import (
     InformationTheoreticSelector,
     SubmodularContextSelector,
 )
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # SubmodularContextSelector

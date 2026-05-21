@@ -13,8 +13,8 @@ from lattice.core.runtime_state import (
     get_ir_metadata_value,
     thaw_value,
 )
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import PromptIRV2
+from lattice.transport.types import Request, Response
 from lattice.utils.validation import lossy_transform_allowed
 
 _QUESTION_PATTERN = re.compile(r"\?")

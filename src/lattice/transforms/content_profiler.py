@@ -54,9 +54,7 @@ from lattice.core.segmentation import (
     segment_request,
     segment_summary,
 )
-from lattice.core.serialization import message_to_dict
 from lattice.core.task_classifier import TaskClassification, classify_task
-from lattice.core.transport import Request, Response
 from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.ir.builder import build_ir
 from lattice.ir.normalizer import normalize_ir
@@ -66,6 +64,8 @@ from lattice.planner.provider_strategy import (
     build_cache_plan_for_provider,
     simulate_provider_cache,
 )
+from lattice.transport.serialization import message_to_dict
+from lattice.transport.types import Request, Response
 from lattice.utils.validation import SemanticRiskScore, compute_risk_score
 
 # =============================================================================

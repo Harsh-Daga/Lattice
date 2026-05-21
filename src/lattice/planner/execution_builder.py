@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from lattice.core.config import LatticeConfig
 from lattice.core.task_classifier import TaskClass
-from lattice.core.transport import Request
 from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.planner.execution_plan import (
     CachePlanEntry,
@@ -40,6 +39,7 @@ from lattice.planner.provider_strategy import (
 )
 from lattice.planner.request_classifier import RequestClassifier
 from lattice.planner.transport_planner import build_transport_plan
+from lattice.transport.types import Request
 
 
 def build_execution_plan(

@@ -1,11 +1,12 @@
 """Tests for PipelineV2."""
+
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
 from lattice.core.result import is_ok
-from lattice.core.transport import Message, Request
 from lattice.ir.primitives import ExecutionPlan
+from lattice.transport.types import Message, Request
 
 
 class TestTransformRegistryV2:
@@ -129,7 +130,7 @@ class TestPipelineV2Reverse:
             latency_budget_ms=100.0,
         )
 
-        from lattice.core.transport import Response
+        from lattice.transport.types import Response
 
         response = Response(role="assistant", content="test")
         ctx = TransformContext()

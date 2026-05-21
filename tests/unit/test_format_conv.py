@@ -18,8 +18,8 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.core.transport import Message, Request
 from lattice.transforms.format_conv import DataShape, FormatConverter
+from lattice.transport.types import Message, Request
 
 # =============================================================================
 # Fixtures

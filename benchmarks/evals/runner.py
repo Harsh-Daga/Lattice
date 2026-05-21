@@ -34,17 +34,17 @@ from benchmarks.scenarios.prompts import BenchmarkScenario
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.core.serialization import message_from_dict, message_to_dict
 from lattice.core.session import MemorySessionStore, SessionManager
-from lattice.core.transport import Message, Request, Role
 from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType
 from lattice.protocol.manifest import manifest_from_messages, manifest_summary
+from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.simulation import (
     SimulationConfig,
     run_static_concurrency_simulation,
     run_tacc_simulation,
 )
+from lattice.transport.types import Message, Request, Role
 
 
 def _usage_prompt_tokens(usage: dict[str, Any], fallback: int) -> int:
@@ -94,7 +94,12 @@ _OPTIMIZER_CONSTITUENTS: dict[str, tuple[str, ...]] = {
     "reference_optimizer": ("reference_sub", "path_prefix"),
     "structure_optimizer": ("json_shape", "format_conversion", "columnar_pack"),
     "tool_optimizer": ("tool_projection", "tool_filter"),
-    "context_optimizer": ("context_selector", "rate_distortion", "extractive_compress", "message_dedup"),
+    "context_optimizer": (
+        "context_selector",
+        "rate_distortion",
+        "extractive_compress",
+        "message_dedup",
+    ),
     "diagnostic_optimizer": ("diagnostic_rle",),
     "strategy_selector": ("strategy_selector",),  # runs as a core transform, not under an optimizer
 }
@@ -161,7 +166,11 @@ def _aggregate_feature_signal(report: BenchmarkReport, feature: str) -> float:
     values: list[float] = []
     for scenario in report.scenarios:
         telemetry = scenario.telemetry or {}
-        transform_metrics = telemetry.get("transforms", {}).get(transform_name) or telemetry.get(transform_name) or {}
+        transform_metrics = (
+            telemetry.get("transforms", {}).get(transform_name)
+            or telemetry.get(transform_name)
+            or {}
+        )
         value = transform_metrics.get(metric_name)
         if isinstance(value, bool):
             values.append(1.0 if value else 0.0)
@@ -190,7 +199,9 @@ def _feature_flaws(
     contract = telemetry.get("runtime_contract") or {}
     pipeline = telemetry.get("pipeline") or {}
     skipped = set(contract.get("skipped_transforms") or [])
-    missing = [feature for feature in scenario.target_features if not _feature_matches(feature, applied)]
+    missing = [
+        feature for feature in scenario.target_features if not _feature_matches(feature, applied)
+    ]
     flaws: list[str] = []
     suggestions: list[str] = []
 
@@ -209,12 +220,18 @@ def _feature_flaws(
     unblocked = [feature for feature in missing if feature not in skipped]
     if unblocked:
         flaws.append("features not reached by pipeline: " + ", ".join(unblocked))
-        suggestions.append("inspect pipeline ordering and transform eligibility for the missing features")
+        suggestions.append(
+            "inspect pipeline ordering and transform eligibility for the missing features"
+        )
 
     return flaws, suggestions
 
 
-def _scenario_proof_row(scenario: BenchmarkScenario, telemetry: dict[str, Any], transform_breakdown: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def _scenario_proof_row(
+    scenario: BenchmarkScenario,
+    telemetry: dict[str, Any],
+    transform_breakdown: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
     runtime = telemetry.get("runtime") or {}
     contract = telemetry.get("runtime_contract") or {}
     applied = set(telemetry.get("transforms_applied") or [])
@@ -239,7 +256,9 @@ def _scenario_proof_row(scenario: BenchmarkScenario, telemetry: dict[str, Any], 
     feature_match = len(feature_hits) == len(target_features)
     flaws, suggestions = _feature_flaws(scenario, telemetry, considered)
     if not tier_match:
-        flaws.append(f"tier mismatch: expected {expected_tier or 'ANY'} but observed {observed_tier or _infer_tier_from_score(tier_score)}")
+        flaws.append(
+            f"tier mismatch: expected {expected_tier or 'ANY'} but observed {observed_tier or _infer_tier_from_score(tier_score)}"
+        )
         suggestions.append("revisit the runtime classifier thresholds and scenario calibration")
     return {
         "scenario": scenario.name,
@@ -371,7 +390,8 @@ async def run_feature_eval(
                     before=baseline_prompt_tokens,
                     after=optimized_prompt_tokens,
                     saved=max(0, baseline_prompt_tokens - optimized_prompt_tokens),
-                    ratio=(baseline_prompt_tokens - optimized_prompt_tokens) / max(baseline_prompt_tokens, 1),
+                    ratio=(baseline_prompt_tokens - optimized_prompt_tokens)
+                    / max(baseline_prompt_tokens, 1),
                 )
             )
             if iteration == iterations - 1:
@@ -379,10 +399,14 @@ async def run_feature_eval(
                 result.optimized_response_sample = optimized_resp
 
             for name, metrics in result.transform_breakdown.items():
-                slot = transform_totals.setdefault(name, {"before": 0.0, "after": 0.0, "saved": 0.0, "count": 0.0})
+                slot = transform_totals.setdefault(
+                    name, {"before": 0.0, "after": 0.0, "saved": 0.0, "count": 0.0}
+                )
                 slot["before"] += float(metrics.get("before", baseline_tokens))
                 slot["after"] += float(metrics.get("after", optimized_tokens))
-                slot["saved"] += float(metrics.get("saved", max(0, baseline_tokens - optimized_tokens)))
+                slot["saved"] += float(
+                    metrics.get("saved", max(0, baseline_tokens - optimized_tokens))
+                )
                 slot["count"] += 1.0
 
         report.scenarios.append(result)
@@ -393,7 +417,11 @@ async def run_feature_eval(
     ]
     feature_fails = sum(1 for row in scenario_proof if not row["feature_match"])
     tier_fails = sum(1 for row in scenario_proof if not row["tier_match"])
-    budget_fails = sum(1 for row in scenario_proof if any("runtime budget exhausted" in flaw for flaw in row["flaws"]))
+    budget_fails = sum(
+        1
+        for row in scenario_proof
+        if any("runtime budget exhausted" in flaw for flaw in row["flaws"])
+    )
     flaw_counts: dict[str, int] = {}
     for row in scenario_proof:
         for flaw in row["flaws"]:
@@ -412,7 +440,9 @@ async def run_feature_eval(
         },
         "features": {
             feature: sum(1 for row in scenario_proof if feature in row["feature_hits"])
-            for feature in sorted({feature for scenario in selected for feature in scenario.target_features})
+            for feature in sorted(
+                {feature for scenario in selected for feature in scenario.target_features}
+            )
         },
     }
     summary = {
@@ -551,7 +581,9 @@ async def run_feature_matrix_eval(
         on_signal = _aggregate_feature_signal(on_report, feature_name)
         signal_metric = _feature_signal(feature_name)
         delta_signal = on_signal - off_signal
-        if (delta_savings > 0 or delta_signal > 0) and on_report.avg_quality_score >= off_report.avg_quality_score:
+        if (
+            delta_savings > 0 or delta_signal > 0
+        ) and on_report.avg_quality_score >= off_report.avg_quality_score:
             verdict = "improves"
         elif delta_savings == 0 and delta_signal == 0:
             verdict = "flat"
@@ -598,12 +630,24 @@ async def run_feature_matrix_eval(
         "feature_count": len(feature_rows),
         "replay_feature_count": replay_features,
         "n_a_feature_count": n_a_features,
-        "off_reduction_ratio": round(statistics.mean(off_ratio_samples), 4) if off_ratio_samples else 0.0,
-        "on_reduction_ratio": round(statistics.mean(on_ratio_samples), 4) if on_ratio_samples else 0.0,
-        "off_quality_score": round(statistics.mean(off_quality_samples), 4) if off_quality_samples else 0.0,
-        "on_quality_score": round(statistics.mean(on_quality_samples), 4) if on_quality_samples else 0.0,
-        "off_signal_score": round(statistics.mean(off_signal_samples), 4) if off_signal_samples else 0.0,
-        "on_signal_score": round(statistics.mean(on_signal_samples), 4) if on_signal_samples else 0.0,
+        "off_reduction_ratio": round(statistics.mean(off_ratio_samples), 4)
+        if off_ratio_samples
+        else 0.0,
+        "on_reduction_ratio": round(statistics.mean(on_ratio_samples), 4)
+        if on_ratio_samples
+        else 0.0,
+        "off_quality_score": round(statistics.mean(off_quality_samples), 4)
+        if off_quality_samples
+        else 0.0,
+        "on_quality_score": round(statistics.mean(on_quality_samples), 4)
+        if on_quality_samples
+        else 0.0,
+        "off_signal_score": round(statistics.mean(off_signal_samples), 4)
+        if off_signal_samples
+        else 0.0,
+        "on_signal_score": round(statistics.mean(on_signal_samples), 4)
+        if on_signal_samples
+        else 0.0,
         "improving_features": improving_features,
         "flat_features": flat_features,
         "regressing_features": regressing_features,
@@ -723,7 +767,8 @@ async def run_provider_eval(
                         before=baseline_prompt_tokens,
                         after=optimized_prompt_tokens,
                         saved=max(0, baseline_prompt_tokens - optimized_prompt_tokens),
-                        ratio=(baseline_prompt_tokens - optimized_prompt_tokens) / max(baseline_prompt_tokens, 1),
+                        ratio=(baseline_prompt_tokens - optimized_prompt_tokens)
+                        / max(baseline_prompt_tokens, 1),
                     )
                 )
                 if iteration == iterations - 1:
@@ -734,7 +779,9 @@ async def run_provider_eval(
                     result.telemetry = telemetry
             report.scenarios.append(result)
             total_runs += 1
-        sections.append({"target": target.to_dict(), "adapter": adapter.name, "benchmark": report.to_dict()})
+        sections.append(
+            {"target": target.to_dict(), "adapter": adapter.name, "benchmark": report.to_dict()}
+        )
 
     # Aggregate quality scores across targets
     all_te_scores: list[float] = []
@@ -746,11 +793,7 @@ async def run_provider_eval(
         avg_q = agg.get("avg_quality_score", 0.0)
         if avg_q > 0.0:
             all_te_scores.append(float(avg_q))
-    provider_avg_quality = (
-        round(statistics.mean(all_te_scores), 4)
-        if all_te_scores
-        else 0.0
-    )
+    provider_avg_quality = round(statistics.mean(all_te_scores), 4) if all_te_scores else 0.0
 
     return EvalSectionReport(
         name="provider_eval",
@@ -830,11 +873,15 @@ async def run_replay_hardening(
     drift_categories: dict[str, int] = {}
     for scenario in report.scenarios:
         if scenario.drift_category:
-            drift_categories[scenario.drift_category] = drift_categories.get(scenario.drift_category, 0) + 1
+            drift_categories[scenario.drift_category] = (
+                drift_categories.get(scenario.drift_category, 0) + 1
+            )
 
     determinism_scores = [scenario.determinism_score for scenario in report.scenarios]
     survivability_scores = [scenario.survivability_score for scenario in report.scenarios]
-    response_fingerprints = sum(1 for scenario in report.scenarios if scenario.final_response_fingerprint)
+    response_fingerprints = sum(
+        1 for scenario in report.scenarios if scenario.final_response_fingerprint
+    )
 
     return EvalSectionReport(
         name="replay_hardening",
@@ -842,8 +889,12 @@ async def run_replay_hardening(
         summary={
             "trace_count": len(traces),
             "iterations": iterations,
-            "avg_determinism_score": round(statistics.mean(determinism_scores), 4) if determinism_scores else 1.0,
-            "avg_survivability_score": round(statistics.mean(survivability_scores), 4) if survivability_scores else 1.0,
+            "avg_determinism_score": round(statistics.mean(determinism_scores), 4)
+            if determinism_scores
+            else 1.0,
+            "avg_survivability_score": round(statistics.mean(survivability_scores), 4)
+            if survivability_scores
+            else 1.0,
             "drift_categories": drift_categories,
             "fingerprinted_responses": response_fingerprints,
         },
@@ -1064,8 +1115,12 @@ async def run_tacc_eval() -> EvalSectionReport:
         kind="simulation",
         summary={
             "scenario_count": len(results),
-            "avg_static_p95_ms": round(statistics.mean(r["static"]["p95_latency_ms"] for r in results), 2),
-            "avg_tacc_p95_ms": round(statistics.mean(r["tacc"]["p95_latency_ms"] for r in results), 2),
+            "avg_static_p95_ms": round(
+                statistics.mean(r["static"]["p95_latency_ms"] for r in results), 2
+            ),
+            "avg_tacc_p95_ms": round(
+                statistics.mean(r["tacc"]["p95_latency_ms"] for r in results), 2
+            ),
         },
         details={"scenarios": results},
     )
@@ -1104,14 +1159,23 @@ async def run_control_plane_eval() -> EvalSectionReport:
         provider=session.provider,
     )
     codec = DictionaryCodec(session_id=session.session_id)
-    payload = json.dumps({"session_id": session.session_id, "model": session.model, "messages": [message_to_dict(m) for m in messages]}, sort_keys=True).encode("utf-8")
+    payload = json.dumps(
+        {
+            "session_id": session.session_id,
+            "model": session.model,
+            "messages": [message_to_dict(m) for m in messages],
+        },
+        sort_keys=True,
+    ).encode("utf-8")
     compressed = codec.compress(payload)
     roundtrip = codec.decompress(compressed)
     framer = BinaryFramer()
     request_frames = framer.encode_request(compressed, flags=FrameFlags.DICT_COMPRESSED)
     encoded = request_frames[0].to_bytes()
     decoded = framer.decode_frame(encoded)
-    frame_ok = bool(decoded.flags & FrameFlags.DICT_COMPRESSED) and decoded.frame_type == FrameType.REQUEST
+    frame_ok = (
+        bool(decoded.flags & FrameFlags.DICT_COMPRESSED) and decoded.frame_type == FrameType.REQUEST
+    )
     codec_snapshot = codec.to_snapshot()
     restored = DictionaryCodec.from_snapshot(codec_snapshot)
     restored_roundtrip = restored.decompress(restored.compress(payload))
@@ -1149,7 +1213,8 @@ async def run_production_evals(
     """Run the full production eval bundle."""
     selected_scenarios = default_scenarios(scenarios or None)
     provider_targets = default_provider_targets(
-        providers, model_overrides=model_overrides,
+        providers,
+        model_overrides=model_overrides,
         strict_model_selection=providers is not None,
     )
     first_target = provider_targets[0] if provider_targets else None
@@ -1275,8 +1340,6 @@ Evaluate:
 Return ONLY a JSON object with these fields. No explanation, no markdown."""
 
 
-
-
 def _build_judge_prompt(
     baseline_output: str,
     optimized_output: str,
@@ -1306,6 +1369,7 @@ def _parse_judge_response(raw: str) -> TaskEquivalenceScore | None:
     """
     try:
         import json as _json
+
         start = raw.find("{")
         end = raw.rfind("}") + 1
         if start == -1 or end <= start:
@@ -1354,15 +1418,32 @@ def _parse_judge_response(raw: str) -> TaskEquivalenceScore | None:
 
 _KEY_FACT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     # Count + category: "60 errors", "3 failures", "12 timeouts"
-    ("count_category", re.compile(r"\b(\d+)\s+(errors?|failures?|warnings?|timeouts?|attempts?|requests?|crashes?|exceptions?)\b", re.IGNORECASE)),
+    (
+        "count_category",
+        re.compile(
+            r"\b(\d+)\s+(errors?|failures?|warnings?|timeouts?|attempts?|requests?|crashes?|exceptions?)\b",
+            re.IGNORECASE,
+        ),
+    ),
     # Percentage: "94%", "97.5%"
     ("percentage", re.compile(r"\b(\d+(?:\.\d+)?)%\b")),
     # UUIDs
-    ("uuid", re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE)),
+    (
+        "uuid",
+        re.compile(
+            r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE
+        ),
+    ),
     # Error codes: "E0503", "ERR_001", "500 Internal Server Error"
     ("error_code", re.compile(r"\b(?:[A-Z]{2,5}_?\d{3,5}|\d{3}\s+\w+\s+\w+)\b")),
     # Root cause phrases
-    ("root_cause", re.compile(r"\b(?:root cause|the reason (?:is|was)|the cause (?:is|was)|determined that)\b", re.IGNORECASE)),
+    (
+        "root_cause",
+        re.compile(
+            r"\b(?:root cause|the reason (?:is|was)|the cause (?:is|was)|determined that)\b",
+            re.IGNORECASE,
+        ),
+    ),
     # Timestamps: "14:32", "2024-01-15T10:30:00Z"
     ("timestamp", re.compile(r"\b(?:\d{2}:\d{2}(?::\d{2})?|\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2})")),
     # Stack traces / file:line refs
@@ -1448,9 +1529,7 @@ def evaluate_task_equivalence_structural(
 
     # Key fact preservation: use structured fact extraction for numbers,
     # counts, UUIDs, error codes, root cause, timestamps, stack traces.
-    kf_score, missing_facts = _compute_key_fact_preservation(
-        baseline_output, optimized_output
-    )
+    kf_score, missing_facts = _compute_key_fact_preservation(baseline_output, optimized_output)
     score.key_fact_preservation = kf_score
     if missing_facts:
         score.failure_reasons.extend(missing_facts)
@@ -1477,8 +1556,12 @@ def evaluate_task_equivalence_structural(
     else:
         score.correctness = 0.5
 
-    baseline_has_json = baseline_output.strip().startswith("{") or baseline_output.strip().startswith("[")
-    optimized_has_json = optimized_output.strip().startswith("{") or optimized_output.strip().startswith("[")
+    baseline_has_json = baseline_output.strip().startswith(
+        "{"
+    ) or baseline_output.strip().startswith("[")
+    optimized_has_json = optimized_output.strip().startswith(
+        "{"
+    ) or optimized_output.strip().startswith("[")
     if baseline_has_json != optimized_has_json:
         score.schema_validity = 0.5
     baseline_has_table = "|" in baseline_output
@@ -1496,10 +1579,13 @@ def evaluate_task_equivalence_structural(
 
     if required_properties:
         found = sum(
-            1 for prop in required_properties
+            1
+            for prop in required_properties
             if any(word.lower() in optimized_output.lower() for word in prop.split())
         )
-        score.completeness = round(found / len(required_properties), 4) if required_properties else 1.0
+        score.completeness = (
+            round(found / len(required_properties), 4) if required_properties else 1.0
+        )
 
     if re.search(r"<ref_\d+>", optimized_output):
         score.harmful_drift = max(score.harmful_drift, 0.3)
@@ -1514,9 +1600,7 @@ def evaluate_task_equivalence_structural(
     score.answer_completeness = score.completeness
 
     # Detect placeholder leakage
-    score.placeholder_leakage = bool(
-        re.search(r"<(?:ref_|d_|g_|crossref_)\d+>", optimized_output)
-    )
+    score.placeholder_leakage = bool(re.search(r"<(?:ref_|d_|g_|crossref_)\d+>", optimized_output))
 
     return score
 
@@ -1592,7 +1676,9 @@ async def evaluate_task_equivalence_with_judge(
             ),
             timeout=timeout_s,
         )
-        judge_text = judge_response.content if hasattr(judge_response, "content") else str(judge_response)
+        judge_text = (
+            judge_response.content if hasattr(judge_response, "content") else str(judge_response)
+        )
         parsed = _parse_judge_response(judge_text)
         if parsed is not None:
             # Judge is authoritative for reasoning/completeness.
@@ -1603,14 +1689,20 @@ async def evaluate_task_equivalence_with_judge(
                 correctness=max(structural.correctness, parsed.correctness),
                 completeness=parsed.completeness,  # judge authoritative
                 reasoning_equivalence=parsed.reasoning_equivalence,  # judge authoritative
-                key_fact_preservation=max(structural.key_fact_preservation, parsed.key_fact_preservation),
-                numeric_preservation=max(structural.numeric_preservation, parsed.numeric_preservation),
+                key_fact_preservation=max(
+                    structural.key_fact_preservation, parsed.key_fact_preservation
+                ),
+                numeric_preservation=max(
+                    structural.numeric_preservation, parsed.numeric_preservation
+                ),
                 schema_validity=max(structural.schema_validity, parsed.schema_validity),
                 harmful_drift=min(structural.harmful_drift, parsed.harmful_drift),
                 refusal_correctness=parsed.refusal_correctness,
                 failure_reasons=parsed.failure_reasons or [],
                 # Legacy fields for backward compat
-                constraint_preservation=max(structural.constraint_preservation, parsed.constraint_preservation),
+                constraint_preservation=max(
+                    structural.constraint_preservation, parsed.constraint_preservation
+                ),
                 entity_preservation=max(structural.entity_preservation, parsed.entity_preservation),
                 format_preservation=max(structural.format_preservation, parsed.format_preservation),
                 reasoning_correctness=parsed.reasoning_correctness,
@@ -1726,7 +1818,8 @@ async def run_provider_validation(
                         optimized_output = optimized_resp.content or ""
                         # Reverse-compress: restore <ref_N>, <g_N>, <crossref_N>
                         try:
-                            from lattice.core.transport import Response
+                            from lattice.transport.types import Response
+
                             resp_obj = Response(content=optimized_output, model=target.model)
                             restored = await pipeline.reverse(resp_obj, ctx)
                             optimized_output = restored.content or optimized_output
@@ -1737,9 +1830,11 @@ async def run_provider_validation(
                         optimized_output = ""
                         opt_provider_ms = (_time.perf_counter() - t0) * 1000
 
-                    pipeline_latency_ms = ctx.metrics.get(
-                        "transforms", {}
-                    ).get("_pipeline", {}).get("transform_latency_ms", 0.0)
+                    pipeline_latency_ms = (
+                        ctx.metrics.get("transforms", {})
+                        .get("_pipeline", {})
+                        .get("transform_latency_ms", 0.0)
+                    )
 
                     # Task equivalence scoring — use the same provider/model as judge
                     te_score = await evaluate_task_equivalence_with_judge(
@@ -1762,11 +1857,15 @@ async def run_provider_validation(
                     else:
                         verdict_parts.append("FAIL: significant meaning drift")
                     if te_dict.get("harmful_drift", 0) > 0:
-                        verdict_parts.append(f"placeholder leakage detected (drift={te_dict['harmful_drift']:.2f})")
+                        verdict_parts.append(
+                            f"placeholder leakage detected (drift={te_dict['harmful_drift']:.2f})"
+                        )
                     if te_dict.get("constraint_preservation", 1.0) < 0.7:
                         verdict_parts.append("constraints partially lost")
                     if te_dict.get("entity_preservation", 1.0) < 0.7:
-                        verdict_parts.append(f"entity loss (score={te_dict['entity_preservation']:.2f})")
+                        verdict_parts.append(
+                            f"entity loss (score={te_dict['entity_preservation']:.2f})"
+                        )
                     if te_dict.get("answer_completeness", 1.0) < 0.7:
                         verdict_parts.append("answer incomplete vs baseline")
                     judge_verdict = "; ".join(verdict_parts)
@@ -1777,12 +1876,10 @@ async def run_provider_validation(
 
                     risk = request.metadata.get("_lattice_risk_score", {})
                     forbidden_applied = [
-                        t for t in ctx.transforms_applied
-                        if t in scenario.forbidden_transforms
+                        t for t in ctx.transforms_applied if t in scenario.forbidden_transforms
                     ]
                     risky_applied = [
-                        t for t in ctx.transforms_applied
-                        if t in scenario.risky_transforms
+                        t for t in ctx.transforms_applied if t in scenario.risky_transforms
                     ]
 
                     # Check for expansion
@@ -1802,49 +1899,55 @@ async def run_provider_validation(
                         total_passed += 1
                     total_evaluated += 1
 
-                    results.append({
-                        "provider": target.provider,
-                        "model": target.model,
-                        "scenario": scenario.name,
-                        "task_equivalence": te_score.to_dict(),
-                        "task_equivalence_pass": te_passed,
-                        "token_reduction_pass": token_reduction_passed,
-                        "overall_pass": overall_pass,
-                        "tokens_before": tokens_before,
-                        "tokens_after": tokens_after,
-                        "token_savings": token_savings,
-                        "pipeline_latency_ms": pipeline_latency_ms,
-                        "provider_latency_ms": round(provider_ms, 2),
-                        "optimized_provider_latency_ms": round(opt_provider_ms, 2),
-                        "risk_level": risk.get("level", "unknown"),
-                        "risk_score": risk.get("total", 0.0),
-                        "transforms_applied": list(ctx.transforms_applied),
-                        "forbidden_applied": forbidden_applied,
-                        "risky_applied": risky_applied,
-                        "expansion_ratios": expansion_ratios,
-                        "judge_rubric": scenario.judge_rubric,
-                        "judge_verdict": judge_verdict,
-                        "required_properties": scenario.required_answer_properties,
-                        "baseline_output_sample": baseline_output[:500],
-                        "optimized_output_sample": optimized_output[:500],
-                    })
+                    results.append(
+                        {
+                            "provider": target.provider,
+                            "model": target.model,
+                            "scenario": scenario.name,
+                            "task_equivalence": te_score.to_dict(),
+                            "task_equivalence_pass": te_passed,
+                            "token_reduction_pass": token_reduction_passed,
+                            "overall_pass": overall_pass,
+                            "tokens_before": tokens_before,
+                            "tokens_after": tokens_after,
+                            "token_savings": token_savings,
+                            "pipeline_latency_ms": pipeline_latency_ms,
+                            "provider_latency_ms": round(provider_ms, 2),
+                            "optimized_provider_latency_ms": round(opt_provider_ms, 2),
+                            "risk_level": risk.get("level", "unknown"),
+                            "risk_score": risk.get("total", 0.0),
+                            "transforms_applied": list(ctx.transforms_applied),
+                            "forbidden_applied": forbidden_applied,
+                            "risky_applied": risky_applied,
+                            "expansion_ratios": expansion_ratios,
+                            "judge_rubric": scenario.judge_rubric,
+                            "judge_verdict": judge_verdict,
+                            "required_properties": scenario.required_answer_properties,
+                            "baseline_output_sample": baseline_output[:500],
+                            "optimized_output_sample": optimized_output[:500],
+                        }
+                    )
                 else:
-                    results.append({
-                        "provider": target.provider,
-                        "model": target.model,
-                        "scenario": scenario.name,
-                        "error": "pipeline_failed",
-                        "overall_pass": False,
-                    })
+                    results.append(
+                        {
+                            "provider": target.provider,
+                            "model": target.model,
+                            "scenario": scenario.name,
+                            "error": "pipeline_failed",
+                            "overall_pass": False,
+                        }
+                    )
                     total_evaluated += 1
             except Exception as exc:
-                results.append({
-                    "provider": target.provider,
-                    "model": target.model,
-                    "scenario": scenario.name,
-                    "error": str(exc),
-                    "overall_pass": False,
-                })
+                results.append(
+                    {
+                        "provider": target.provider,
+                        "model": target.model,
+                        "scenario": scenario.name,
+                        "error": str(exc),
+                        "overall_pass": False,
+                    }
+                )
                 total_evaluated += 1
 
     return EvalSectionReport(

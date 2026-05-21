@@ -9,9 +9,9 @@ un-normalized IR doesn't get an unexpected request mutation.
 
 from __future__ import annotations
 
-from lattice.core.transport import Message, Request
 from lattice.ir.builder import build_ir, compile_request_ir
 from lattice.ir.serializer import serialize_ir_to_text
+from lattice.transport.types import Message, Request
 
 
 def _make_request(content: str) -> Request:

@@ -11,8 +11,8 @@ from lattice.core.guardrails import (
 )
 from lattice.core.scheduler import decide_schedule
 from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
-from lattice.core.transport import Message, Request
 from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
+from lattice.transport.types import Message, Request
 from lattice.utils.validation import SemanticRiskScore
 
 
@@ -271,8 +271,8 @@ class TestSIGIntegration:
             METADATA_KEY_TASK_CLASSIFICATION,
             TransformContext,
         )
-        from lattice.core.transport import Message, Request
         from lattice.transforms.content_profiler import ContentProfiler
+        from lattice.transport.types import Message, Request
 
         profiler = ContentProfiler()
         req = Request(

@@ -1,9 +1,10 @@
 """Tests for UnifiedPlanner."""
+
 from __future__ import annotations
 
 from lattice.core.task_classifier import TaskClass
-from lattice.core.transport import Message, Request
 from lattice.core.unified_planner import SemanticProfile, Tier, UnifiedPlanner
+from lattice.transport.types import Message, Request
 
 
 class TestTierClassification:
@@ -28,9 +29,7 @@ class TestTierClassification:
 
     def test_emergency_high_risk(self) -> None:
         planner = UnifiedPlanner()
-        profile = SemanticProfile(
-            task_class=TaskClass.SIMPLE, risk_total=70
-        )
+        profile = SemanticProfile(task_class=TaskClass.SIMPLE, risk_total=70)
         assert planner.classify_tier(profile) == Tier.EMERGENCY
 
     def test_safe_tier_conservative(self) -> None:
@@ -131,9 +130,7 @@ class TestPlanGeneration:
 
     def test_emergency_plan_minimal(self) -> None:
         planner = UnifiedPlanner()
-        profile = SemanticProfile(
-            task_class=TaskClass.SIMPLE, risk_total=70
-        )
+        profile = SemanticProfile(task_class=TaskClass.SIMPLE, risk_total=70)
         plan = planner.plan(Request(messages=[]), profile)
 
         assert plan.transforms == ("content_profiler", "runtime_contract")

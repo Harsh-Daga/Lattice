@@ -21,8 +21,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from lattice.core.transport import Message, Request, Response
 from lattice.providers.openai import OpenAIAdapter
+from lattice.transport.types import Message, Request, Response
 
 
 class OllamaAdapter:

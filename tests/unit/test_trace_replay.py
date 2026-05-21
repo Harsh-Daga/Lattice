@@ -275,9 +275,7 @@ def test_replay_classifies_canonical_drift_and_determinism() -> None:
             )
         ],
     )
-    categories = _classify_failure(
-        baseline, feature, quality_threshold=0.05, latency_threshold=1.5
-    )
+    categories = _classify_failure(baseline, feature, quality_threshold=0.05, latency_threshold=1.5)
     values = {c.value for c in categories}
     assert FailureCategory.CANONICAL_DRIFT.value in values
     assert FailureCategory.NON_DETERMINISM.value in values
@@ -405,8 +403,8 @@ def test_stall_detection_signal_accuracy() -> None:
 
 
 def test_transport_negotiation_success_vs_fallback() -> None:
-    from lattice.core.delta_wire import DeltaWireEncoder
     from lattice.protocol.framing import BinaryFramer
+    from lattice.transport.delta_wire import DeltaWireEncoder
 
     # Delta negotiation: success
     delta_enc = DeltaWireEncoder()
@@ -545,8 +543,8 @@ def test_concurrent_stream_stall_regression() -> None:
 def test_cache_arbitrage_manifest_provenance() -> None:
     from lattice.core.context import TransformContext
     from lattice.core.result import unwrap
-    from lattice.core.transport import Message, Request
     from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
+    from lattice.transport.types import Message, Request
 
     transform = CacheArbitrageOptimizer()
     request = Request(
@@ -564,8 +562,8 @@ def test_cache_arbitrage_manifest_provenance() -> None:
 
 
 def test_transport_negotiation_downgrade_visible() -> None:
-    from lattice.core.delta_wire import DeltaWireEncoder
     from lattice.core.telemetry import DowngradeCategory, TransportOutcome
+    from lattice.transport.delta_wire import DeltaWireEncoder
 
     # Delta fallback
     delta_enc = DeltaWireEncoder()

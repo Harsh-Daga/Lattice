@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 
 from lattice.core.context import TransformContext
-from lattice.core.transport import Message, Request
 from lattice.ir.builder import build_ir
 from lattice.ir.primitives import PromptIRV2, prompt_ir_v2_from_legacy
 from lattice.transforms.tool_filter import ToolOutputFilter
+from lattice.transport.types import Message, Request
 
 
 def test_tool_filter_optimize_scrubs_tool_output_ir() -> None:

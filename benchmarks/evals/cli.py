@@ -42,7 +42,22 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--suite",
         default="all",
-        choices=["all", "feature", "feature-matrix", "provider", "protocol", "transport", "integration", "capability", "replay", "replay-hardening", "replay-isolated", "replay-governance", "tacc", "control"],
+        choices=[
+            "all",
+            "feature",
+            "feature-matrix",
+            "provider",
+            "protocol",
+            "transport",
+            "integration",
+            "capability",
+            "replay",
+            "replay-hardening",
+            "replay-isolated",
+            "replay-governance",
+            "tacc",
+            "control",
+        ],
     )
     parser.add_argument("--scenarios", nargs="*", default=[], help="Optional scenario filter")
     parser.add_argument("--providers", nargs="*", default=[], help="Optional provider filter")
@@ -58,8 +73,18 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--warmup", type=int, default=0)
     parser.add_argument("--provider-iterations", type=int, default=1)
     parser.add_argument("--provider-warmup", type=int, default=1)
-    parser.add_argument("--regression-threshold-quality", type=float, default=0.05, help="Max acceptable quality drop (default 0.05 = 5%%)")
-    parser.add_argument("--regression-threshold-latency", type=float, default=1.5, help="Max acceptable latency multiplier (default 1.5 = 50%% increase)")
+    parser.add_argument(
+        "--regression-threshold-quality",
+        type=float,
+        default=0.05,
+        help="Max acceptable quality drop (default 0.05 = 5%%)",
+    )
+    parser.add_argument(
+        "--regression-threshold-latency",
+        type=float,
+        default=1.5,
+        help="Max acceptable latency multiplier (default 1.5 = 50%% increase)",
+    )
     parser.add_argument("--output-json", default="benchmarks/results/production_evals.json")
     parser.add_argument("--output-md", default="benchmarks/results/production_evals.md")
     parser.add_argument("--json-only", action="store_true")
@@ -288,7 +313,9 @@ async def main() -> int:
             provider_iterations=args.provider_iterations,
             provider_warmup=args.provider_warmup,
         )
-        write_production_eval_outputs(report, output_json=args.output_json, output_md=args.output_md)
+        write_production_eval_outputs(
+            report, output_json=args.output_json, output_md=args.output_md
+        )
         if args.json_only:
             import json
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from benchmarks.framework.types import QualityMeasurement, TaskEquivalenceScore
 from lattice.core.config import LatticeConfig
-from lattice.core.transport import Message, Request
+from lattice.transport.types import Message, Request
 from lattice.utils.validation import (
     SemanticRiskScore,
     TransformSafetyBucket,
@@ -184,14 +184,11 @@ class TestTransformSafetyBuckets:
 
     def test_alias_dictionary_compressor_is_dangerous(self) -> None:
         assert (
-            get_transform_safety_bucket("dictionary_compressor")
-            == TransformSafetyBucket.DANGEROUS
+            get_transform_safety_bucket("dictionary_compressor") == TransformSafetyBucket.DANGEROUS
         )
 
     def test_alias_grammar_compressor_is_dangerous(self) -> None:
-        assert (
-            get_transform_safety_bucket("grammar_compressor") == TransformSafetyBucket.DANGEROUS
-        )
+        assert get_transform_safety_bucket("grammar_compressor") == TransformSafetyBucket.DANGEROUS
 
 
 class TestRiskGatingBehavior:

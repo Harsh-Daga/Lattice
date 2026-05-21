@@ -28,8 +28,8 @@ from lattice.core.context import (
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import PromptIRV2
+from lattice.transport.types import Request, Response
 from lattice.utils.patterns import (
     HEX_PATTERN,
     LONG_IDENTIFIER_PATTERN,

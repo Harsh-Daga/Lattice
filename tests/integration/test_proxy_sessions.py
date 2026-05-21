@@ -15,9 +15,9 @@ import json
 import pytest
 
 from lattice.core.config import LatticeConfig
-from lattice.core.transport import Response
 from lattice.protocol.framing import BinaryFramer
 from lattice.proxy.server import create_app
+from lattice.transport.types import Response
 
 
 @pytest.fixture

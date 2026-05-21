@@ -32,7 +32,6 @@ from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result, is_ok
 from lattice.core.runtime_state import get_canonical_state_value, thaw_value
-from lattice.core.transport import Request, Response
 from lattice.ir.primitives import PromptIRV2, prompt_ir_v2_from_legacy
 from lattice.ir.transform import (
     CandidateSearch,
@@ -40,6 +39,7 @@ from lattice.ir.transform import (
     LegacyRequestTransformAdapter,
 )
 from lattice.optimizer import _OPTIMIZER_CLASSES
+from lattice.transport.types import Request, Response
 
 
 class RepresentationOptimizer(ReversibleSyncTransform):

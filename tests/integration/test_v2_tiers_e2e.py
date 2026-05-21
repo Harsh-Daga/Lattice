@@ -1,4 +1,5 @@
 """Test all 5 UnifiedPlanner tiers end-to-end."""
+
 from __future__ import annotations
 
 import asyncio
@@ -6,13 +7,13 @@ import asyncio
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok
-from lattice.core.transport import Message, Request
 from lattice.core.unified_planner import (
     SemanticProfile,
     TaskClass,
     UnifiedPlanner,
 )
 from lattice.proxy.bootstrap import build_proxy_runtime
+from lattice.transport.types import Message, Request
 
 
 def _req(content: str, role: str = "user") -> Message:

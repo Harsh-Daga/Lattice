@@ -19,6 +19,7 @@ from typing import Any
 # Scenario definitions
 # =============================================================================
 
+
 class BenchmarkScenario:
     """A single benchmark scenario with prompt and expected behavior."""
 
@@ -87,6 +88,7 @@ class BenchmarkScenario:
 # Scenario generators
 # =============================================================================
 
+
 def _gen_uuid_list(count: int = 20) -> str:
     """Generate a list of UUIDs with some duplicates."""
     uuids = [
@@ -96,7 +98,7 @@ def _gen_uuid_list(count: int = 20) -> str:
         "f47ac10b-58cc-4372-a567-0e02b2c3d479",
         "6ba7b810-9dad-11d1-80b4-00c04fd430c8",  # dup
         "550e8400-e29b-41d4-a716-446655440000",  # dup
-  ]
+    ]
     # Extend with unique-ish UUIDs
     for i in range(count - len(uuids)):
         uuids.append(f"{i:08x}-1234-5678-9abc-def012345678")
@@ -110,15 +112,20 @@ def _gen_build_errors(count: int = 60) -> str:
         ("Module not found", "error"),
         ("Syntax error", "error"),
         ("Type mismatch", "warning"),
-  ]
+    ]
     for i in range(count):
         msg, severity = error_types[i % len(error_types)]
-        errors.append({
-            "_internal": {"stack": ["file.py", "line 42"], "timestamp": f"2024-01-{i+1:02d}T00:00:00Z"},
-            "message": msg,
-            "severity": severity,
-            "module": f"module_{i}",
-        })
+        errors.append(
+            {
+                "_internal": {
+                    "stack": ["file.py", "line 42"],
+                    "timestamp": f"2024-01-{i + 1:02d}T00:00:00Z",
+                },
+                "message": msg,
+                "severity": severity,
+                "module": f"module_{i}",
+            }
+        )
     return json.dumps({"errors": errors}, indent=2)
 
 
@@ -127,9 +134,9 @@ def _gen_employee_table(count: int = 100) -> str:
     rows = [
         "| ID | Name | Department | Salary | Status |",
         "|----|------|------------|--------|--------|",
-  ]
+    ]
     for i in range(count):
-        rows.append(f"| {i} | Emp_{i} | Engineering | ${100000+i*1000} | active |")
+        rows.append(f"| {i} | Emp_{i} | Engineering | ${100000 + i * 1000} | active |")
     return "\n".join(rows)
 
 
@@ -165,7 +172,10 @@ def _gen_multi_turn_session() -> list[dict[str, Any]]:
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": "Explain list comprehensions in Python."},
-        {"role": "assistant", "content": "List comprehensions provide a concise way to create lists..."},
+        {
+            "role": "assistant",
+            "content": "List comprehensions provide a concise way to create lists...",
+        },
         {"role": "user", "content": "Now show me dict comprehensions."},
         {"role": "assistant", "content": "Dict comprehensions use {k: v for k, v in iterable}..."},
         {"role": "user", "content": "What about set comprehensions?"},
@@ -173,7 +183,7 @@ def _gen_multi_turn_session() -> list[dict[str, Any]]:
         {"role": "user", "content": "Can you explain generator expressions too?"},
         {"role": "assistant", "content": "Generator expressions use (x for x in iterable)..."},
         {"role": "user", "content": "When should I use each?"},
-  ]
+    ]
     return messages
 
 
@@ -207,14 +217,26 @@ def _gen_tool_call_conversation() -> list[dict[str, Any]]:
     return [
         {"role": "system", "content": "You have access to weather and calculator tools."},
         {"role": "user", "content": "What's the weather in NYC and SF?"},
-        {"role": "assistant", "content": "", "tool_calls": [
-            {"id": "call_1", "type": "function", "function": {"name": "get_weather", "arguments": '{"location": "NYC"}'}},
-            {"id": "call_2", "type": "function", "function": {"name": "get_weather", "arguments": '{"location": "SF"}'}},
-      ]},
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": '{"location": "NYC"}'},
+                },
+                {
+                    "id": "call_2",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": '{"location": "SF"}'},
+                },
+            ],
+        },
         {"role": "tool", "content": "72°F, sunny", "tool_call_id": "call_1"},
         {"role": "tool", "content": "65°F, foggy", "tool_call_id": "call_2"},
         {"role": "user", "content": "What's the average temperature?"},
-  ]
+    ]
 
 
 def _gen_cache_prefix_session() -> list[dict[str, Any]]:
@@ -224,24 +246,34 @@ def _gen_cache_prefix_session() -> list[dict[str, Any]]:
         "prefer exact-prefix reuse, and summarize only the deltas."
     )
     docs = "\n".join(
-        f"- Design note {i}: keep manifest ordering stable across turns."
-        for i in range(12)
+        f"- Design note {i}: keep manifest ordering stable across turns." for i in range(12)
     )
     return [
         {"role": "system", "content": system},
-        {"role": "assistant", "content": f"Project context:\n{docs}", "metadata": {"is_static_doc": True}},
-        {"role": "user", "content": "Given the repeated context, what should the next delta contain?"},
-  ]
+        {
+            "role": "assistant",
+            "content": f"Project context:\n{docs}",
+            "metadata": {"is_static_doc": True},
+        },
+        {
+            "role": "user",
+            "content": "Given the repeated context, what should the next delta contain?",
+        },
+    ]
 
 
 def _gen_dictionary_repetition() -> list[dict[str, Any]]:
     """Generate text with repeated phrases for dictionary compression."""
-    repeated = "The session manifest should remain stable and the session manifest should remain stable. "
-    repeated += "The session manifest should remain stable and the session manifest should remain stable."
+    repeated = (
+        "The session manifest should remain stable and the session manifest should remain stable. "
+    )
+    repeated += (
+        "The session manifest should remain stable and the session manifest should remain stable."
+    )
     return [
         {"role": "system", "content": "Compress repeated language losslessly."},
         {"role": "user", "content": repeated * 4},
-  ]
+    ]
 
 
 def _gen_context_budget_prompt() -> list[dict[str, Any]]:
@@ -249,14 +281,14 @@ def _gen_context_budget_prompt() -> list[dict[str, Any]]:
     docs = []
     for i in range(18):
         docs.append(
-            f"Document {i}: The subsystem {i} stores request id {i:04d}, trace code {i:04d}-{i+1:04d}, "
+            f"Document {i}: The subsystem {i} stores request id {i:04d}, trace code {i:04d}-{i + 1:04d}, "
             f"and rollout note for module_{i}. The question is which subset is most relevant to the error path."
         )
     return [
         {"role": "system", "content": "Choose only the most relevant documents."},
         {"role": "assistant", "content": "\n".join(docs), "metadata": {"is_static_doc": True}},
         {"role": "user", "content": "Which documents mention the error path and request ids?"},
-  ]
+    ]
 
 
 def _gen_runtime_pressure_prompt() -> list[dict[str, Any]]:
@@ -267,36 +299,48 @@ def _gen_runtime_pressure_prompt() -> list[dict[str, Any]]:
         "summarize the proof obligations before proposing the final mitigation."
     )
     return [
-        {"role": "system", "content": "You are debugging a multi-stage production outage with latency regressions."},
-        {"role": "user", "content": (
-            "Analyze the following stack trace, retry policy, streaming stall, and cache divergence. "
-            "Return a concise plan with failure modes, mitigation steps, and a ranked triage list."
-        )},
+        {
+            "role": "system",
+            "content": "You are debugging a multi-stage production outage with latency regressions.",
+        },
+        {
+            "role": "user",
+            "content": (
+                "Analyze the following stack trace, retry policy, streaming stall, and cache divergence. "
+                "Return a concise plan with failure modes, mitigation steps, and a ranked triage list."
+            ),
+        },
         {"role": "tool", "content": _gen_build_errors(24)},
         {"role": "assistant", "content": _gen_code_review_context()},
         {"role": "assistant", "content": reasoning_chain * 12},
         {"role": "user", "content": reasoning_chain * 8},
-  ]
+    ]
 
 
 def _gen_grammar_json_table_prompt() -> list[dict[str, Any]]:
     """Generate structured content for grammar compression evaluation."""
     return [
         {"role": "system", "content": "Summarize structured data without losing keys."},
-        {"role": "user", "content": (
-            f"JSON:\n{json.dumps({'services': [{'name': f'svc_{i}', 'status': 'ok', 'latency_ms': 120 + i} for i in range(20)]}, indent=2)}\n\n"
-            f"Table:\n{_gen_employee_table(24)}"
-        )},
-  ]
+        {
+            "role": "user",
+            "content": (
+                f"JSON:\n{json.dumps({'services': [{'name': f'svc_{i}', 'status': 'ok', 'latency_ms': 120 + i} for i in range(20)]}, indent=2)}\n\n"
+                f"Table:\n{_gen_employee_table(24)}"
+            ),
+        },
+    ]
 
 
 def _gen_cleanup_noise_prompt() -> list[dict[str, Any]]:
     """Generate noisy text that should be normalized and trimmed."""
     return [
         {"role": "system", "content": "Clean up the response without changing meaning."},
-        {"role": "user", "content": "  Please   summarize this.  \n\n\nKeep the meaning.   Remove   extra   spaces.   "},
+        {
+            "role": "user",
+            "content": "  Please   summarize this.  \n\n\nKeep the meaning.   Remove   extra   spaces.   ",
+        },
         {"role": "assistant", "content": "Sure.   I will    clean it up.  "},
-  ]
+    ]
 
 
 def _gen_message_dedup_prompt() -> list[dict[str, Any]]:
@@ -308,7 +352,7 @@ def _gen_message_dedup_prompt() -> list[dict[str, Any]]:
         {"role": "user", "content": "Summarize the incident report."},
         {"role": "assistant", "content": "The incident report shows a retry loop."},
         {"role": "user", "content": "Now explain the root cause once."},
-  ]
+    ]
 
 
 def _gen_rate_distortion_prompt() -> list[dict[str, Any]]:
@@ -324,7 +368,7 @@ def _gen_rate_distortion_prompt() -> list[dict[str, Any]]:
     return [
         {"role": "system", "content": "Summarize the incident clearly and keep the root cause."},
         {"role": "user", "content": narrative * 6},
-  ]
+    ]
 
 
 # =============================================================================
@@ -342,10 +386,12 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="UUID-heavy logs should collapse to aliases without changing the failure explanation.",
         messages=[
             {"role": "system", "content": "Debug transaction failures."},
-            {"role": "user", "content": f"Transactions failed:\n{_gen_uuid_list(30)}\n\nWhy did the duplicate UUIDs fail?"},
-      ],
+            {
+                "role": "user",
+                "content": f"Transactions failed:\n{_gen_uuid_list(30)}\n\nWhy did the duplicate UUIDs fail?",
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="tool_output_filtering",
         category="tool_filter",
@@ -358,10 +404,14 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
             {"role": "system", "content": "Summarize build errors."},
             {"role": "user", "content": "Why did the build fail?"},
             {"role": "tool", "content": _gen_build_errors(60)},
-      ],
-        tools=[{"type": "function", "function": {"name": "get_build_errors", "description": "Get build errors"}}],
+        ],
+        tools=[
+            {
+                "type": "function",
+                "function": {"name": "get_build_errors", "description": "Get build errors"},
+            }
+        ],
     ),
-
     BenchmarkScenario(
         name="table_compression",
         category="format_conversion",
@@ -372,10 +422,12 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Wide markdown tables should convert to a more compact transport format.",
         messages=[
             {"role": "system", "content": "Analyze employee data and summarize salary trends."},
-            {"role": "user", "content": f"Here is the employee data:\n{_gen_employee_table(100)}\n\nWhat are the trends?"},
-      ],
+            {
+                "role": "user",
+                "content": f"Here is the employee data:\n{_gen_employee_table(100)}\n\nWhat are the trends?",
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="prefix_optimization",
         category="prefix_opt",
@@ -386,7 +438,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Stable prefix material should not be re-sent on every turn.",
         messages=_gen_multi_turn_session(),
     ),
-
     BenchmarkScenario(
         name="code_review_patterns",
         category="reference_sub",
@@ -397,10 +448,12 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Repeated code review structure should be compressed while preserving code blocks.",
         messages=[
             {"role": "system", "content": "Review the following code changes."},
-            {"role": "user", "content": f"Please review:\n{_gen_code_review_context()}\n\nSummarize the common issues."},
-      ],
+            {
+                "role": "user",
+                "content": f"Please review:\n{_gen_code_review_context()}\n\nSummarize the common issues.",
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="api_docs_summarization",
         category="reference_optimizer",
@@ -411,10 +464,12 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Boilerplate docs should collapse through lossless phrase compression.",
         messages=[
             {"role": "system", "content": "Summarize API endpoints."},
-            {"role": "user", "content": f"Document these endpoints concisely:\n{_gen_api_docs_summary()}"},
-      ],
+            {
+                "role": "user",
+                "content": f"Document these endpoints concisely:\n{_gen_api_docs_summary()}",
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="tool_call_preservation",
         category="integration",
@@ -425,11 +480,30 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Tool-call conversations must preserve call IDs and arguments.",
         messages=_gen_tool_call_conversation(),
         tools=[
-            {"type": "function", "function": {"name": "get_weather", "description": "Get weather", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}}}},
-            {"type": "function", "function": {"name": "calculate", "description": "Calculate", "parameters": {"type": "object", "properties": {"expression": {"type": "string"}}}}},
-      ],
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "Get weather",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"location": {"type": "string"}},
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "calculate",
+                    "description": "Calculate",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"expression": {"type": "string"}},
+                    },
+                },
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="json_response_format",
         category="format_conversion",
@@ -440,12 +514,14 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="JSON outputs should remain valid after transport optimizations.",
         messages=[
             {"role": "system", "content": "Return JSON with analysis results."},
-            {"role": "user", "content": f"Analyze this data:\n{json.dumps({'users': [{'id': i, 'name': f'User_{i}', 'score': i * 10} for i in range(50)]})}\n\nReturn top 5 users as JSON."},
-      ],
+            {
+                "role": "user",
+                "content": f"Analyze this data:\n{json.dumps({'users': [{'id': i, 'name': f'User_{i}', 'score': i * 10} for i in range(50)]})}\n\nReturn top 5 users as JSON.",
+            },
+        ],
         expect_json=True,
         json_schema={"required": ["users"]},
     ),
-
     BenchmarkScenario(
         name="cache_arbitrage_prefix",
         category="cache_arbitrage",
@@ -456,7 +532,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Stable prefix segments should be identified for cache reuse.",
         messages=_gen_cache_prefix_session(),
     ),
-
     BenchmarkScenario(
         name="dictionary_repetition",
         category="reference_optimizer",
@@ -467,7 +542,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Repeated phrases should compress to a learned dictionary reference.",
         messages=_gen_dictionary_repetition(),
     ),
-
     BenchmarkScenario(
         name="cleanup_noise",
         category="normalization",
@@ -478,7 +552,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Whitespace cleanup should normalize the prompt without semantic loss.",
         messages=_gen_cleanup_noise_prompt(),
     ),
-
     BenchmarkScenario(
         name="message_dedup_turns",
         category="message_dedup",
@@ -489,7 +562,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Duplicate turns should be removed only when the content is exact or near-exact.",
         messages=_gen_message_dedup_prompt(),
     ),
-
     BenchmarkScenario(
         name="rate_distortion_longform",
         category="rate_distortion",
@@ -500,7 +572,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Narrative summaries should preserve the cause, impact, and mitigation.",
         messages=_gen_rate_distortion_prompt(),
     ),
-
     BenchmarkScenario(
         name="context_budget_pressure",
         category="context_selector",
@@ -511,7 +582,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Budget pressure should force document selection rather than full retention.",
         messages=_gen_context_budget_prompt(),
     ),
-
     BenchmarkScenario(
         name="runtime_contract_pressure",
         category="runtime_contract",
@@ -525,10 +595,12 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
             {"type": "function", "function": {"name": "get_trace", "description": "Get trace"}},
             {"type": "function", "function": {"name": "get_policy", "description": "Get policy"}},
             {"type": "function", "function": {"name": "get_budget", "description": "Get budget"}},
-            {"type": "function", "function": {"name": "get_mitigation", "description": "Get mitigation"}},
-      ],
+            {
+                "type": "function",
+                "function": {"name": "get_mitigation", "description": "Get mitigation"},
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="grammar_json_table",
         category="structure_optimizer",
@@ -539,7 +611,6 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Structured data should shrink without breaking syntax or tabular semantics.",
         messages=_gen_grammar_json_table_prompt(),
     ),
-
     BenchmarkScenario(
         name="simple_baseline",
         category="baseline",
@@ -550,9 +621,8 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Simple requests should avoid unnecessary optimization work.",
         messages=[
             {"role": "user", "content": "Hello, how are you?"},
-      ],
+        ],
     ),
-
     BenchmarkScenario(
         name="mixed_realworld",
         category="mixed",
@@ -563,16 +633,17 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Mixed real-world prompts should show the safe transforms cooperating on one request.",
         messages=[
             {"role": "system", "content": "You are debugging a production issue."},
-            {"role": "user", "content": (
-                f"Error from transaction 550e8400-e29b-41d4-a716-446655440000:\n"
-                f"```json\n{json.dumps({'trace': [{'id': i, 'fn': f'foo_{i}', '_internal': {'ts': 1700000000 + i}} for i in range(30)], 'message': 'Null pointer'})}\n```\n"
-                f"Investigate."
-            )},
-      ],
+            {
+                "role": "user",
+                "content": (
+                    f"Error from transaction 550e8400-e29b-41d4-a716-446655440000:\n"
+                    f"```json\n{json.dumps({'trace': [{'id': i, 'fn': f'foo_{i}', '_internal': {'ts': 1700000000 + i}} for i in range(30)], 'message': 'Null pointer'})}\n```\n"
+                    f"Investigate."
+                ),
+            },
+        ],
     ),
-
     # ---- Stress-test scenarios for SIG/RATS/PSG/MILV architecture ----
-
     BenchmarkScenario(
         name="debugging_log_analysis",
         category="debugging",
@@ -584,27 +655,33 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         safe_transforms=["content_profiler", "runtime_contract", "tool_filter"],
         risky_transforms=[],
         forbidden_transforms=[
-            "reference_sub", "rate_distortion",
+            "reference_sub",
+            "rate_distortion",
             "hierarchical_summary",
-            "message_dedup", "rate_distortion",
-      ],
+            "message_dedup",
+            "rate_distortion",
+        ],
         required_answer_properties=[
-            "identifies failure modes", "preserves error counts",
-            "mentions root cause", "lists mitigation steps",
-      ],
+            "identifies failure modes",
+            "preserves error counts",
+            "mentions root cause",
+            "lists mitigation steps",
+        ],
         judge_rubric="Must identify failure modes from logs. Error counts must be preserved. Root cause and mitigation must be explicit.",
         messages=[
             {"role": "system", "content": "You are debugging a production outage."},
-            {"role": "user", "content": (
-                "Analyze these error logs and identify the root cause and mitigation steps.\n\n"
-                + "\n".join(
-                    f"[ERROR] {ts}: Connection refused to service_{i % 5} (attempt {i//5 + 1})"
-                    for i, ts in enumerate(range(100))
-                )
-            )},
-      ],
+            {
+                "role": "user",
+                "content": (
+                    "Analyze these error logs and identify the root cause and mitigation steps.\n\n"
+                    + "\n".join(
+                        f"[ERROR] {ts}: Connection refused to service_{i % 5} (attempt {i // 5 + 1})"
+                        for i, ts in enumerate(range(100))
+                    )
+                ),
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="reasoning_root_cause",
         category="reasoning",
@@ -616,27 +693,34 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         safe_transforms=["content_profiler", "runtime_contract"],
         risky_transforms=[],
         forbidden_transforms=[
-            "reference_sub", "rate_distortion",
+            "reference_sub",
+            "rate_distortion",
             "hierarchical_summary",
-            "message_dedup", "rate_distortion", "format_conversion",
-      ],
+            "message_dedup",
+            "rate_distortion",
+            "format_conversion",
+        ],
         required_answer_properties=[
-            "explains why each step follows", "deduces the root cause",
-            "states assumptions", "gives a conclusion",
-      ],
+            "explains why each step follows",
+            "deduces the root cause",
+            "states assumptions",
+            "gives a conclusion",
+        ],
         judge_rubric="Must reason step by step. Deduction chain must be intact. Conclusions must follow from premises. Counts and comparisons must be preserved.",
         messages=[
             {"role": "system", "content": "You are reasoning about a complex system failure."},
-            {"role": "user", "content": (
-                "The system crashed at 14:32 with error code E0503. "
-                "Memory usage was at 94% at 14:30, 97% at 14:31, and 99% at 14:32. "
-                "Three services were restarted at 14:28. "
-                "Explain why the crash happened, what the root cause was, "
-                "and why the service restarts at 14:28 were insufficient."
-            )},
-      ],
+            {
+                "role": "user",
+                "content": (
+                    "The system crashed at 14:32 with error code E0503. "
+                    "Memory usage was at 94% at 14:30, 97% at 14:31, and 99% at 14:32. "
+                    "Three services were restarted at 14:28. "
+                    "Explain why the crash happened, what the root cause was, "
+                    "and why the service restarts at 14:28 were insufficient."
+                ),
+            },
+        ],
     ),
-
     BenchmarkScenario(
         name="repeated_identifier_investigation",
         category="reference_substitution",
@@ -652,19 +736,22 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
             "correctly identifies duplicate UUIDs",
             "explains which transaction failed",
             "preserves UUID context",
-      ],
+        ],
         judge_rubric="UUIDs may be compressed to references but must remain identifiable. The investigative chain must be intact. Must identify which UUID caused the failure.",
         messages=[
             {"role": "system", "content": "Investigate transaction failures."},
-            {"role": "user", "content": (
-                "Investigate these transactions:\n"
-                + "\n".join(
-                    f"TX-{i:04d}: UUID {hex(0x550e840000000000 + i)} [{'FAILED' if i % 7 == 3 else 'OK'}]"
-                    for i in range(50)
-                )
-                + "\n\nWhich transactions failed and what pattern do you see?"
-            )},
-      ],
+            {
+                "role": "user",
+                "content": (
+                    "Investigate these transactions:\n"
+                    + "\n".join(
+                        f"TX-{i:04d}: UUID {hex(0x550E840000000000 + i)} [{'FAILED' if i % 7 == 3 else 'OK'}]"
+                        for i in range(50)
+                    )
+                    + "\n\nWhich transactions failed and what pattern do you see?"
+                ),
+            },
+        ],
     ),
 ]
 
@@ -690,21 +777,32 @@ _SCENARIO_SAFETY: dict[str, dict[str, Any]] = {
         "safe_transforms": ["reference_sub", "prefix_optimizer"],
         "risky_transforms": [],
         "forbidden_transforms": ["rate_distortion"],
-        "required_answer_properties": ["explains duplicate UUID failure", "preserves error context"],
+        "required_answer_properties": [
+            "explains duplicate UUID failure",
+            "preserves error context",
+        ],
         "judge_rubric": "Answer must explain the duplicate UUID failure. UUID references may be compressed but must remain identifiable.",
     },
     "tool_output_filtering": {
         "safe_transforms": ["tool_filter", "format_conversion"],
         "risky_transforms": ["reference_sub"],
         "forbidden_transforms": ["rate_distortion"],
-        "required_answer_properties": ["correct error counts", "removes _internal fields", "preserves severity labels"],
+        "required_answer_properties": [
+            "correct error counts",
+            "removes _internal fields",
+            "preserves severity labels",
+        ],
         "judge_rubric": "Answer must correctly count errors (Module not found 20x, Syntax error 20x, Type mismatch 20x). Internal fields stripped.",
     },
     "table_compression": {
         "safe_transforms": ["format_conversion", "prefix_optimizer"],
         "risky_transforms": ["reference_sub"],
         "forbidden_transforms": ["rate_distortion"],
-        "required_answer_properties": ["salary trend analysis", "department homogeneity", "salary range correct"],
+        "required_answer_properties": [
+            "salary trend analysis",
+            "department homogeneity",
+            "salary range correct",
+        ],
         "judge_rubric": "Answer must identify linear salary trend ($1k increments), Engineering-only department, and salary range.",
     },
     "prefix_optimization": {
@@ -723,7 +821,7 @@ _SCENARIO_SAFETY: dict[str, dict[str, Any]] = {
     },
     "api_docs_summarization": {
         "safe_transforms": ["reference_sub"],
-        "risky_transforms": [ ],
+        "risky_transforms": [],
         "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["endpoint count correct", "parameter structure preserved"],
         "judge_rubric": "Boilerplate may be collapsed but endpoint names, parameters, and response structure must remain identifiable.",
@@ -732,7 +830,11 @@ _SCENARIO_SAFETY: dict[str, dict[str, Any]] = {
         "safe_transforms": [],
         "risky_transforms": [],
         "forbidden_transforms": ["reference_sub", "rate_distortion"],
-        "required_answer_properties": ["tool calls preserved", "call IDs intact", "weather data correct"],
+        "required_answer_properties": [
+            "tool calls preserved",
+            "call IDs intact",
+            "weather data correct",
+        ],
         "judge_rubric": "Tool calls must survive compression roundtrip. Call IDs and arguments must be preserved exactly.",
     },
     "json_response_format": {
@@ -767,35 +869,54 @@ _SCENARIO_SAFETY: dict[str, dict[str, Any]] = {
         "safe_transforms": ["message_dedup"],
         "risky_transforms": ["reference_sub"],
         "forbidden_transforms": ["rate_distortion"],
-        "required_answer_properties": ["duplicate turns removed", "last message preserved", "root cause explanation intact"],
+        "required_answer_properties": [
+            "duplicate turns removed",
+            "last message preserved",
+            "root cause explanation intact",
+        ],
         "judge_rubric": "Duplicate turns should be removed. The final unique turn (root cause) must be preserved.",
     },
     "rate_distortion_longform": {
         "safe_transforms": ["prefix_optimizer"],
         "risky_transforms": ["rate_distortion", "rate_distortion"],
         "forbidden_transforms": [],
-        "required_answer_properties": ["root cause preserved", "impact preserved", "mitigation plan preserved"],
+        "required_answer_properties": [
+            "root cause preserved",
+            "impact preserved",
+            "mitigation plan preserved",
+        ],
         "judge_rubric": "Narrative may be compressed but must preserve: root cause, user-visible impact, and mitigation plan. Incidental repetition may be trimmed.",
     },
     "context_budget_pressure": {
         "safe_transforms": ["context_selector", "strategy_selector", "prefix_optimizer"],
         "risky_transforms": ["reference_sub"],
         "forbidden_transforms": ["rate_distortion"],
-        "required_answer_properties": ["most relevant documents selected", "error path documents prioritized"],
+        "required_answer_properties": [
+            "most relevant documents selected",
+            "error path documents prioritized",
+        ],
         "judge_rubric": "Must select documents about error path and request IDs. Full retention of all 18 documents is a failure.",
     },
     "runtime_contract_pressure": {
         "safe_transforms": ["runtime_contract", "reference_sub"],
         "risky_transforms": ["rate_distortion"],
         "forbidden_transforms": [],
-        "required_answer_properties": ["failure modes identified", "mitigation steps listed", "triage ranked"],
+        "required_answer_properties": [
+            "failure modes identified",
+            "mitigation steps listed",
+            "triage ranked",
+        ],
         "judge_rubric": "High-complexity reasoning request. Must preserve reasoning chain, failure modes, mitigation, and triage ranking.",
     },
     "grammar_json_table": {
         "safe_transforms": ["format_conversion"],
-        "risky_transforms": [ "reference_sub"],
+        "risky_transforms": ["reference_sub"],
         "forbidden_transforms": ["rate_distortion"],
-        "required_answer_properties": ["JSON keys preserved", "table structure preserved", "values accurate"],
+        "required_answer_properties": [
+            "JSON keys preserved",
+            "table structure preserved",
+            "values accurate",
+        ],
         "judge_rubric": "Structured data may be compressed but JSON keys and table structure must remain. No placeholder substitution in JSON values.",
     },
     "simple_baseline": {
@@ -809,7 +930,11 @@ _SCENARIO_SAFETY: dict[str, dict[str, Any]] = {
         "safe_transforms": ["reference_sub", "format_conversion", "tool_filter"],
         "risky_transforms": [],
         "forbidden_transforms": ["rate_distortion"],
-        "required_answer_properties": ["debugging logic correct", "Null pointer identified", "JSON structure preserved"],
+        "required_answer_properties": [
+            "debugging logic correct",
+            "Null pointer identified",
+            "JSON structure preserved",
+        ],
         "judge_rubric": "Mixed real-world prompt. Must preserve debugging logic, identify Null pointer issue, and reference the correct transaction UUID.",
     },
 }

@@ -150,7 +150,7 @@ class PromptIRV2:
                     f"P={int(sp.protected)}:C={int(sp.compressible)}:"
                     f"T={sp.text}"
                 )
-        for key in sorted(self.metadata):
+        for key in sorted(self.metadata, key=str):
             if isinstance(key, tuple):
                 k_str = str(key[0])
                 v_str = str(key[1])

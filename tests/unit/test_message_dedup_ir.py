@@ -1,11 +1,12 @@
 """Unit tests for MessageDeduplicator.optimize() (IR-native path)."""
+
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.result import Ok
-from lattice.core.transport import Request
 from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
 from lattice.transforms.message_dedup import MessageDeduplicator
+from lattice.transport.types import Request
 
 
 class TestMessageDeduplicatorIR:
@@ -31,8 +32,14 @@ class TestMessageDeduplicatorIR:
         assert new_ir is ir  # identical reference since no change
 
     def test_exact_duplicate_sections_removed(self) -> None:
-        sec1 = SectionV2(type="context", spans=(SpanV2(span_id="s1", text="the quick brown fox jumps over the lazy dog"),))
-        sec2 = SectionV2(type="context", spans=(SpanV2(span_id="s2", text="the quick brown fox jumps over the lazy dog"),))
+        sec1 = SectionV2(
+            type="context",
+            spans=(SpanV2(span_id="s1", text="the quick brown fox jumps over the lazy dog"),),
+        )
+        sec2 = SectionV2(
+            type="context",
+            spans=(SpanV2(span_id="s2", text="the quick brown fox jumps over the lazy dog"),),
+        )
         ir = PromptIRV2(sections=(sec1, sec2))
         request, ctx = self._make_request([sec1, sec2])
         dedup = MessageDeduplicator(preserve_last_n=0)
@@ -104,8 +111,14 @@ class TestMessageDeduplicatorIR:
         assert len(new_ir.sections) == 2
 
     def test_metrics_recorded_on_dedup(self) -> None:
-        sec1 = SectionV2(type="context", spans=(SpanV2(span_id="s1", text="the quick brown fox jumps over the lazy dog"),))
-        sec2 = SectionV2(type="context", spans=(SpanV2(span_id="s2", text="the quick brown fox jumps over the lazy dog"),))
+        sec1 = SectionV2(
+            type="context",
+            spans=(SpanV2(span_id="s1", text="the quick brown fox jumps over the lazy dog"),),
+        )
+        sec2 = SectionV2(
+            type="context",
+            spans=(SpanV2(span_id="s2", text="the quick brown fox jumps over the lazy dog"),),
+        )
         ir = PromptIRV2(sections=(sec1, sec2))
         request, ctx = self._make_request([sec1, sec2])
         dedup = MessageDeduplicator(preserve_last_n=0)

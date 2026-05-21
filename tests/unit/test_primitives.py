@@ -1,4 +1,5 @@
 """Tests for core/primitives.py — Unified type system."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -79,11 +80,7 @@ class TestCandidate:
 
     def test_score_computation(self) -> None:
         ir = PromptIRV2()
-        c = (
-            Candidate(ir=ir)
-            .with_metric("tokens_before", 100)
-            .with_metric("tokens_after", 50)
-        )
+        c = Candidate(ir=ir).with_metric("tokens_before", 100).with_metric("tokens_after", 50)
         score = c.score()
         assert hasattr(score, "expected_utility")
         assert score.cost_reduction == 0.5

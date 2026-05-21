@@ -22,8 +22,8 @@ import enum
 from typing import Any
 
 from lattice.core.task_classifier import TaskClass
-from lattice.core.transport import Request
 from lattice.ir.primitives import ExecutionPlan
+from lattice.transport.types import Request
 
 
 class Tier(enum.Enum):

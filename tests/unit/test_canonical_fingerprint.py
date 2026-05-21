@@ -1,4 +1,5 @@
 """Tests for PromptIRV2.canonical_fingerprint() (determinism + replay hardening)."""
+
 from __future__ import annotations
 
 from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
@@ -29,7 +30,9 @@ class TestCanonicalFingerprint:
     def test_stable_across_rebuild(self) -> None:
         ir = PromptIRV2(
             sections=(
-                SectionV2(type="json", spans=(SpanV2(span_id="a", text="data", compressible=True),)),
+                SectionV2(
+                    type="json", spans=(SpanV2(span_id="a", text="data", compressible=True),)
+                ),
                 SectionV2(type="log", spans=(SpanV2(span_id="b", text="warn"),)),
             )
         )
@@ -37,7 +40,9 @@ class TestCanonicalFingerprint:
         # Rebuild from scratch
         rebuilt = PromptIRV2(
             sections=(
-                SectionV2(type="json", spans=(SpanV2(span_id="a", text="data", compressible=True),)),
+                SectionV2(
+                    type="json", spans=(SpanV2(span_id="a", text="data", compressible=True),)
+                ),
                 SectionV2(type="log", spans=(SpanV2(span_id="b", text="warn"),)),
             )
         )

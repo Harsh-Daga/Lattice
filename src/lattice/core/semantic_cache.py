@@ -299,7 +299,7 @@ def _canonical_request(request: Any) -> dict[str, Any]:
     # and Message intentionally use ``slots=True``, so ``__dict__``-based
     # duck-typing does not work on the proxy hot path.
     if _is_internal_request(request):
-        from lattice.core.serialization import request_to_dict
+        from lattice.transport.serialization import request_to_dict
 
         raw = request_to_dict(request)
     elif hasattr(request, "to_dict"):

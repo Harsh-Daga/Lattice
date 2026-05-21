@@ -25,8 +25,6 @@ from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.pipeline_factory import build_benchmark_pipeline
 from lattice.core.result import unwrap
-from lattice.core.serialization import message_from_dict
-from lattice.core.transport import Request
 from lattice.transforms.batching import BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
 from lattice.transforms.format_conv import FormatConverter
@@ -36,6 +34,8 @@ from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.speculative import SpeculativeTransform
 from lattice.transforms.tool_filter import ToolOutputFilter
+from lattice.transport.serialization import message_from_dict
+from lattice.transport.types import Request
 from lattice.utils.token_count import count_message_tokens
 
 REPLAY_FEATURE_FLAGS: list[tuple[str, str]] = [
@@ -80,8 +80,15 @@ class ReplayTrace:
             model=str(data.get("model", "gpt-4")),
             description=str(data.get("description", "")),
             messages=list(data.get("messages", [])),
-            reference_response=str(data.get("reference_response", data.get("baseline_response", ""))),
-            optimized_response=str(data.get("optimized_response", data.get("reference_response", data.get("baseline_response", "")))),
+            reference_response=str(
+                data.get("reference_response", data.get("baseline_response", ""))
+            ),
+            optimized_response=str(
+                data.get(
+                    "optimized_response",
+                    data.get("reference_response", data.get("baseline_response", "")),
+                )
+            ),
             expect_json=bool(data.get("expect_json", False)),
             json_schema=data.get("json_schema"),
             baseline_tool_calls=data.get("baseline_tool_calls"),
@@ -210,21 +217,29 @@ def _classify_failure(
             categories.append(FailureCategory.CANONICAL_DRIFT)
             break
 
-    baseline_determinism = statistics.mean(
-        [scenario.determinism_score for scenario in baseline_report.scenarios]
-    ) if baseline_report.scenarios else 1.0
-    feature_determinism = statistics.mean(
-        [scenario.determinism_score for scenario in feature_report.scenarios]
-    ) if feature_report.scenarios else 1.0
+    baseline_determinism = (
+        statistics.mean([scenario.determinism_score for scenario in baseline_report.scenarios])
+        if baseline_report.scenarios
+        else 1.0
+    )
+    feature_determinism = (
+        statistics.mean([scenario.determinism_score for scenario in feature_report.scenarios])
+        if feature_report.scenarios
+        else 1.0
+    )
     if feature_determinism + 1e-9 < baseline_determinism:
         categories.append(FailureCategory.NON_DETERMINISM)
 
-    baseline_survivability = statistics.mean(
-        [scenario.survivability_score for scenario in baseline_report.scenarios]
-    ) if baseline_report.scenarios else 1.0
-    feature_survivability = statistics.mean(
-        [scenario.survivability_score for scenario in feature_report.scenarios]
-    ) if feature_report.scenarios else 1.0
+    baseline_survivability = (
+        statistics.mean([scenario.survivability_score for scenario in baseline_report.scenarios])
+        if baseline_report.scenarios
+        else 1.0
+    )
+    feature_survivability = (
+        statistics.mean([scenario.survivability_score for scenario in feature_report.scenarios])
+        if feature_report.scenarios
+        else 1.0
+    )
     if feature_survivability + 1e-9 < baseline_survivability:
         categories.append(FailureCategory.SURVIVABILITY_REGRESSION)
 
@@ -265,7 +280,10 @@ def _classify_failure(
                 break
 
     # Cache miss (for cache-related features, token savings regression)
-    if "cache" in feature_report.runner_name and feature_report.total_token_savings < baseline_report.total_token_savings:
+    if (
+        "cache" in feature_report.runner_name
+        and feature_report.total_token_savings < baseline_report.total_token_savings
+    ):
         categories.append(FailureCategory.CACHE_MISS)
 
     return categories
@@ -295,7 +313,9 @@ async def run_trace_replay(
         )
         baseline_tokens = count_message_tokens(trace_messages, model=request.model)
 
-        ctx = TransformContext(request_id=f"replay-{trace_id}", provider=trace_provider, model=trace_model)
+        ctx = TransformContext(
+            request_id=f"replay-{trace_id}", provider=trace_provider, model=trace_model
+        )
         response_fingerprints: list[str] = []
         quality_scores: list[float] = []
         request_fingerprint = ""
@@ -343,7 +363,9 @@ async def run_trace_replay(
             before=baseline_tokens,
             after=optimized_tokens,
             saved=max(0, baseline_tokens - optimized_tokens),
-            ratio=(baseline_tokens - optimized_tokens) / baseline_tokens if baseline_tokens > 0 else 0.0,
+            ratio=(baseline_tokens - optimized_tokens) / baseline_tokens
+            if baseline_tokens > 0
+            else 0.0,
         )
 
         reference_response = trace.reference_response or trace.optimized_response or ""
@@ -356,7 +378,11 @@ async def run_trace_replay(
             baseline_tool_calls=trace.baseline_tool_calls,
             optimized_tool_calls=trace.optimized_tool_calls,
         )
-        quality_scores.append(quality.task_equivalence.composite if quality.task_equivalence is not None else quality.semantic_similarity)
+        quality_scores.append(
+            quality.task_equivalence.composite
+            if quality.task_equivalence is not None
+            else quality.semantic_similarity
+        )
         response_fingerprints.append(_fingerprint_value(candidate_response))
 
         baseline_response = trace.reference_response or candidate_response
@@ -432,7 +458,9 @@ async def run_trace_replay(
             "trace_count": len(traces),
             "semantic_cache_enabled": (config or LatticeConfig()).semantic_cache_enabled,
             "transform_cache_arbitrage": (config or LatticeConfig()).transform_cache_arbitrage,
-            "provider_stall_detection_enabled": (config or LatticeConfig()).provider_stall_detection_enabled,
+            "provider_stall_detection_enabled": (
+                config or LatticeConfig()
+            ).provider_stall_detection_enabled,
             "transform_batching": (config or LatticeConfig()).transform_batching,
             "transform_speculation": (config or LatticeConfig()).transform_speculation,
             "tacc_enabled": (config or LatticeConfig()).tacc_enabled,
@@ -446,6 +474,7 @@ async def run_trace_replay(
 # =============================================================================
 # Feature-isolated replay — Phase 8 requirement
 # =============================================================================
+
 
 async def run_feature_isolated_replay(
     traces: list[ReplayTrace],
@@ -652,7 +681,9 @@ def _write_outputs(
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Replay captured traces through the LATTICE pipeline")
+    parser = argparse.ArgumentParser(
+        description="Replay captured traces through the LATTICE pipeline"
+    )
     parser.add_argument("--input", required=True, help="Path to a JSON or JSONL trace file")
     parser.add_argument("--model", default="gpt-4", help="Model name for token accounting")
     parser.add_argument("--provider", default="openai", help="Provider name for the report")

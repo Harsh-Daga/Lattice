@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lattice.core.delta_wire import (
+from lattice.transport.delta_wire import (
     DeltaWireEncoder,
     compute_wire_savings,
     delta_wire_bytes,

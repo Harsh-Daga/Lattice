@@ -50,7 +50,7 @@ from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
 from lattice.core.session import SessionManager
-from lattice.core.transport import Message, Request, Response
+from lattice.transport.types import Message, Request, Response
 
 logger = structlog.get_logger()
 

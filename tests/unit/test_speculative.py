@@ -16,11 +16,11 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.core.transport import Message, Request, Response
 from lattice.transforms.speculative import (
     SpeculativeExecutor,
     SpeculativeTransform,
 )
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # Prediction

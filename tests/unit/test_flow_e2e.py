@@ -13,10 +13,10 @@ from unittest.mock import patch
 
 import pytest
 
-from lattice.core.transport import Message, Request, Response
 from lattice.integrations.mcp import LatticeMCPTools
 from lattice.providers.transport import DirectHTTPProvider
 from lattice.sdk import LatticeClient
+from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
 # SDK Direct Mode — Compression API

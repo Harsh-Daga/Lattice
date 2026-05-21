@@ -16,6 +16,7 @@ import pytest
 
 def test_lattice_version_exported() -> None:
     import lattice
+
     assert hasattr(lattice, "__version__")
     assert isinstance(lattice.__version__, str)
     assert lattice.__version__
@@ -46,6 +47,7 @@ def test_lattice_core_exports(api_surface) -> None:
 def test_lattice_client_has_promised_methods(api_surface) -> None:
     """REFACTOR_PLAN §2.4 lists LatticeClient methods that must stay."""
     from lattice.client import LatticeClient
+
     expected_methods = api_surface["python_api"]["lattice_client_methods"]
     missing = [m for m in expected_methods if not hasattr(LatticeClient, m)]
     assert not missing, f"LatticeClient missing methods: {missing}"
@@ -55,7 +57,10 @@ def test_lattice_client_has_promised_methods(api_surface) -> None:
 # These will become PASSING tests after Phase 6 hoists symbols to top level.
 # Until then they xfail to document the target surface without blocking CI.
 
-@pytest.mark.xfail(reason="Phase 6 hoists LatticeClient et al. to top-level lattice.*", strict=False)
+
+@pytest.mark.xfail(
+    reason="Phase 6 hoists LatticeClient et al. to top-level lattice.*", strict=False
+)
 def test_lattice_toplevel_target_imports() -> None:
     from lattice import (  # noqa: F401
         CompressResult,

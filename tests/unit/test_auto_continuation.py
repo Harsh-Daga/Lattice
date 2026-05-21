@@ -15,7 +15,7 @@ from __future__ import annotations
 import pytest
 
 from lattice.core.auto_continuation import AutoContinuation
-from lattice.core.transport import Message, Request, Response
+from lattice.transport.types import Message, Request, Response
 
 
 class DummyMessage(Message):

@@ -2,6 +2,7 @@
 
 After deletion, these modules raise ModuleNotFoundError as expected.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -10,11 +11,14 @@ import pytest
 class TestDeletedTransformsCannotBeImported:
     """Deleted legacy transforms must raise ModuleNotFoundError."""
 
-    @pytest.mark.parametrize("mod_path", [
-        "lattice.transforms.alias_manifest",
-        "lattice.transforms.dictionary_compress",
-        "lattice.transforms.grammar_compress",
-    ])
+    @pytest.mark.parametrize(
+        "mod_path",
+        [
+            "lattice.transforms.alias_manifest",
+            "lattice.transforms.dictionary_compress",
+            "lattice.transforms.grammar_compress",
+        ],
+    )
     def test_module_not_found(self, mod_path: str) -> None:
         with pytest.raises(ModuleNotFoundError):
             __import__(mod_path)

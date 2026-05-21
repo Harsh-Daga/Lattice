@@ -28,7 +28,8 @@ def test_every_required_header_is_referenced_in_compat(api_surface) -> None:
     the gap)."""
     src = COMPAT_SRC.read_text()
     missing = [
-        h for h in api_surface["http"]["headers_required"]
+        h
+        for h in api_surface["http"]["headers_required"]
         if h not in src and h not in _KNOWN_HEADER_GAPS
     ]
     assert not missing, (
@@ -47,6 +48,7 @@ def test_passthrough_ratelimit_prefix_is_respected() -> None:
 
 
 # ---- Slow contract suite (spins a real proxy) ----
+
 
 @pytest.mark.contract
 def test_headers_present_on_real_request() -> None:

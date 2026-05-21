@@ -34,6 +34,7 @@ class TestFallbackExecutor:
     @pytest.fixture
     def metrics(self) -> object:
         """Simple metrics stub."""
+
         class MetricsStub:
             def __init__(self) -> None:
                 self.counters: dict[str, int] = {}

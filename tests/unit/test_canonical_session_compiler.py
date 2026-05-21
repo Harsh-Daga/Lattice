@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from lattice.core.session import MemorySessionStore, SessionManager
-from lattice.core.transport import Message
 from lattice.protocol.content import TextPart
 from lattice.protocol.manifest import (
     apply_delta,
@@ -26,6 +25,7 @@ from lattice.protocol.segments import (
     build_system_segment,
     build_tools_segment,
 )
+from lattice.transport.types import Message
 
 # =============================================================================
 # Manifest hash stability

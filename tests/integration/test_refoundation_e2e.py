@@ -6,6 +6,7 @@ Verifies the full new flow:
 3. PipelineV2 executes plan verbatim
 4. CandidateScorer scores results (single source)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,7 +16,6 @@ from lattice.core.context import TransformContext
 from lattice.core.pipeline_factory import build_optimizer_pipeline
 from lattice.core.pipeline_v2 import PipelineV2, TransformRegistryV2
 from lattice.core.result import is_ok, unwrap
-from lattice.core.transport import Message, Request
 from lattice.core.unified_planner import UnifiedPlanner, profile_from_legacy
 from lattice.ir.primitives import (
     Candidate,
@@ -23,6 +23,7 @@ from lattice.ir.primitives import (
     SectionV2,
     SpanV2,
 )
+from lattice.transport.types import Message, Request
 
 
 def _req(content: str, role: str = "user") -> Message:
@@ -118,11 +119,7 @@ class TestRefoundationEndToEnd:
         section = SectionV2(type="json", spans=(span,))
         ir = PromptIRV2(sections=(section,))
 
-        c = (
-            Candidate(ir=ir)
-            .with_metric("tokens_before", 10)
-            .with_metric("tokens_after", 5)
-        )
+        c = Candidate(ir=ir).with_metric("tokens_before", 10).with_metric("tokens_after", 5)
         score = CandidateScorer.score(c)
 
         assert score.composite > 0.0
@@ -156,11 +153,7 @@ class TestRefoundationEndToEnd:
 
         ctx = TransformContext()
         request = Request(
-            messages=[
-                _req(
-                    '[{"status":"ok","name":"alpha"},{"status":"ok","name":"beta"}]'
-                )
-            ],
+            messages=[_req('[{"status":"ok","name":"alpha"},{"status":"ok","name":"beta"}]')],
             model="gpt-4",
         )
 

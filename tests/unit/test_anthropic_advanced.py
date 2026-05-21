@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-from lattice.core.transport import Message, Request
 from lattice.providers.anthropic import AnthropicAdapter
+from lattice.transport.types import Message, Request
 
 
 @pytest.fixture
