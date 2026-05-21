@@ -189,10 +189,14 @@ class Pipeline:
         )
 
         # Split: core transforms (verbatim) vs optimizers (beam search)
+        from lattice.core.transform_registry import is_legacy_only
+
         core_transforms: list[str] = []
         optimizer_transforms: list[str] = []
         for tx_name in plan.transforms:
             if tx_name in _RESPONSE_ONLY_TRANSFORMS:
+                continue
+            if is_legacy_only(tx_name):
                 continue
             if tx_name.endswith("_optimizer") and tx_name != "pipeline_v2":
                 optimizer_transforms.append(tx_name)
