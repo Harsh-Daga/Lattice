@@ -291,20 +291,13 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "strategy_selector": TransformSafetyBucket.SAFE,
     "runtime_contract": TransformSafetyBucket.SAFE,
     "runtime_contractor": TransformSafetyBucket.SAFE,  # alias
-    # SAFE — new lossless transforms (Phase 2)
-    "alias_manifest": TransformSafetyBucket.SAFE,
     "diagnostic_rle": TransformSafetyBucket.SAFE,
-    "arithmetic_sequence": TransformSafetyBucket.SAFE,
     "columnar_pack": TransformSafetyBucket.SAFE,
     "json_shape": TransformSafetyBucket.SAFE,
     "path_prefix": TransformSafetyBucket.SAFE,
-    "stack_interning": TransformSafetyBucket.SAFE,
     "extractive_compress": TransformSafetyBucket.SAFE,
     "extractive_compressor": TransformSafetyBucket.SAFE,  # alias
-    "code_factoring": TransformSafetyBucket.SAFE,
     "tool_projection": TransformSafetyBucket.SAFE,
-    "stable_prefix": TransformSafetyBucket.SAFE,
-    "instruction_context_sep": TransformSafetyBucket.SAFE,
     "constraint_lifting": TransformSafetyBucket.SAFE,
     "causal_chain": TransformSafetyBucket.SAFE,
     # CONDITIONAL — lossy but recoverable; risk-gated
@@ -312,19 +305,8 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "message_dedup": TransformSafetyBucket.CONDITIONAL,
     "message_deduplicator": TransformSafetyBucket.CONDITIONAL,  # alias
     "format_conversion": TransformSafetyBucket.CONDITIONAL,
-    "semantic_compress": TransformSafetyBucket.CONDITIONAL,
-    "semantic_compressor": TransformSafetyBucket.CONDITIONAL,  # alias
-    "dictionary_compress": TransformSafetyBucket.CONDITIONAL,
-    "dictionary_compressor": TransformSafetyBucket.CONDITIONAL,  # alias
-    "grammar_compress": TransformSafetyBucket.CONDITIONAL,
-    "grammar_compressor": TransformSafetyBucket.CONDITIONAL,  # alias
     "rate_distortion": TransformSafetyBucket.CONDITIONAL,
     "information_theoretic_selector": TransformSafetyBucket.CONDITIONAL,
-    "self_information": TransformSafetyBucket.CONDITIONAL,
-    "structural_fingerprint": TransformSafetyBucket.CONDITIONAL,
-    # DANGEROUS — replaces meaning-bearing content with placeholders
-    "hierarchical_summary": TransformSafetyBucket.DANGEROUS,
-    "hierarchical_summarizer": TransformSafetyBucket.DANGEROUS,  # alias
 }
 
 # Unknown transforms default to UNKNOWN — they must be explicitly registered
@@ -336,17 +318,17 @@ _UNKNOWN_DEFAULT = TransformSafetyBucket.DANGEROUS
 def get_transform_safety_bucket(name: str) -> TransformSafetyBucket:
     """Return the safety bucket for a transform by name.
 
-    Delegates to :func:`~lattice.core.transform_registry.get_transform_safety_bucket`
-    so that safety metadata is derived from the central registry.
+    Legacy compatibility aliases are resolved from the local safety map first.
+    Canonical names still defer to :func:`~lattice.core.transform_registry.get_transform_safety_bucket`.
     Unknown names default to DANGEROUS — they must be explicitly registered
     to prove safety. This prevents alias-based bypass.
     """
-    from lattice.core.transform_registry import (
-        DANGEROUS,
-    )
-    from lattice.core.transform_registry import (
-        get_transform_safety_bucket as _registry_bucket,
-    )
+    legacy_bucket = _TRANSFORM_SAFETY_MAP.get(name)
+    if legacy_bucket is not None:
+        return legacy_bucket
+
+    from lattice.core.transform_registry import DANGEROUS
+    from lattice.core.transform_registry import get_transform_safety_bucket as _registry_bucket
 
     bucket = _registry_bucket(name)
     if bucket == DANGEROUS:

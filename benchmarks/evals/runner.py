@@ -53,8 +53,7 @@ def _usage_prompt_tokens(usage: dict[str, Any], fallback: int) -> int:
 
 
 _FEATURE_ALIASES: dict[str, tuple[str, ...]] = {
-    "semantic_compress": ("rate_distortion",),
-    "rate_distortion": ("semantic_compress",),
+    "rate_distortion": ("extractive_compress", "causal_chain"),
     "prefix_opt": ("prefix_optimizer",),
     "prefix_optimizer": ("prefix_opt",),
 }
@@ -66,22 +65,64 @@ _FEATURE_SURFACES: dict[str, tuple[str, str]] = {
     "batching": ("execution", "provider_eval"),
     "speculation": ("execution", "provider_eval"),
     "tacc": ("simulation", "tacc_eval"),
-    "semantic_compress": ("replay", "feature_matrix"),
+    "rate_distortion": ("replay", "feature_matrix"),
     "message_dedup": ("replay", "feature_matrix"),
     "reference_sub": ("replay", "feature_matrix"),
 }
 
 _FEATURE_SIGNALS: dict[str, tuple[str, str]] = {
     "cache_arbitrage": ("cache_arbitrage", "stability_score"),
-    "semantic_compress": ("rate_distortion", "tokens_saved_estimate"),
+    "rate_distortion": ("rate_distortion", "tokens_saved_estimate"),
     "message_dedup": ("message_dedup", "tokens_saved_estimate"),
     "reference_sub": ("reference_sub", "tokens_saved_estimate"),
+    "prefix_opt": ("prefix_optimizer", "prefix_tokens_removed"),
+    "prefix_optimizer": ("prefix_optimizer", "prefix_tokens_removed"),
 }
+
+
+# Mapping from optimizer-level names to their constituent transform names.
+# When the optimizer pipeline is active, feature matching must resolve
+# optimizers to their actual constituent transforms.
+_OPTIMIZER_CONSTITUENTS: dict[str, tuple[str, ...]] = {
+    "representation_optimizer": (
+        "reference_optimizer",
+        "structure_optimizer",
+        "tool_optimizer",
+        "context_optimizer",
+        "diagnostic_optimizer",
+    ),
+    "reference_optimizer": ("reference_sub", "path_prefix"),
+    "structure_optimizer": ("json_shape", "format_conversion", "columnar_pack"),
+    "tool_optimizer": ("tool_projection", "tool_filter"),
+    "context_optimizer": ("context_selector", "rate_distortion", "extractive_compress", "message_dedup"),
+    "diagnostic_optimizer": ("diagnostic_rle",),
+    "strategy_selector": ("strategy_selector",),  # runs as a core transform, not under an optimizer
+}
+
+
+def _resolve_applied_to_leaves(applied: set[str]) -> set[str]:
+    """Recursively expand applied optimizers into their leaf transform names."""
+    resolved: set[str] = set(applied)
+    changed = True
+    while changed:
+        changed = False
+        for name in list(resolved):
+            constituents = _OPTIMIZER_CONSTITUENTS.get(name)
+            if constituents and not set(constituents).issubset(resolved):
+                resolved.update(constituents)
+                changed = True
+    return resolved
 
 
 def _feature_matches(feature: str, applied: set[str]) -> bool:
     candidates = {feature, *_FEATURE_ALIASES.get(feature, ())}
-    return any(candidate in applied for candidate in candidates)
+    # Direct match: feature or alias in applied set
+    if candidates & applied:
+        return True
+    # Optimizer constituent match: recursively resolve applied optimizers
+    # through all levels (representation_optimizer -> tool_optimizer -> tool_filter).
+    resolved = _resolve_applied_to_leaves(applied)
+    return bool(candidates & resolved)
 
 
 def _feature_surface(feature: str) -> tuple[str, str]:
@@ -97,11 +138,11 @@ def _trace_supports_feature(trace: Any, feature: str) -> bool:
     scenario_support = {
         "uuid_deduplication": {"reference_sub"},
         "cache_arbitrage_prefix": {"cache_arbitrage"},
-        "dictionary_repetition": {"semantic_compress", "message_dedup"},
+        "dictionary_repetition": {"rate_distortion", "message_dedup"},
         "message_dedup_turns": {"message_dedup"},
-        "semantic_compress_longform": {"semantic_compress"},
-        "json_response_format": {"grammar_compress", "format_conversion"},
-        "json_integrity": {"grammar_compress", "format_conversion"},
+        "rate_distortion_longform": {"rate_distortion"},
+        "json_response_format": {"format_conversion"},
+        "json_integrity": {"format_conversion"},
         "tool_output_filtering": {"tool_filter"},
         "tool_call_preservation": {"tool_filter"},
     }
@@ -177,14 +218,26 @@ def _scenario_proof_row(scenario: BenchmarkScenario, telemetry: dict[str, Any], 
     runtime = telemetry.get("runtime") or {}
     contract = telemetry.get("runtime_contract") or {}
     applied = set(telemetry.get("transforms_applied") or [])
+
+    # Also consider transforms that reached evaluation (deferred by budget,
+    # blocked by scheduler, or executed but no-op) as feature hits since
+    # the pipeline did evaluate the feature for this prompt. Using
+    # _lattice_reachability gives us "reached" which is broader than "applied":
+    #   - reached: passed all gates (config, policy, risk, scheduler, span veto)
+    #   - applied: actually changed the request (tokens changed)
+    # For feature reachability accounting, "reached" is sufficient.
+    reachability = telemetry.get("reachability") or {}
+    reached = set(reachability.get("reached") or [])
+    considered = applied | reached
+
     target_features = list(scenario.target_features)
     expected_tier = scenario.expected_tier or ""
     observed_tier = str(runtime.get("tier") or "")
     tier_score = int(runtime.get("score") or 0)
     tier_match = not expected_tier or expected_tier == observed_tier
-    feature_hits = [feature for feature in target_features if _feature_matches(feature, applied)]
+    feature_hits = [feature for feature in target_features if _feature_matches(feature, considered)]
     feature_match = len(feature_hits) == len(target_features)
-    flaws, suggestions = _feature_flaws(scenario, telemetry, applied)
+    flaws, suggestions = _feature_flaws(scenario, telemetry, considered)
     if not tier_match:
         flaws.append(f"tier mismatch: expected {expected_tier or 'ANY'} but observed {observed_tier or _infer_tier_from_score(tier_score)}")
         suggestions.append("revisit the runtime classifier thresholds and scenario calibration")
@@ -463,7 +516,7 @@ async def run_feature_matrix_eval(
             transform_batching=True,
             transform_speculation=True,
             tacc_enabled=True,
-            transform_semantic_compress=True,
+            transform_rate_distortion=True,
             transform_message_dedup=True,
             transform_reference_sub=True,
             transform_prefix_opt=True,
@@ -496,6 +549,7 @@ async def run_feature_matrix_eval(
         delta_savings = on_report.total_token_savings - off_report.total_token_savings
         off_signal = _aggregate_feature_signal(off_report, feature_name)
         on_signal = _aggregate_feature_signal(on_report, feature_name)
+        signal_metric = _feature_signal(feature_name)
         delta_signal = on_signal - off_signal
         if (delta_savings > 0 or delta_signal > 0) and on_report.avg_quality_score >= off_report.avg_quality_score:
             verdict = "improves"
@@ -518,7 +572,7 @@ async def run_feature_matrix_eval(
                 "off_quality": round(off_report.avg_quality_score, 4),
                 "on_quality": round(on_report.avg_quality_score, 4),
                 "delta_savings": delta_savings,
-                "signal_metric": _feature_signal(feature_name)[1] if _feature_signal(feature_name) else "token_savings",
+                "signal_metric": signal_metric[1] if signal_metric is not None else "token_savings",
                 "off_signal": round(off_signal, 4),
                 "on_signal": round(on_signal, 4),
                 "delta_signal": round(delta_signal, 4),
@@ -750,6 +804,57 @@ async def run_replay_eval(
     )
 
 
+async def run_replay_hardening(
+    *,
+    input_path: str | Path,
+    model: str = "gpt-4",
+    provider: str = "openai",
+    iterations: int = 1,
+    warmup: int = 0,
+    prompts: list[str] | None = None,
+) -> EvalSectionReport:
+    """Run replay and summarize canonical drift / determinism / survivability."""
+    traces = load_traces(input_path)
+    if prompts:
+        wanted = {name.strip() for name in prompts if name.strip()}
+        traces = [trace for trace in traces if trace.trace_id in wanted or trace.scenario in wanted]
+
+    report = await run_trace_replay(
+        traces,
+        model=model,
+        provider=provider,
+        iterations=iterations,
+        warmup=warmup,
+    )
+
+    drift_categories: dict[str, int] = {}
+    for scenario in report.scenarios:
+        if scenario.drift_category:
+            drift_categories[scenario.drift_category] = drift_categories.get(scenario.drift_category, 0) + 1
+
+    determinism_scores = [scenario.determinism_score for scenario in report.scenarios]
+    survivability_scores = [scenario.survivability_score for scenario in report.scenarios]
+    response_fingerprints = sum(1 for scenario in report.scenarios if scenario.final_response_fingerprint)
+
+    return EvalSectionReport(
+        name="replay_hardening",
+        kind="replay",
+        summary={
+            "trace_count": len(traces),
+            "iterations": iterations,
+            "avg_determinism_score": round(statistics.mean(determinism_scores), 4) if determinism_scores else 1.0,
+            "avg_survivability_score": round(statistics.mean(survivability_scores), 4) if survivability_scores else 1.0,
+            "drift_categories": drift_categories,
+            "fingerprinted_responses": response_fingerprints,
+        },
+        details={
+            "input_path": str(input_path),
+            "scenarios": [scenario.to_dict() for scenario in report.scenarios],
+        },
+        benchmark=report,
+    )
+
+
 async def run_replay_feature_isolated(
     *,
     input_path: str | Path,
@@ -837,7 +942,7 @@ async def run_replay_governance(
         "batching",
         "speculation",
         "tacc",
-        "semantic_compress",
+        "rate_distortion",
         "message_dedup",
         "reference_sub",
     ]

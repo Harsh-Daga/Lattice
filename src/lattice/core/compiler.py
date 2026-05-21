@@ -41,7 +41,6 @@ def _store_ir_metadata(request: Request, ir: PromptIR) -> None:
     """Store IR summary in request metadata for scheduler and safety guards."""
     request.metadata["_lattice_ir_summary"] = ir.summary()
     request.metadata["_lattice_protected_spans"] = ir.protected_span_ids()
-    request.metadata.setdefault("_lattice_ir", ir.to_dict())
 
     section_types = ir.section_types
     if "error" in section_types or "stack_trace" in section_types:

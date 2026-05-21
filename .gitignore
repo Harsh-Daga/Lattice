@@ -1,42 +1,73 @@
-__pycache__/*
-__pycache__
+# Python build / cache
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
 *.egg-info/
+*.egg
 dist/
 build/
 .eggs/
-*.egg
+
+# Virtualenvs
 .venv/
 .venv3/
-venv3/
 venv/
+venv3/
+
+# Environment files (NEVER commit secrets)
 .env
-*.db
-*.sqlite3
+.env.*
+!.env.example
+
+# Test / type-check caches
 .ruff_cache/
 .pytest_cache/
 .mypy_cache/
 .mypy/
+
+# Coverage
 htmlcov/
 .coverage
 .coverage.*
 *.cover
+
+# Misc dev artefacts
 *.log
 .benchmarks/
 .hypothesis/
 experiment_output/
 scripts/experiment_output/
+
+# Editor / OS
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 .DS_Store
-dist/
-benchmarks/results/
+
+# Local DBs
+*.db
+*.sqlite3
+
+# uv
 uv.lock
+.uv-cache/
+
+# Generated repomix artefact
 repomix-output.txt
+
+# Claude local config
 .claude/*
-1
+
+# Benchmark results: ignore everything except the phase artefacts we commit.
+benchmarks/results/*
+!benchmarks/results/.gitkeep
+!benchmarks/results/phase-*.json
+!benchmarks/results/phase-*.md
+!benchmarks/results/v1.0.0.json
+!benchmarks/results/v1.0.0.md
+!benchmarks/results/CLAIMS.md
+!benchmarks/results/production_evals.json
+!benchmarks/results/production_evals.md

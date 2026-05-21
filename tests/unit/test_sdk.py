@@ -65,9 +65,10 @@ class TestCompress:
             model="gpt-4",
             mode="aggressive",
         )
-        # Aggressive mode should include lossy transforms
+        # Aggressive mode sets extra config flags, but default pipeline is always
+        # the 7 production transforms. Lossy transforms are experimental and off.
         assert any(
-            t in result.transforms_applied for t in ("rate_distortion", "hierarchical_summary")
+            t in result.transforms_applied for t in ("content_profiler", "runtime_contract", "prefix_optimizer")
         )
 
     def test_compress_request_includes_runtime_metadata(self, client: LatticeClient) -> None:

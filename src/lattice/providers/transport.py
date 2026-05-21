@@ -30,6 +30,7 @@ import httpx
 import structlog
 
 from lattice.core.errors import ProviderError, ProviderTimeoutError
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.transport import Request, Response
 from lattice.providers.anthropic import AnthropicAdapter
 from lattice.providers.azure import AzureAdapter
@@ -400,9 +401,13 @@ class DirectHTTPProvider:
         """Admit a request through the queued TACC controller."""
         estimate = self._tacc_reservation(request)
         priority = int(request.metadata.get("tacc_priority", 0) or 0)
-        cache_hit_expected = bool(request.metadata.get("_lattice_cache_hit_expected", False))
-        is_speculative = bool(request.metadata.get("_lattice_is_speculative", False))
-        is_batch = bool(request.metadata.get("_lattice_is_batch", False))
+        cache_hit_expected = bool(
+            get_canonical_request_value(request, None, "_lattice_cache_hit_expected", False)
+        )
+        is_speculative = bool(
+            get_canonical_request_value(request, None, "_lattice_is_speculative", False)
+        )
+        is_batch = bool(get_canonical_request_value(request, None, "_lattice_is_batch", False))
 
         decision, _reason = self.tacc.evaluate_admission(
             provider_name,

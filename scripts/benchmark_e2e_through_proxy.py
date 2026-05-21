@@ -8,19 +8,16 @@ sys.path.insert(0, "src")
 
 import httpx
 
-from lattice.providers.transport import DirectHTTPProvider
-from lattice.core.pipeline import CompressorPipeline
-from lattice.core.transport import Message, Request, Response
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
+from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.transforms.reference_sub import ReferenceSubstitution
-from lattice.transforms.tool_filter import ToolOutputFilter
-from lattice.transforms.prefix_opt import PrefixOptimizer
+from lattice.core.transport import Message, Request
 from lattice.transforms.format_conv import FormatConverter
 from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.core.session import MemorySessionStore, SessionManager
-from lattice.transforms.delta_encode import DeltaEncoder
+from lattice.transforms.prefix_opt import PrefixOptimizer
+from lattice.transforms.reference_sub import ReferenceSubstitution
+from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.utils.token_count import TiktokenCounter
 
 PROXY = "http://127.0.0.1:8787"
@@ -111,7 +108,7 @@ def benchmark_prompt(name, messages, expected_keyword=""):
     savings = tokens_before - tokens_after
     ratio = savings / max(tokens_before, 1)
 
-    print(f"")
+    print("")
     print(f"Compression:   {tokens_before} -> {tokens_after} tokens ({savings:+d}, {ratio:.1%})")
     print(f"Quality:       {quality}")
     print(f"Proxy overhead vs direct: {lat_baseline - lat_direct:.0f}ms")

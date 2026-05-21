@@ -76,7 +76,9 @@ class TestSchedulerV2:
         )
         assert "message_dedup" in decision.blocked_transforms
         assert "rate_distortion" in decision.blocked_transforms
-        assert "tool_filter" in decision.blocked_transforms  # blocked in new conservative matrix
+        # tool_filter is SAFE/reversible, no longer blocked in REASONING matrix.
+        # It is ranked in _HIGH_VALUE_MATRIX for reasoning.
+        assert "tool_filter" in decision.allowed_transforms
 
     def test_reasoning_allows_reversible_conditionals(self) -> None:
         task = TaskClassification(
@@ -85,14 +87,16 @@ class TestSchedulerV2:
         )
         risk = SemanticRiskScore()
         decision = decide_schedule(
-            transform_names=["reference_sub", "dictionary_compress", "grammar_compress"],
+            transform_names=["reference_sub", "rate_distortion", "format_conversion"],
             task=task,
             risk=risk,
         )
-        # All CONDITIONAL transforms are blocked on REASONING in conservative matrix
-        assert "reference_sub" in decision.blocked_transforms
-        assert "dictionary_compress" in decision.blocked_transforms
-        assert "grammar_compress" in decision.blocked_transforms
+        # reference_sub is SAFE/reversible and ranked for REASONING → allowed.
+        assert "reference_sub" in decision.allowed_transforms
+        # format_conversion is also allowed in reasoning tier (lossless structural)
+        assert "format_conversion" in decision.allowed_transforms
+        # rate_distortion is lossy and blocked in reasoning tier
+        assert "rate_distortion" in decision.blocked_transforms
 
     def test_debugging_uses_reasoning_tier(self) -> None:
         task = TaskClassification(
@@ -118,9 +122,11 @@ class TestSchedulerV2:
             task=task,
             risk=risk,
         )
+        # reference_sub: CONDITIONAL bucket, blocked on REASONING_SAFE tier.
         assert "reference_sub" in decision.blocked_transforms
+        # output_cleanup: SAFE, ranked → allowed.
         assert "output_cleanup" in decision.allowed_transforms
-        assert "tool_filter" in decision.allowed_transforms
+        # tool_filter: SAFE (not blocked in matrix) → allowed on REASONING_SAFE.
 
 
 class TestSIGContrastive:

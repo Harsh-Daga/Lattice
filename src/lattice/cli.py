@@ -751,18 +751,12 @@ def _enabled_transforms(config) -> list[str]:
         transforms.append("content_profiler")
     if config.transform_prefix_opt:
         transforms.append("prefix_opt")
-    if config.transform_structural_fingerprint:
-        transforms.append("structural_fingerprint")
-    if config.transform_self_information:
-        transforms.append("self_information")
     if config.transform_message_dedup:
         transforms.append("message_dedup")
     if config.transform_reference_sub:
         transforms.append("reference_sub")
-    if config.transform_semantic_compress:
+    if config.transform_rate_distortion:
         transforms.append("rate_distortion")
-    if config.transform_hierarchical_summary:
-        transforms.append("hierarchical_summary")
     if config.transform_tool_filter:
         transforms.append("tool_filter")
     if config.transform_format_conversion:

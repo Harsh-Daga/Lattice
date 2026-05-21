@@ -36,22 +36,16 @@ class JSONShapeFactor(ReversibleSyncTransform):
             compressed, saved_delta = _factor_json(msg.content)
             saved += saved_delta
             if saved_delta > 0:
-                new_messages.append(Message(role=msg.role, content=compressed))
+                new_msg = msg.copy()
+                new_msg.content = compressed
+                new_messages.append(new_msg)
             else:
                 new_messages.append(msg)
 
         context.record_metric(self.name, "chars_saved", saved)
-        return Ok(
-            Request(
-                model=request.model,
-                messages=new_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                tools=request.tools,
-                tool_choice=request.tool_choice,
-                metadata=request.metadata,
-            )
-        )
+        new_req = request.copy()
+        new_req.messages = new_messages
+        return Ok(new_req)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response

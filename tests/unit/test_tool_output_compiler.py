@@ -151,7 +151,7 @@ class TestContentProfilerNewProfiles:
         """LOG_OUTPUT strategy disables semantic_compress and enables dedup."""
         profiler = ContentProfiler()
         strategy = profiler._select_strategy(ContentProfile.LOG_OUTPUT, Request(messages=[]))
-        assert strategy["semantic_compress"] is False
+        assert strategy["rate_distortion"] is False
         assert strategy["message_dedup"] is True
         assert strategy["reference_sub"] is True
 
@@ -160,7 +160,7 @@ class TestContentProfilerNewProfiles:
         profiler = ContentProfiler()
         strategy = profiler._select_strategy(ContentProfile.STACK_TRACE, Request(messages=[]))
         assert strategy["output_cleanup"] is False
-        assert strategy["semantic_compress"] is False
+        assert strategy["rate_distortion"] is False
         assert strategy["format_conversion"] is False
 
     def test_strategy_for_file_tree(self) -> None:

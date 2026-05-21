@@ -2,50 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
+import asyncio
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import TransformClass
 from lattice.core.result import is_ok, unwrap
 from lattice.core.transport import Message, Request
-
-
-class TestAliasManifest:
-    def test_alias_manifest_reversible(self) -> None:
-        from lattice.transforms.alias_manifest import AliasManifestTransform
-
-        t = AliasManifestTransform()
-        assert t.transform_class == TransformClass.LOSSLESS_CONTEXTUAL
-        ctx = TransformContext(request_id="test", provider="openai", model="test")
-        err_msg = 'error: "Module not found in path /very/long/import/path/module_x"'
-        content = [
-            Message(role="user", content=err_msg),
-            Message(role="user", content=err_msg),
-            Message(role="user", content=err_msg),
-        ]
-        req = Request(model="test", messages=content)
-        result = t.process(req, ctx)
-        assert is_ok(result)
-        out = unwrap(result)
-        # long error msg replaced with alias
-        assert (
-            any("A1" in m.content for m in out.messages) or err_msg not in out.messages[0].content
-        )
-
-    def test_alias_no_placeholders(self) -> None:
-        from lattice.transforms.alias_manifest import AliasManifestTransform
-
-        t = AliasManifestTransform()
-        ctx = TransformContext(request_id="test", provider="openai", model="test")
-        content = [
-            Message(role="user", content="Short message"),
-        ]
-        req = Request(model="test", messages=content)
-        result = t.process(req, ctx)
-        assert is_ok(result)
-        out = unwrap(result)
-        assert out.messages[0].content == "Short message"
 
 
 class TestDiagnosticRLE:
@@ -107,18 +69,24 @@ class TestColumnarPack:
         assert is_ok(result)
 
 
-class TestArithmeticSequence:
-    def test_arithmetic_sequence_formula(self) -> None:
-        from lattice.transforms.arithmetic_sequence import ArithmeticSequenceCompressor
+class TestNumericPreservationWithoutArithmeticSequence:
+    def test_pipeline_passes_numeric_content_unchanged(self) -> None:
+        config = LatticeConfig()
+        from lattice.core.pipeline_factory import build_default_pipeline
 
-        t = ArithmeticSequenceCompressor()
-        ctx = TransformContext(request_id="test", provider="openai", model="test")
-        content = [
+        pipeline = build_default_pipeline(config)
+        messages = [
             Message(role="user", content="0 100\n1 200\n2 300\n3 400\n4 500"),
         ]
-        req = Request(model="test", messages=content)
-        result = t.process(req, ctx)
-        assert is_ok(result)
+        req = Request(model="test", messages=messages)
+        ctx = TransformContext(request_id="test", provider="openai", model="test")
+
+        result = asyncio.run(pipeline.process(req, ctx))
+        if is_ok(result):
+            out = unwrap(result)
+            combined = "\n".join(m.content for m in out.messages)
+            assert "100" in combined
+            assert "200" in combined
 
 
 class TestPathPrefix:
@@ -137,11 +105,11 @@ class TestPathPrefix:
         assert is_ok(result)
 
 
-class TestStackInterning:
-    def test_stack_trace_interning_preserves_frames(self) -> None:
-        from lattice.transforms.stack_interning import StackTraceInterning
+class TestDiagnosticRLEStillHandlesTraces:
+    def test_diagnostic_rle_still_handles_traces(self) -> None:
+        from lattice.transforms.diagnostic_rle import DiagnosticRLE
 
-        t = StackTraceInterning()
+        t = DiagnosticRLE()
         ctx = TransformContext(request_id="test", provider="openai", model="test")
         trace = (
             "Traceback (most recent call last):\n"
@@ -174,9 +142,8 @@ class TestSafetyGates:
         decision = check_negative_savings(100, 200)
         assert decision.action in (GuardAction.ROLLBACK, GuardAction.REJECT)
 
-    @pytest.mark.asyncio
-    async def test_numeric_preservation_after_transform(self) -> None:
-        config = LatticeConfig(compression_mode="balanced")
+    def test_numeric_preservation_after_transform(self) -> None:
+        config = LatticeConfig()
         from lattice.core.pipeline_factory import build_default_pipeline
 
         pipeline = build_default_pipeline(config)
@@ -186,26 +153,26 @@ class TestSafetyGates:
         req = Request(model="test", messages=messages)
         ctx = TransformContext(request_id="test", provider="openai", model="test")
 
-        result = await pipeline.process(req, ctx)
+        result = asyncio.run(pipeline.process(req, ctx))
         if is_ok(result):
             out = unwrap(result)
             combined = "\n".join(m.content for m in out.messages)
-            assert any(n in combined for n in ("100", "200", "val", "0..4"))
+            assert "100" in combined
+            assert "200" in combined
+            assert "300" in combined
 
 
 class TestTaskGating:
-    def test_debugging_blocks_semantic_compress(self) -> None:
+    def test_debugging_blocks_rate_distortion(self) -> None:
         from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("debugging", {})
-        assert matrix.get("semantic_compress") is False
         assert matrix.get("rate_distortion") is False
 
-    def test_reasoning_blocks_semantic_compress(self) -> None:
+    def test_reasoning_blocks_rate_distortion(self) -> None:
         from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("reasoning", {})
-        assert matrix.get("semantic_compress") is False
         assert matrix.get("rate_distortion") is False
 
 
@@ -228,21 +195,7 @@ class TestExtractiveCompress:
         assert "error" in out.messages[0].content.lower()
 
 
-class TestInstructionContextSep:
-    def test_separates_sections(self) -> None:
-        from lattice.transforms.instruction_context import InstructionContextSeparator
 
-        t = InstructionContextSeparator()
-        ctx = TransformContext(request_id="test", provider="openai", model="test")
-        content = [
-            Message(
-                role="user",
-                content="Please analyze this data. The data is:\n| a | 1 |\n| b | 2 |\nYou must return JSON. The output should be brief.",
-            ),
-        ]
-        req = Request(model="test", messages=content)
-        result = t.process(req, ctx)
-        assert is_ok(result)
 
 
 class TestFrontierScoring:

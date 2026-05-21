@@ -2,19 +2,20 @@
 """Real compression vs baseline test with actual model calls."""
 import asyncio
 import sys
+
 sys.path.insert(0, "src")
 
-from lattice.providers.transport import DirectHTTPProvider
-from lattice.core.pipeline import CompressorPipeline
-from lattice.core.transport import Message, Request
-from lattice.core.context import TransformContext
 from lattice.core.config import LatticeConfig
+from lattice.core.context import TransformContext
+from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.transforms.reference_sub import ReferenceSubstitution
-from lattice.transforms.tool_filter import ToolOutputFilter
-from lattice.transforms.prefix_opt import PrefixOptimizer
+from lattice.core.transport import Message, Request
+from lattice.providers.transport import DirectHTTPProvider
 from lattice.transforms.format_conv import FormatConverter
 from lattice.transforms.output_cleanup import OutputCleanup
+from lattice.transforms.prefix_opt import PrefixOptimizer
+from lattice.transforms.reference_sub import ReferenceSubstitution
+from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.utils.token_count import TiktokenCounter
 
 MODEL = "ollama/glm-5.1:cloud"

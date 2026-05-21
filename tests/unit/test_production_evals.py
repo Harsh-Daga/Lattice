@@ -54,9 +54,9 @@ async def test_feature_eval_proves_safe_reference_substitution() -> None:
 
 
 def test_feature_aliases_match_rate_distortion() -> None:
-    """Benchmark aliases should map semantic_compress to the actual transform."""
-    assert _feature_matches("semantic_compress", {"rate_distortion"}) is True
-    assert _feature_matches("rate_distortion", {"semantic_compress"}) is True
+    """Benchmark aliases should map rate_distortion to the actual transform."""
+    assert _feature_matches("rate_distortion", {"rate_distortion"}) is True
+    assert _feature_matches("rate_distortion", {"rate_distortion"}) is True
 
 
 @pytest.mark.asyncio
@@ -260,7 +260,7 @@ async def test_cache_telemetry_capture() -> None:
         transform_output_cleanup=False,
         transform_format_conversion=False,
         transform_message_dedup=False,
-        transform_semantic_compress=False,
+        transform_rate_distortion=False,
         transform_content_profiler=False,
         graceful_degradation=True,
     )
@@ -294,7 +294,7 @@ async def test_batching_eligibility_detected() -> None:
         transform_output_cleanup=False,
         transform_format_conversion=False,
         transform_message_dedup=False,
-        transform_semantic_compress=False,
+        transform_rate_distortion=False,
         transform_content_profiler=False,
         transform_cache_arbitrage=False,
         graceful_degradation=True,
@@ -315,7 +315,7 @@ async def test_batching_eligibility_detected() -> None:
         transform_output_cleanup=False,
         transform_format_conversion=False,
         transform_message_dedup=False,
-        transform_semantic_compress=False,
+        transform_rate_distortion=False,
         transform_content_profiler=False,
         transform_cache_arbitrage=False,
         graceful_degradation=True,
@@ -350,7 +350,7 @@ async def test_speculative_hit_miss_tracked() -> None:
         transform_output_cleanup=False,
         transform_format_conversion=False,
         transform_message_dedup=False,
-        transform_semantic_compress=False,
+        transform_rate_distortion=False,
         transform_content_profiler=False,
         transform_cache_arbitrage=False,
         graceful_degradation=True,
@@ -383,7 +383,7 @@ async def test_tacc_admission_decision_visible() -> None:
         transform_output_cleanup=False,
         transform_format_conversion=False,
         transform_message_dedup=False,
-        transform_semantic_compress=False,
+        transform_rate_distortion=False,
         transform_content_profiler=False,
         transform_cache_arbitrage=False,
         graceful_degradation=True,

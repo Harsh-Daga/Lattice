@@ -20,6 +20,7 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
 
@@ -132,6 +133,52 @@ class ToolOutputFilter(ReversibleSyncTransform):
         context.record_metric(self.name, "modified_count", modified)
         context.record_metric(self.name, "chars_saved", saved_chars)
         return Ok(request)
+
+    def optimize(
+        self, ir: PromptIRV2, request: Request, context: TransformContext
+    ) -> Result[PromptIRV2, TransformError]:
+        """Apply the metadata scrub directly to immutable PromptIRV2."""
+        updated_sections = []
+        modified = 0
+        saved_chars = 0
+
+        for section in ir.sections:
+            section_type = section.type.value if hasattr(section.type, "value") else str(section.type)
+            if section_type not in {"tool_output", "json", "logs", "error"}:
+                updated_sections.append(section)
+                continue
+
+            new_spans = []
+            section_modified = False
+            for span in section.spans:
+                original = span.text
+                cleaned = self._scrub(original)
+                if cleaned != original:
+                    span = span.with_text(cleaned)
+                    section_modified = True
+                    modified += 1
+                    saved_chars += max(0, len(original) - len(cleaned))
+                new_spans.append(span)
+
+            if section_modified:
+                updated_sections.append(section.with_spans(tuple(new_spans)))
+            else:
+                updated_sections.append(section)
+
+        updated = ir.with_sections(tuple(updated_sections))
+        if modified > 0:
+            updated = updated.add_metadata(
+                _lattice_tool_filter_applied=True,
+                _lattice_tool_filter_modified_spans=modified,
+                _lattice_tool_filter_chars_saved=saved_chars,
+            )
+            request.metadata["_lattice_tool_filter_applied"] = True
+            request.metadata["_lattice_tool_filter_modified_spans"] = modified
+            request.metadata["_lattice_tool_filter_chars_saved"] = saved_chars
+            context.session_state["_lattice_ir_v2"] = updated
+            context.record_metric(self.name, "modified_count", modified)
+            context.record_metric(self.name, "chars_saved", saved_chars)
+        return Ok(updated)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response

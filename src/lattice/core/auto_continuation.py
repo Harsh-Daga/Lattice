@@ -24,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.transport import Message, Request, Response
 
 
@@ -111,7 +112,9 @@ class AutoContinuation:
                     stream=False,
                     stop=request.stop,
                     provider_name=provider_name,
-                    api_key=request.metadata.get("_lattice_client_api_key"),
+                    api_key=get_canonical_request_value(
+                        request, None, "_lattice_client_api_key"
+                    ),
                     metadata=request.metadata,
                     extra_headers=request.extra_headers,
                     extra_body=request.extra_body,
@@ -195,7 +198,9 @@ class AutoContinuation:
                 stream=False,
                 stop=request.stop,
                 provider_name=request.metadata.get("provider_name", "openai"),
-                api_key=request.metadata.get("_lattice_client_api_key"),
+                api_key=get_canonical_request_value(
+                    request, None, "_lattice_client_api_key"
+                ),
                 metadata=request.metadata,
                 extra_headers=request.extra_headers,
                 extra_body=request.extra_body,

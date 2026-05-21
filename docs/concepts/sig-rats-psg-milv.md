@@ -137,9 +137,9 @@ PSG runs after each irreversible transform and enforces hard safety constraints:
 ### Irreversible Transforms
 
 Entity and format checks only apply to irreversible transforms that genuinely discard content:
-- `message_dedup`, `rate_distortion`, `semantic_compress`, `structural_fingerprint`, `hierarchical_summary`
+- `message_dedup`, `rate_distortion`, `hierarchical_summary`
 
-Reversible transforms (`reference_sub`, `dictionary_compress`, `grammar_compress`) store referent mappings and restore them on `reverse()` — no real content loss.
+Reversible transforms (`reference_sub`) store referent mappings and restore them on `reverse()` — no real content loss.
 
 ### Fail-Closed Behavior
 
@@ -219,7 +219,7 @@ Every decision is logged and recorded in request metadata:
   "_lattice_safety_decision": {
     "applied": ["content_profiler", "runtime_contract", "output_cleanup"],
     "skipped": ["rate_distortion", "hierarchical_summary"],
-    "risk_blocked": ["structural_fingerprint"],
+    "risk_blocked": ["rate_distortion"],
     "rollback_reasons": {"message_dedup": "entity_loss_12_entities"}
   }
 }

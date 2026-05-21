@@ -9,7 +9,7 @@
   <a href="https://pypi.org/project/lattice-transport/"><img src="https://img.shields.io/pypi/v/lattice-transport" alt="PyPI"></a>
   <a href="https://github.com/Harsh-Daga/lattice/actions"><img src="https://img.shields.io/github/actions/workflow/status/Harsh-Daga/lattice/ci.yml?branch=main&label=CI" alt="CI"></a>
   <a href="https://github.com/Harsh-Daga/lattice/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
-  <a href="https://github.com/Harsh-Daga/lattice"><img src="https://img.shields.io/badge/tests-1584%20passed-brightgreen" alt="Tests"></a>
+  <a href="https://github.com/Harsh-Daga/lattice"><img src="https://img.shields.io/badge/tests-1845%20passed-brightgreen" alt="Tests"></a>
   <a href="#"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue" alt="Python"></a>
 </p>
 
@@ -191,11 +191,11 @@ Sidecar prediction of next-turn content. Rule-based (zero-cost). Runs in paralle
 | 15 | **message_dedup** | CONDITIONAL | Removes exact/near-duplicate turns |
 | 20 | **reference_sub** | CONDITIONAL | UUIDs, URLs, paths → `<ref_N>` short references |
 | 22 | **rate_distortion** | CONDITIONAL | Extractive text compression of long-form content |
-| 24 | **grammar_compress** | CONDITIONAL | Grammar-based structured data compression |
-| 25 | **dictionary_compress** | CONDITIONAL | Learned phrase dictionary (HPACK-style) |
+| 23 | **path_prefix** | SAFE | Compresses repeated filesystem path prefixes |
 | 25 | **format_conversion** | CONDITIONAL | Markdown tables, JSON → compact CSV/TSV |
+| 29 | **tool_projection** | SAFE | Query-aware tool output field projection |
 | 30 | **tool_filter** | SAFE | Strips internal fields from tool output |
-| 40 | **output_cleanup** | SAFE | Normalizes whitespace, trims boilerplate |
+| 40 | **output_cleanup** | SAFE | Response-only — normalizes whitespace, trims boilerplate |
 
 **Execution transforms** (outside main pipeline): batching, speculative execution, delta encoding, auto-continuation.
 
@@ -315,7 +315,7 @@ For permanent configuration: `lattice init` patches agent config files. `lattice
 git clone https://github.com/Harsh-Daga/lattice
 cd lattice
 uv sync          # Install all deps
-uv run pytest    # 1584 tests, 7 skipped
+uv run pytest    # 1845 tests, 7 skipped
 
 # Lint + typecheck
 uv run ruff check src/

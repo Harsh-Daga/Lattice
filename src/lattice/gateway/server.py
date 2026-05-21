@@ -11,6 +11,11 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import is_err, unwrap
+from lattice.core.runtime_state import (
+    get_canonical_request_value,
+    persist_execution_plan_state,
+    persist_session_plan_state,
+)
 from lattice.core.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.core.session import SessionManager
 from lattice.core.transport import Response
@@ -103,14 +108,45 @@ class LLMTPGateway:
             provider=provider_name,
             model=request.model,
         )
+        # Build and attach ExecutionPlan for binary handler
+        from lattice.planner.execution_builder import build_execution_plan
+        from lattice.planner.fallback_executor import execute_with_fallback
+
+        exec_plan = build_execution_plan(
+            request=request,
+            provider_name=provider_name,
+            model=request.model,
+            session_id=body.get("session_id"),
+            is_streaming=body.get("stream", False),
+        )
+        persist_execution_plan_state(
+            request,
+            ctx,
+            exec_plan,
+            cache_plan=exec_plan.cache_plan,
+            cache_simulation=get_canonical_request_value(
+                request, None, "_lattice_cache_simulation"
+            ),
+        )
+
+        # Session persistence (same as compat.py)
+        session, _was_created = await self._manage_session_for_request(
+            request, provider_name, exec_plan
+        )
+
         result = await self.pipeline.process(request, ctx)
         if is_err(result):
             error = self.framer.encode_error(422, "pipeline_failed")
             return error.to_bytes(), {"x-lattice-framing": "native"}
         compressed_request = unwrap(result)
         messages = [message_to_dict(m) for m in compressed_request.messages]
-        resp = await self.provider.completion(
+        resp = await execute_with_fallback(
+            self.provider.completion,
+            execution_plan=exec_plan,
+            provider_name=provider_name,
             model=compressed_request.model,
+            logger=getattr(self.provider, "_log", None),
+            metrics=None,
             messages=messages,
             temperature=compressed_request.temperature,
             max_tokens=compressed_request.max_tokens,
@@ -118,8 +154,7 @@ class LLMTPGateway:
             tools=compressed_request.tools,
             tool_choice=compressed_request.tool_choice,
             stop=compressed_request.stop,
-            stream=False,
-            provider_name=provider_name,
+            stream=body.get("stream", False),
             extra_headers=compressed_request.extra_headers,
             extra_body=compressed_request.extra_body,
             **compressed_request.metadata,
@@ -157,6 +192,32 @@ class LLMTPGateway:
             provider=provider_name,
             model=request.model,
         )
+        # Build and attach ExecutionPlan for JSON handler
+        from lattice.planner.execution_builder import build_execution_plan
+        from lattice.planner.fallback_executor import execute_with_fallback
+
+        exec_plan = build_execution_plan(
+            request=request,
+            provider_name=provider_name,
+            model=request.model,
+            session_id=body.get("session_id"),
+            is_streaming=body.get("stream", False),
+        )
+        persist_execution_plan_state(
+            request,
+            ctx,
+            exec_plan,
+            cache_plan=exec_plan.cache_plan,
+            cache_simulation=get_canonical_request_value(
+                request, None, "_lattice_cache_simulation"
+            ),
+        )
+
+        # Session persistence (same as compat.py)
+        session, _was_created = await self._manage_session_for_request(
+            request, provider_name, exec_plan
+        )
+
         result = await self.pipeline.process(request, ctx)
         if is_err(result):
             return (
@@ -165,8 +226,95 @@ class LLMTPGateway:
             )
         compressed_request = unwrap(result)
         messages = [message_to_dict(m) for m in compressed_request.messages]
-        resp = await self.provider.completion(
+
+        is_streaming = body.get("stream", False)
+        if is_streaming:
+            from lattice.planner.fallback_executor import execute_with_fallback_stream
+            stream_kwargs = dict(
+                messages=messages,
+                temperature=compressed_request.temperature,
+                max_tokens=compressed_request.max_tokens,
+                top_p=compressed_request.top_p,
+                tools=compressed_request.tools,
+                tool_choice=compressed_request.tool_choice,
+                stop=compressed_request.stop,
+                extra_headers=compressed_request.extra_headers,
+                extra_body=compressed_request.extra_body,
+            )
+            stream = execute_with_fallback_stream(
+                self.provider.completion_stream_with_stall_detect,
+                execution_plan=exec_plan,
+                provider_name=provider_name,
+                model=compressed_request.model,
+                logger=getattr(self.provider, "_log", None),
+                metrics=None,
+                **stream_kwargs,
+            )
+            # Collect streaming chunks into SSE response
+            full_content = ""
+            stream_meta: dict[str, Any] = {}
+            tool_calls_acc: dict[int, dict[str, Any]] = {}
+            sse_lines: list[str] = []
+            try:
+                async for chunk in stream:
+                    if chunk is None:
+                        continue
+                    choices = chunk.get("choices", [])
+                    delta = choices[0].get("delta", {}) if choices else {}
+                    content = delta.get("content", "")
+                    if content:
+                        full_content += content
+                    delta_tool_calls = delta.get("tool_calls")
+                    if delta_tool_calls:
+                        for tc in delta_tool_calls:
+                            idx = tc.get("index", 0)
+                            if idx not in tool_calls_acc:
+                                tool_calls_acc[idx] = {
+                                    "id": tc.get("id", ""),
+                                    "type": tc.get("type", "function"),
+                                    "function": {"name": "", "arguments": ""},
+                                }
+                            if "function" in tc:
+                                fn = tc["function"]
+                                if "name" in fn:
+                                    tool_calls_acc[idx]["function"]["name"] = fn["name"]
+                                if "arguments" in fn:
+                                    tool_calls_acc[idx]["function"]["arguments"] += fn["arguments"]
+                    lat_meta = chunk.pop("_lattice_metadata", None)
+                    if lat_meta:
+                        stream_meta.update(lat_meta)
+                    sse_line = f"data: {json.dumps(chunk)}\n\n"
+                    sse_lines.append(sse_line)
+            except Exception as exc:
+                sse_lines.append(f"data: {json.dumps({'error': {'message': str(exc), 'type': 'stream_error'}})}\n\n")
+            finally:
+                sse_lines.append("data: [DONE]\n\n")
+
+            # Build a synthetic Response for reverse pipeline
+            acc_tool_calls = list(tool_calls_acc.values()) if tool_calls_acc else None
+            synthetic = Response(
+                content=full_content,
+                model=compressed_request.model,
+                tool_calls=acc_tool_calls,
+                usage=stream_meta.get("usage", {}),
+            )
+            if stream_meta:
+                synthetic.metadata.update(stream_meta)
+            await self._reverse_response(synthetic, ctx)
+            # For streaming, return the collected SSE lines as the body
+            return (
+                "".join(sse_lines).encode("utf-8"),
+                {"x-lattice-framing": "json", "x-lattice-stream": "true"},
+            )
+
+        # Non-streaming path
+        resp = await execute_with_fallback(
+            self.provider.completion,
+            execution_plan=exec_plan,
+            provider_name=provider_name,
             model=compressed_request.model,
+            logger=getattr(self.provider, "_log", None),
+            metrics=None,
             messages=messages,
             temperature=compressed_request.temperature,
             max_tokens=compressed_request.max_tokens,
@@ -174,15 +322,13 @@ class LLMTPGateway:
             tools=compressed_request.tools,
             tool_choice=compressed_request.tool_choice,
             stop=compressed_request.stop,
-            stream=False,
-            provider_name=provider_name,
             extra_headers=compressed_request.extra_headers,
             extra_body=compressed_request.extra_body,
             **compressed_request.metadata,
         )
-        restored: Response = await self._reverse_response(resp, ctx)
+        restored_resp: Response = await self._reverse_response(resp, ctx)
         return (
-            json.dumps(response_to_dict(restored, compressed_request.model)).encode("utf-8"),
+            json.dumps(response_to_dict(restored_resp, compressed_request.model)).encode("utf-8"),
             {"x-lattice-framing": "json"},
         )
 
@@ -192,6 +338,68 @@ class LLMTPGateway:
         if inspect.isawaitable(reversed_result):
             return await reversed_result
         return reversed_result
+
+    async def _manage_session_for_request(
+        self,
+        request: Any,
+        provider_name: str,
+        execution_plan: Any,
+    ) -> tuple[Any, bool]:
+        """Get or create a session, attach/merge ExecutionPlan.
+
+        Mirrors the session persistence logic in gateway/compat.py.
+        Returns (session, was_created).
+        """
+        session_id: str | None = getattr(request, "metadata", {}).get("session_id") or getattr(
+            request, "session_id", None
+        )
+        if not session_id:
+            session_id = request.extra_headers.get("x-lattice-session-id") if hasattr(request, "extra_headers") else None
+
+        session, was_created = await self.session_manager.get_or_create_session(
+            session_id=session_id,
+            provider=provider_name,
+            model=getattr(request, "model", "gpt-4"),
+            messages=getattr(request, "messages", []),
+            tools=getattr(request, "tools", None),
+        )
+
+        if was_created:
+            persist_session_plan_state(
+                session.metadata,
+                execution_plan,
+                cache_plan=execution_plan.cache_plan,
+                cache_simulation=get_canonical_request_value(
+                    request, None, "_lattice_cache_simulation"
+                ),
+            )
+        else:
+            prev = session.metadata.get("_lattice_execution_plan")
+            if prev is not None:
+                from lattice.planner.execution_plan import ExecutionPlan as _ExecPlan
+                restored = _ExecPlan.from_dict(prev)
+                execution_plan.provider = restored.provider
+                execution_plan.model = restored.model
+                execution_plan.session_id = restored.session_id
+                prev_allowed = set(restored.allowed_optimizers)
+                new_allowed = set(execution_plan.allowed_optimizers)
+                execution_plan.allowed_optimizers = list(prev_allowed | new_allowed)
+                execution_plan.quality_floor = max(
+                    execution_plan.quality_floor, restored.quality_floor
+                )
+                execution_plan.latency_budget_ms = max(
+                    execution_plan.latency_budget_ms, restored.latency_budget_ms
+                )
+        persist_session_plan_state(
+            session.metadata,
+            execution_plan,
+            cache_plan=execution_plan.cache_plan,
+            cache_simulation=get_canonical_request_value(
+                request, None, "_lattice_cache_simulation"
+            ),
+        )
+        await self.store.set(session)
+        return session, was_created
 
     def _resolve_provider_name(
         self,

@@ -15,8 +15,7 @@ Standardized metadata keys (canonical):
   _lattice_rollback_reason — Why a transform was rolled back
 """
 
-from __future__ import annotations
-
+import copy
 import dataclasses
 import time
 import uuid
@@ -29,6 +28,8 @@ METADATA_KEY_PROTECTED_SPANS = "_lattice_protected_spans"
 METADATA_KEY_TASK_CLASSIFICATION = "_lattice_task_classification"
 METADATA_KEY_SCHEDULE = "_lattice_schedule"
 METADATA_KEY_RISK_SCORE = "_lattice_risk_score"
+METADATA_KEY_PROTOCOL_MANIFEST = "_lattice_protocol_manifest"
+METADATA_KEY_PROTOCOL_MANIFEST_SUMMARY = "_lattice_protocol_manifest_summary"
 METADATA_KEY_SAFETY_DECISION = "_lattice_safety_decision"
 METADATA_KEY_VALIDATION = "_lattice_validation"
 METADATA_KEY_ROLLBACK_REASON = "_lattice_rollback_reason"
@@ -119,6 +120,20 @@ class TransformContext:
         """
         state: dict[str, Any] = self.session_state.setdefault(transform_name, {})
         return state
+
+    def copy(self) -> "TransformContext":
+        """Return a shallow copy with independent mutable containers.
+
+        Candidate search and other speculative execution paths should use a
+        cloned context so branch-local state does not leak into the live
+        pipeline context.
+        """
+        return dataclasses.replace(
+            self,
+            transforms_applied=list(self.transforms_applied),
+            session_state=copy.deepcopy(self.session_state),
+            metrics=copy.deepcopy(self.metrics),
+        )
 
     @property
     def elapsed_ms(self) -> float:

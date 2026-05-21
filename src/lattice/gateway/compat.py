@@ -20,6 +20,12 @@ from lattice.core.context import TransformContext
 from lattice.core.cost_estimator import normalize_usage
 from lattice.core.pipeline_factory import pipeline_summary
 from lattice.core.result import is_err, unwrap
+from lattice.core.runtime_state import (
+    get_canonical_request_value,
+    persist_execution_plan_state,
+    persist_session_plan_state,
+    sum_expected_cached_tokens,
+)
 from lattice.core.semantic_cache import assemble_cached_response, compute_cache_key
 from lattice.core.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.core.telemetry import TransportOutcome
@@ -336,9 +342,9 @@ def build_routing_headers(
 
 
 def _runtime_header_values(request: Request) -> dict[str, Any]:
-    runtime = request.metadata.get("_lattice_runtime")
-    contract = request.metadata.get("_lattice_runtime_contract")
-    budget = request.metadata.get("_lattice_runtime_budget")
+    runtime = get_canonical_request_value(request, None, "_lattice_runtime", {})
+    contract = get_canonical_request_value(request, None, "_lattice_runtime_contract", {})
+    budget = get_canonical_request_value(request, None, "_lattice_runtime_budget", {})
     if not isinstance(runtime, dict):
         runtime = {}
     if not isinstance(contract, dict):
@@ -523,6 +529,54 @@ def deserialize_anthropic_request(body: dict[str, Any]) -> Request:
     if "metadata" in body:
         req.metadata["anthropic_metadata"] = body["metadata"]
     return req
+
+
+def deserialize_anthropic_response(body: dict[str, Any]) -> Response:
+    """Convert Anthropic Messages API JSON response into internal Response."""
+    content_parts: list[str] = []
+    tool_calls: list[dict[str, Any]] | None = None
+    for block in body.get("content", []):
+        if not isinstance(block, dict):
+            continue
+        btype = block.get("type", "")
+        if btype == "text":
+            content_parts.append(block.get("text", ""))
+        elif btype == "tool_use":
+            if tool_calls is None:
+                tool_calls = []
+            tool_calls.append(
+                {
+                    "id": block.get("id", ""),
+                    "type": "function",
+                    "function": {
+                        "name": block.get("name", ""),
+                        "arguments": json.dumps(block.get("input", {})),
+                    },
+                }
+            )
+    content = "\n".join(content_parts) if content_parts else ""
+
+    stop_reason = body.get("stop_reason")
+    finish_reason = "stop"
+    if stop_reason == "end_turn":
+        finish_reason = "stop"
+    elif stop_reason == "max_tokens":
+        finish_reason = "length"
+    elif stop_reason == "tool_use":
+        finish_reason = "tool_calls"
+
+    resp = Response(
+        content=content,
+        tool_calls=tool_calls,
+        model=body.get("model", ""),
+        usage=body.get("usage", {}),
+        finish_reason=finish_reason,
+    )
+    if body.get("stop_sequence"):
+        resp.metadata["stop_sequence"] = body["stop_sequence"]
+    if body.get("id"):
+        resp.metadata["anthropic_message_id"] = body["id"]
+    return resp
 
 
 def serialize_anthropic_response(response: Response, request: Request) -> dict[str, Any]:
@@ -1342,22 +1396,16 @@ def _ensure_ws_lib() -> None:
         _ws_lib = _impl
 
 
-async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any = None) -> None:
+async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any = None, pipeline: Any = None, provider: Any = None) -> None:
     """Relay chat completions WS traffic through Lattice pipeline.
 
-    Codex CLI and custom clients use WebSocket for streaming completions.
-    Accepts the WS upgrade, reads the first text frame as JSON request,
-    passes through pipeline, proxies to upstream SSE, returns SSE events
-    as WS text frames.
-    """
+    Uses injected pipeline and provider from the runtime (not rebuilding)."""
     _ensure_ws_lib()
     await websocket.accept()
 
     import json as _json
 
-    from lattice.core.config import LatticeConfig
     from lattice.core.context import TransformContext
-    from lattice.core.pipeline_factory import build_default_pipeline
     from lattice.core.result import is_err, unwrap
     from lattice.core.serialization import message_to_dict
     from lattice.gateway.compat import deserialize_openai_request
@@ -1378,11 +1426,17 @@ async def chat_completions_websocket_passthrough(websocket: Any, *, logger: Any 
         return
 
     request = deserialize_openai_request(body)
-    config = LatticeConfig.auto()
 
-    provider = model.split("/")[0] if "/" in model else "openai"
-    pipeline = build_default_pipeline(config)
-    ctx = TransformContext(request_id=f"ws-chat-{model}", provider=provider, model=model)
+    if pipeline is None:
+        # Fallback: build a default pipeline (for standalone testing)
+        from lattice.core.config import LatticeConfig
+        from lattice.core.pipeline_factory import build_default_pipeline
+
+        config = LatticeConfig.auto()
+        pipeline = build_default_pipeline(config)
+
+    provider_name = model.split("/")[0] if "/" in model else "openai"
+    ctx = TransformContext(request_id=f"ws-chat-{model}", provider=provider_name, model=model)
     result = await pipeline.process(request, ctx)
 
     if is_err(result):
@@ -1516,9 +1570,11 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         # ---- Sampled MILV production validation ----
         # High-risk requests are flagged for model-in-the-loop validation.
         # Low-risk requests are sampled at 1% for continuous quality monitoring.
-        risk_data = request.metadata.get("_lattice_risk_score", {})
+        risk_data = get_canonical_request_value(request, None, "_lattice_risk_score", {})
         risk_level = risk_data.get("level", "unknown") if isinstance(risk_data, dict) else "unknown"
-        task_data = request.metadata.get("_lattice_task_classification", {})
+        task_data = get_canonical_request_value(
+            request, None, "_lattice_task_classification", {}
+        )
         task_class = (
             task_data.get("task_class", "unknown") if isinstance(task_data, dict) else "unknown"
         )
@@ -1553,6 +1609,19 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
 
             x_lattice_session_id = f"sess_{secrets.token_hex(8)}"
 
+        # ------------------------------------------------------------------
+        # Build ExecutionPlan — unified plan for the entire request lifecycle
+        # ------------------------------------------------------------------
+        from lattice.planner.execution_builder import build_execution_plan
+
+        execution_plan = build_execution_plan(
+            request=request,
+            provider_name=provider_name,
+            model=request.model or body.get("model", "gpt-4"),
+            session_id=x_lattice_session_id,
+            config=deps.config,
+            is_streaming=body.get("stream", False),
+        )
         ctx = TransformContext(
             request_id=str(time.time()),
             session_id=x_lattice_session_id,
@@ -1560,6 +1629,15 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             model=request.model or body.get("model", "gpt-4"),
         )
         ctx.session_state["client_profile"] = x_lattice_client_profile or "default"
+        persist_execution_plan_state(
+            request,
+            ctx,
+            execution_plan,
+            cache_plan=execution_plan.cache_plan,
+            cache_simulation=get_canonical_request_value(
+                request, None, "_lattice_cache_simulation"
+            ),
+        )
 
         session, was_created = await deps.session_manager.get_or_create_session(
             session_id=x_lattice_session_id,
@@ -1567,6 +1645,35 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             model=request.model or body.get("model", "gpt-4"),
             messages=request.messages,
             tools=request.tools,
+        )
+
+        # Persist ExecutionPlan into session metadata for multi-turn consistency.
+        # On first turn: store the plan. On subsequent turns: refresh from
+        # existing session metadata (provider/model/risk are sticky across turns).
+        if not was_created:
+            prev = session.metadata.get("_lattice_execution_plan")
+            if prev is not None:
+                from lattice.planner.execution_plan import ExecutionPlan as _ExecPlan
+                restored = _ExecPlan.from_dict(prev)
+                # Preserve sticky fields from previous turn in the new plan
+                execution_plan.provider = restored.provider
+                execution_plan.model = restored.model
+                execution_plan.session_id = restored.session_id
+                # Merge allowed optimizers (union of previous + new)
+                prev_allowed = set(restored.allowed_optimizers)
+                new_allowed = set(execution_plan.allowed_optimizers)
+                execution_plan.allowed_optimizers = list(prev_allowed | new_allowed)
+                # Use stricter quality_floor and budget across turns
+                execution_plan.quality_floor = max(execution_plan.quality_floor, restored.quality_floor)
+                execution_plan.latency_budget_ms = max(execution_plan.latency_budget_ms, restored.latency_budget_ms)
+        # Persist merged plan back
+        persist_session_plan_state(
+            session.metadata,
+            execution_plan,
+            cache_plan=execution_plan.cache_plan,
+            cache_simulation=get_canonical_request_value(
+                request, None, "_lattice_cache_simulation"
+            ),
         )
 
         # Compute delta savings against prior session state
@@ -1596,7 +1703,13 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         "delta_wire_bytes_failed", error=str(exc), session_id=session.session_id
                     )
 
-        if session.manifest:
+        # Use ExecutionPlan cache_plan if available; fall back to manifest-based planner
+        if execution_plan.cache_plan:
+            ctx.session_state["cache_plan_entries"] = execution_plan.cache_plan
+            total_expected = sum_expected_cached_tokens(execution_plan.cache_plan)
+            ctx.record_metric("cache_planner", "expected_cached_tokens", total_expected)
+            ctx.record_metric("cache_planner", "breakpoints", len(execution_plan.cache_plan))
+        elif session.manifest:
             cache_planner = deps.get_cache_planner(provider_name)
             cache_plan = cache_planner.plan(session.manifest)
             ctx.session_state["cache_plan"] = cache_plan
@@ -1606,6 +1719,11 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 cache_plan.expected_cached_tokens,
             )
             ctx.record_metric("cache_planner", "breakpoints", len(cache_plan.breakpoints))
+
+        # Check ExecutionPlan fallback settings
+        disable_optimizers = getattr(execution_plan.fallback_plan, "disable_optimizers", False)
+        if disable_optimizers:
+            x_lattice_disable_transforms = True  # type: ignore[assignment]
 
         if x_lattice_disable_transforms:
             compressed_request = request
@@ -1797,14 +1915,15 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 model_used = requested_model
 
                 async def _stream_response() -> AsyncIterator[str]:
+                    from lattice.planner.fallback_executor import execute_with_fallback_stream
+
                     first_chunk = True
                     full_content = ""
                     stream_meta: dict[str, Any] = {}
                     tool_calls_acc: dict[int, dict[str, Any]] = {}
                     sse_chunks: list[str] = []
                     try:
-                        async for chunk in deps.provider.completion_stream_with_stall_detect(
-                            model=model_used,
+                        stream_kwargs = dict(
                             messages=messages,
                             temperature=compressed_request.temperature,
                             max_tokens=compressed_request.max_tokens,
@@ -1812,16 +1931,21 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                             tools=compressed_request.tools,
                             tool_choice=compressed_request.tool_choice,
                             stop=compressed_request.stop,
-                            provider_name=provider_name,
-                            # Forward client API key for provider the client
-                            # intended to reach (OpenAI for Codex/standard usage).
-                            # For other providers, Lattice uses its own
-                            # configured credentials.
                             api_key=client_api_key if provider_name == "openai" else None,
                             metadata=compressed_request.metadata,
                             extra_headers=compressed_request.extra_headers,
                             extra_body=compressed_request.extra_body,
-                        ):
+                        )
+                        stream = execute_with_fallback_stream(
+                            deps.provider.completion_stream_with_stall_detect,
+                            execution_plan=execution_plan,
+                            provider_name=provider_name,
+                            model=model_used,
+                            logger=deps.logger,
+                            metrics=deps.metrics,
+                            **stream_kwargs,
+                        )
+                        async for chunk in stream:
                             if chunk is None:
                                 continue
                             if first_chunk:
@@ -1898,11 +2022,24 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         if stream_cached_tokens > 0:
                             session.record_cache_hit(stream_cached_tokens)
                         cache_plan_stream = ctx.session_state.get("cache_plan")
+                        if cache_plan_stream is None:
+                            cache_plan_stream = ctx.session_state.get("cache_plan_entries")
                         if cache_plan_stream is not None and stream_meta is not None:
+                            if isinstance(cache_plan_stream, list):
+                                total_expected = sum_expected_cached_tokens(cache_plan_stream)
+                                breakpoints = len(cache_plan_stream)
+                            else:
+                                total_expected = getattr(
+                                    cache_plan_stream, "expected_cached_tokens", 0
+                                )
+                                breakpoints_int: int = getattr(  # type: ignore[assignment]
+                                    cache_plan_stream, "breakpoints", []
+                                )
+                                breakpoints = breakpoints_int
                             stream_meta["_cache_arbitrage_actual"] = {
-                                "expected_cached_tokens": cache_plan_stream.expected_cached_tokens,
+                                "expected_cached_tokens": total_expected,
                                 "actual_cached_tokens": stream_cached_tokens,
-                                "breakpoints": cache_plan_stream.breakpoints,
+                                "breakpoints": breakpoints,
                                 "provider": provider_name,
                             }
 
@@ -2004,8 +2141,15 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         deps.speculative_executor.run_speculative(compressed_request, prediction)
                     )
                     real_start = time.perf_counter()
-                    internal_response = await deps.provider.completion(
+                    from lattice.planner.fallback_executor import execute_with_fallback
+
+                    internal_response = await execute_with_fallback(
+                        deps.provider.completion,
+                        execution_plan=execution_plan,
+                        provider_name=provider_name,
                         model=requested_model,
+                        logger=deps.logger,
+                        metrics=deps.metrics,
                         messages=messages,
                         temperature=compressed_request.temperature,
                         max_tokens=compressed_request.max_tokens,
@@ -2014,7 +2158,6 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         tool_choice=compressed_request.tool_choice,
                         stream=False,
                         stop=compressed_request.stop,
-                        provider_name=provider_name,
                         api_key=client_api_key if provider_name == "openai" else None,
                         metadata=compressed_request.metadata,
                         extra_headers=compressed_request.extra_headers,
@@ -2049,8 +2192,15 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         else:
                             deps.metrics.increment("lattice_speculative_miss")
                 else:
-                    internal_response = await deps.provider.completion(
+                    from lattice.planner.fallback_executor import execute_with_fallback
+
+                    internal_response = await execute_with_fallback(
+                        deps.provider.completion,
+                        execution_plan=execution_plan,
+                        provider_name=provider_name,
                         model=requested_model,
+                        logger=deps.logger,
+                        metrics=deps.metrics,
                         messages=messages,
                         temperature=compressed_request.temperature,
                         max_tokens=compressed_request.max_tokens,
@@ -2059,7 +2209,6 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         tool_choice=compressed_request.tool_choice,
                         stream=False,
                         stop=compressed_request.stop,
-                        provider_name=provider_name,
                         api_key=client_api_key if provider_name == "openai" else None,
                         metadata=compressed_request.metadata,
                         extra_headers=compressed_request.extra_headers,
@@ -2079,10 +2228,24 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     session_id=session.session_id,
                     turns=deps.auto_continuation.max_turns,
                 )
+
+                async def _continuation_provider_call(**kw: Any) -> Any:
+                    from lattice.planner.fallback_executor import execute_with_fallback
+
+                    return await execute_with_fallback(
+                        deps.provider.completion,
+                        execution_plan=execution_plan,
+                        provider_name=kw.pop("provider_name", provider_name),
+                        model=kw.pop("model", requested_model),
+                        logger=deps.logger,
+                        metrics=deps.metrics,
+                        **kw,
+                    )
+
                 cont_result = await deps.auto_continuation.continue_if_needed(
                     request=compressed_request,
                     initial_response=internal_response,
-                    provider_caller=deps.provider.completion,
+                    provider_caller=_continuation_provider_call,
                     session_manager=deps.session_manager,
                     message_cls=deps.message_cls,
                     provider_name=provider_name,
@@ -2113,11 +2276,20 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
 
             # Feed actual cache result back into request metadata for observability
             cache_plan = ctx.session_state.get("cache_plan")
+            if cache_plan is None:
+                cache_plan = ctx.session_state.get("cache_plan_entries")
             if cache_plan is not None:
+                if isinstance(cache_plan, list):
+                    total_expected = sum_expected_cached_tokens(cache_plan)
+                    breakpoints = len(cache_plan)
+                else:
+                    total_expected = getattr(cache_plan, "expected_cached_tokens", 0)
+                    breakpoints_int2: int = getattr(cache_plan, "breakpoints", [])  # type: ignore[assignment]
+                    breakpoints = breakpoints_int2
                 internal_response.metadata["_cache_arbitrage_actual"] = {
-                    "expected_cached_tokens": cache_plan.expected_cached_tokens,
+                    "expected_cached_tokens": total_expected,
                     "actual_cached_tokens": cached_tokens,
-                    "breakpoints": cache_plan.breakpoints,
+                    "breakpoints": breakpoints,
                     "provider": provider_name,
                 }
 
@@ -2135,18 +2307,41 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     compressed_request,
                 )
 
-        except deps.provider_timeout_error:
+        except deps.provider_timeout_error as exc:
+            deps.logger.error(
+                "provider_timeout",
+                provider=provider_name,
+                model=requested_model,
+                error=str(exc),
+                fallback_plan=execution_plan.fallback_plan.to_dict() if hasattr(execution_plan.fallback_plan, "to_dict") else {},
+                retry_count=execution_plan.fallback_plan.retry_count if execution_plan else 0,
+            )
             return JSONResponse(
-                {"error": "provider_timeout"},
+                {"error": "provider_timeout", "message": str(exc)},
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             )
         except deps.provider_error as exc:
+            deps.logger.error(
+                "provider_error",
+                provider=provider_name,
+                model=requested_model,
+                error=str(exc),
+                status_code=getattr(exc, "status_code", None),
+                fallback_plan=execution_plan.fallback_plan.to_dict() if hasattr(execution_plan.fallback_plan, "to_dict") else {},
+            )
             return JSONResponse(
                 {"error": "provider_error", "message": str(exc)},
                 status_code=getattr(exc, "status_code", None) or status.HTTP_502_BAD_GATEWAY,
             )
         except Exception as exc:
-            deps.logger.error("provider_unexpected_error", error=str(exc))
+            deps.logger.error(
+                "provider_unexpected_error",
+                provider=provider_name,
+                model=requested_model,
+                error=str(exc),
+                error_type=type(exc).__name__,
+                fallback_plan=execution_plan.fallback_plan.to_dict() if hasattr(execution_plan.fallback_plan, "to_dict") else {},
+            )
             return JSONResponse(
                 {"error": "provider_error", "message": str(exc)},
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -2157,7 +2352,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
 
         # ---- Production MILV enforcement ----
         # Check blank-output post-response for flagged high-risk requests.
-        validation_flag = request.metadata.get("_lattice_validation", {})
+        validation_flag = get_canonical_request_value(request, None, "_lattice_validation", {})
         if isinstance(validation_flag, dict) and validation_flag.get("flagged"):
             resp_text = internal_response.content if internal_response else ""
             if not resp_text or not resp_text.strip():
@@ -2259,6 +2454,10 @@ class AnthropicCompatDeps:
 
     anthropic_passthrough: Callable[..., Awaitable[Any]]
     provider: Any
+    pipeline: Any = None
+    config: Any = None
+    session_manager: Any = None
+    logger: Any = None
 
 
 def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
@@ -2267,16 +2466,210 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
     async def _handle_anthropic_message(
         fastapi_request: Any,
         x_lattice_session_id: str | None = None,
+        x_lattice_disable_transforms: str | None = None,
     ) -> Any:
         raw_body = await fastapi_request.body()
-        return await deps.anthropic_passthrough(
-            "POST",
-            "/v1/messages",
-            raw_body,
-            fastapi_request,
-            deps.provider,
+
+        if not deps.pipeline or x_lattice_disable_transforms:
+            return await deps.anthropic_passthrough(
+                "POST",
+                "/v1/messages",
+                raw_body,
+                fastapi_request,
+                deps.provider,
+                session_id=x_lattice_session_id or "",
+            )
+
+        body_json: dict[str, Any] = {}
+        try:
+            body_json = json.loads(raw_body)
+        except json.JSONDecodeError:
+            return await deps.anthropic_passthrough(
+                "POST",
+                "/v1/messages",
+                raw_body,
+                fastapi_request,
+                deps.provider,
+                session_id=x_lattice_session_id or "",
+            )
+
+        request = deserialize_anthropic_request(body_json)
+        ctx = TransformContext(
+            request_id=str(time.time()),
             session_id=x_lattice_session_id or "",
+            provider="anthropic",
+            model=request.model or body_json.get("model", ""),
         )
+        ctx.session_state["client_profile"] = "default"
+
+        result = await deps.pipeline.process(request, ctx)
+        if is_err(result):
+            if deps.config and getattr(deps.config, "graceful_degradation", False):
+                if deps.logger:
+                    deps.logger.warning("anthropic_pipeline_degraded", error=str(result))
+                compressed_request = request
+            else:
+                return JSONResponse(
+                    {
+                        "type": "error",
+                        "error": {
+                            "type": "pipeline_failed",
+                            "message": "Transform error — set graceful_degradation=true to continue",
+                        },
+                    },
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
+        else:
+            compressed_request = unwrap(result)
+
+        compressed_tokens = compressed_request.token_estimate
+        original_tokens = request.token_estimate
+
+        compressed_body = dict(body_json)
+        compressed_messages = [message_to_dict(m) for m in compressed_request.messages]
+        compressed_body["messages"] = compressed_messages
+        passthrough_body = json.dumps(compressed_body).encode("utf-8")
+
+        streaming = compressed_request.stream
+        model_used = compressed_request.model or body_json.get("model", "")
+
+        is_streaming = streaming
+        client = deps.provider.pool.get_client(
+            "anthropic",
+            deps.provider.provider_base_urls.get("anthropic")
+            or _WELL_KNOWN_PROVIDER_URLS.get("anthropic", ""),
+        )
+        upstream_url = (
+            deps.provider.provider_base_urls.get("anthropic")
+            or _WELL_KNOWN_PROVIDER_URLS.get("anthropic", "")
+        ).rstrip("/") + "/v1/messages"
+        http_version = deps.provider.pool.get_http_version(
+            "anthropic",
+            deps.provider.provider_base_urls.get("anthropic")
+            or _WELL_KNOWN_PROVIDER_URLS.get("anthropic", ""),
+        )
+
+        headers: dict[str, str] = {}
+        for k, v in fastapi_request.headers.items():
+            kl = k.lower()
+            if kl in (
+                "host",
+                "content-length",
+                "connection",
+                "keep-alive",
+                "transfer-encoding",
+                "upgrade",
+                "te",
+                "trailer",
+                "proxy-authenticate",
+                "proxy-authorization",
+            ):
+                continue
+            headers[k] = v
+
+        if is_streaming:
+
+            async def _stream_relay() -> AsyncIterator[str]:
+                try:
+                    async with client.stream(
+                        "POST", upstream_url, content=passthrough_body, headers=headers
+                    ) as resp:
+                        if not resp.is_success:
+                            error_body = await resp.aread()
+                            if deps.logger:
+                                deps.logger.error(
+                                    "anthropic_handler_stream_error",
+                                    status_code=resp.status_code,
+                                    error_body=error_body.decode("utf-8", errors="replace")[:500],
+                                )
+                            error_payload = {
+                                "type": "error",
+                                "error": {
+                                    "type": "upstream_error",
+                                    "message": f"HTTP {resp.status_code}",
+                                },
+                            }
+                            yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
+                            return
+                        async for chunk in resp.aiter_text():
+                            yield chunk
+                except httpx.TimeoutException as exc:
+                    if deps.logger:
+                        deps.logger.error("anthropic_handler_stream_timeout", error=str(exc))
+                    error_payload = {
+                        "type": "error",
+                        "error": {"type": "timeout_error", "message": str(exc)},
+                    }
+                    yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
+                except httpx.HTTPError as exc:
+                    if deps.logger:
+                        deps.logger.error(
+                            "anthropic_handler_stream_http_error",
+                            error=str(exc),
+                            error_type=type(exc).__name__,
+                        )
+                    error_payload = {
+                        "type": "error",
+                        "error": {"type": "upstream_error", "message": str(exc)},
+                    }
+                    yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
+
+            transport_outcome = TransportOutcome(http_version=http_version)
+            return StreamingResponse(
+                _stream_relay(),
+                media_type="text/event-stream",
+                headers=build_routing_headers(
+                    model_used=model_used,
+                    compressed_tokens=compressed_tokens,
+                    original_tokens=original_tokens,
+                    session_id=x_lattice_session_id or "",
+                    transport_outcome=transport_outcome,
+                ),
+            )
+        else:
+            http_resp = await client.request(
+                "POST", upstream_url, content=passthrough_body, headers=headers
+            )
+            try:
+                resp_json = json.loads(http_resp.content)
+            except json.JSONDecodeError:
+                resp_json = {}
+            if resp_json and http_resp.is_success and deps.pipeline:
+                internal_response = deserialize_anthropic_response(resp_json)
+                internal_response = await deps.pipeline.reverse(internal_response, ctx)
+                resp_json = serialize_anthropic_response(internal_response, compressed_request)
+                response_body = json.dumps(resp_json).encode("utf-8")
+            else:
+                response_body = http_resp.content
+
+            response_headers = {
+                k: v
+                for k, v in http_resp.headers.items()
+                if k.lower()
+                in (
+                    "content-type",
+                    "x-request-id",
+                    "anthropic-ratelimit-requests-limit",
+                    "anthropic-ratelimit-tokens-limit",
+                    "anthropic-ratelimit-requests-remaining",
+                    "anthropic-ratelimit-tokens-remaining",
+                )
+            }
+            transport_outcome = TransportOutcome(http_version=http_version)
+            response_headers.update(
+                build_routing_headers(
+                    model_used=model_used,
+                    compressed_tokens=compressed_tokens,
+                    original_tokens=original_tokens,
+                    session_id=x_lattice_session_id or "",
+                    transport_outcome=transport_outcome,
+                )
+            )
+            return StarletteResponse(
+                content=response_body,
+                status_code=http_resp.status_code,
+                headers=response_headers,
+            )
 
     return _handle_anthropic_message
 
@@ -2287,6 +2680,9 @@ class ResponsesCompatDeps:
 
     responses_passthrough: Callable[..., Awaitable[Any]]
     provider: Any
+    pipeline: Any = None
+    config: Any = None
+    logger: Any = None
 
 
 async def models_passthrough(
@@ -2393,20 +2789,87 @@ def make_models_handler(deps: ResponsesCompatDeps) -> Handler:
 
 
 def make_responses_handler(deps: ResponsesCompatDeps) -> Handler:
-    """Create /v1/responses* passthrough handler."""
+    """Create /v1/responses* passthrough handler with optional pipeline compression."""
 
     async def _handle_responses(
         method: str,
         request: Any,
         response_id: str | None = None,
         x_lattice_session_id: str | None = None,
+        x_lattice_disable_transforms: str | None = None,
     ) -> Any:
         path = "/v1/responses" if response_id is None else f"/v1/responses/{response_id}"
-        body = await request.body() if method == "POST" else b""
+        raw_body = await request.body() if method == "POST" else b""
+
+        # GET/DELETE or no body or transforms disabled — pure passthrough
+        if method != "POST" or not raw_body or x_lattice_disable_transforms or not deps.pipeline:
+            return await deps.responses_passthrough(
+                method,
+                path,
+                raw_body,
+                request,
+                deps.provider,
+                session_id=x_lattice_session_id or "",
+            )
+
+        body_json: dict[str, Any] = {}
+        try:
+            body_json = json.loads(raw_body)
+        except json.JSONDecodeError:
+            return await deps.responses_passthrough(
+                method,
+                path,
+                raw_body,
+                request,
+                deps.provider,
+                session_id=x_lattice_session_id or "",
+            )
+
+        from lattice.core.context import TransformContext
+        from lattice.core.result import is_err, unwrap
+        from lattice.core.serialization import message_from_dict, message_to_dict
+        from lattice.core.transport import Request
+
+        msgs = []
+        for m in body_json.get("messages", body_json.get("input", [])):
+            if isinstance(m, dict):
+                msgs.append(message_from_dict(m))
+        internal_request = Request(
+            messages=msgs,
+            model=body_json.get("model", ""),
+        )
+        ctx = TransformContext(
+            request_id=str(time.time()),
+            session_id=x_lattice_session_id or "",
+            provider="openai",
+            model=internal_request.model,
+        )
+
+        result = await deps.pipeline.process(internal_request, ctx)
+        if is_err(result):
+            if deps.config and getattr(deps.config, "graceful_degradation", False):
+                if deps.logger:
+                    deps.logger.warning("responses_pipeline_degraded", error=str(result))
+                compressed = internal_request
+            else:
+                return JSONResponse(
+                    {"error": "pipeline_failed", "message": "Transform error"},
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
+        else:
+            compressed = unwrap(result)
+
+        compressed_body = dict(body_json)
+        if "messages" in compressed_body:
+            compressed_body["messages"] = [message_to_dict(m) for m in compressed.messages]
+        if "input" in compressed_body:
+            compressed_body["input"] = [message_to_dict(m) for m in compressed.messages]
+        passthrough_body = json.dumps(compressed_body).encode("utf-8")
+
         return await deps.responses_passthrough(
             method,
             path,
-            body,
+            passthrough_body,
             request,
             deps.provider,
             session_id=x_lattice_session_id or "",

@@ -4,7 +4,9 @@ Projects tool output fields based on the user's actual question instead
 of generic filtering. Preserves error messages, counts, module names,
 and stack frames that are relevant to the query.
 
-Replaces the lossy tool_filter with query-aware analytical projection.
+Critical invariant: if a Request contains tool output, the transformed
+prompt MUST preserve a tool-output marker so the LLM knows the data is
+already available and should NOT generate a new tool call.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
 
@@ -55,11 +58,56 @@ _IGNORED_FIELDS = frozenset(
     }
 )
 
+_TOOL_OUTPUT_HEADER = (
+    "\n[TOOL OUTPUT PROVIDED — data is already available; do NOT re-invoke the tool]\n"
+)
+
 
 class QueryAwareProjection(ReversibleSyncTransform):
     name = "tool_projection"
     transform_class = TransformClass.LOSSLESS_CONTEXTUAL
     priority = 29
+
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: project tool-output spans based on query relevance."""
+        user_query = _extract_user_query(_request)
+        total_saved = 0
+        tool_output_seen = False
+        new_sections = []
+        for sec in ir.sections:
+            new_spans = []
+            for span in sec.spans:
+                if span.protected or not span.text:
+                    new_spans.append(span)
+                    continue
+                projected, saved = _project_tool_output(span.text, user_query)
+                if projected != span.text and projected.strip():
+                    # Prepend header once per transformed span
+                    if saved > 0 and not tool_output_seen:
+                        projected = _TOOL_OUTPUT_HEADER + projected
+                        tool_output_seen = True
+                    elif saved > 0 and saved > len(span.text) * 0.05:
+                        projected = _TOOL_OUTPUT_HEADER + projected
+                    new_spans.append(span.with_text(projected))
+                    total_saved += saved
+                else:
+                    new_spans.append(span)
+            new_sections.append(sec.with_spans(tuple(new_spans)))
+        context.record_metric(self.name, "chars_saved", total_saved)
+        return Ok(ir.with_sections(tuple(new_sections)))
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
 
     def process(
         self, request: Request, context: TransformContext
@@ -67,6 +115,7 @@ class QueryAwareProjection(ReversibleSyncTransform):
         user_query = _extract_user_query(request)
         new_messages: list[Message] = []
         saved = 0
+        tool_output_seen = False
 
         for msg in request.messages:
             if msg.role not in ("tool", "function") and not msg.tool_call_id:
@@ -75,20 +124,22 @@ class QueryAwareProjection(ReversibleSyncTransform):
 
             projected, saved_delta = _project_tool_output(msg.content, user_query)
             saved += saved_delta
-            new_messages.append(Message(role=msg.role, content=projected))
+            if projected.strip():
+                if saved_delta > 0 and saved_delta > len(msg.content) * 0.05:
+                    projected = _TOOL_OUTPUT_HEADER + projected
+                elif not tool_output_seen and saved_delta > 0:
+                    projected = _TOOL_OUTPUT_HEADER + projected
+
+            tool_output_seen = saved_delta > 0 or tool_output_seen
+
+            new_msg = msg.copy()
+            new_msg.content = projected
+            new_messages.append(new_msg)
 
         context.record_metric(self.name, "chars_saved", saved)
-        return Ok(
-            Request(
-                model=request.model,
-                messages=new_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                tools=request.tools,
-                tool_choice=request.tool_choice,
-                metadata=request.metadata,
-            )
-        )
+        new_req = request.copy()
+        new_req.messages = new_messages
+        return Ok(new_req)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response
@@ -168,6 +219,6 @@ def _project_value(value: Any, relevant: frozenset[str] | set[str]) -> Any:
                 "_sample": sample,
             }
             return summary
-        return value[:100]  # Truncate very long lists
+        return value[:100]
 
     return value

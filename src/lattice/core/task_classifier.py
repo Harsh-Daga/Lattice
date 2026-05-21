@@ -210,8 +210,15 @@ def classify_task(request: Request) -> TaskClassification:
 
     # Determine debugging context: error/crash/failure/exception/traceback signals
     # plus investigative language ("memory leak", "investigate", "diagnose").
+    # Only scan user/assistant/system messages — tool output data containing
+    # "error" fields is data payload, not a debugging signal.
+    query_text_for_debug = "\n".join(
+        m.content or ""
+        for m in request.messages
+        if m.role in ("user", "assistant", "system")
+    ).lower()
     has_debug_context = any(
-        re.search(rf"\b{pat}\b", lowered)
+        re.search(rf"\b{pat}\b", query_text_for_debug)
         for pat in (
             "error",
             "crash",
@@ -253,15 +260,24 @@ def classify_task(request: Request) -> TaskClassification:
         hard_override = True
         signals.append("hard_override:root_cause_instruction")
 
-    # Hard rule 3: why-fail questions WITH debugging context → REASONING
-    elif re.search(r"\bwhy.*\bfail(?:ed|ure)?\b", lowered) and has_debug_context:
+    # Hard rule 3: why-fail questions WITH reasoning AND debugging context → REASONING.
+    # Narrowed: requires BOTH explicit debugging context AND root-cause language.
+    # Without both, simple "why did X fail?" is just retrieval/analysis.
+    elif (
+        re.search(r"\bwhy.*\bfail(?:ed|ure)?\b", lowered)
+        and has_root_cause
+        and has_debug_context
+    ):
         task_class = TaskClass.REASONING
         execution_tier = ExecutionTier.REASONING
         hard_override = True
         signals.append("hard_override:why_fail_with_debug_context")
 
     # Hard rule 4: both debugging AND reasoning cues scored significantly → REASONING
-    elif has_debugging_cues and has_reasoning_cues and debug_score > 10 and reason_score > 10:
+    # Only triggers when BOTH signals are strongly present (>=20pts each,
+    # roughly 2+ distinct matches). Lower threshold (10pts = 1 match) caused
+    # excessive REASONING overrides on simple "why did X fail?" questions.
+    elif has_debugging_cues and has_reasoning_cues and debug_score > 20 and reason_score > 20:
         task_class = TaskClass.DEBUGGING
         execution_tier = ExecutionTier.REASONING
         hard_override = True
@@ -275,7 +291,9 @@ def classify_task(request: Request) -> TaskClassification:
         signals.append("hard_override:log_heavy_debugging")
 
     # Hard rule 6: significant debugging cues alone → REASONING
-    elif has_debugging_cues and debug_score > 10:
+    # Threshold raised from 10 to 25 to prevent single "error" mention
+    # from over-classifying. Requires at least 3+ distinct debug signals.
+    elif has_debugging_cues and debug_score > 25:
         task_class = TaskClass.DEBUGGING
         execution_tier = ExecutionTier.REASONING
         hard_override = True
@@ -303,9 +321,11 @@ def classify_task(request: Request) -> TaskClassification:
         task_class = TaskClass.STRUCTURED
         execution_tier = ExecutionTier.MEDIUM
 
-    # Confidence
+    # Confidence-based REASONING_SAFE override: only fire when score is genuinely
+    # high (≥60, i.e. COMPLEX+ tier) but confidence < 0.7. Previously fired at
+    # score ≥ 40, catching medium-complexity prompts that shouldn't be restricted.
     confidence = min(1.0, score / 100)
-    if confidence < 0.7 and score >= 40:
+    if confidence < 0.7 and score >= 60:
         execution_tier = ExecutionTier.REASONING_SAFE
 
     # Budget based on tier

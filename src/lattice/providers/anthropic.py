@@ -41,6 +41,7 @@ import contextvars
 import json
 from typing import Any
 
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.transport import Request, Response
 from lattice.providers.base import _pop_system, _remap_tool_choice, _remap_tools
 from lattice.providers.mcp_to_anthropic import convert_mcp_to_anthropic, is_mcp_tool
@@ -429,7 +430,7 @@ class AnthropicAdapter:
 
     @staticmethod
     def _cache_arbitrage_annotations(request: Request) -> dict[str, Any]:
-        cache_arbitrage = request.metadata.get("_cache_arbitrage")
+        cache_arbitrage = get_canonical_request_value(request, None, "_cache_arbitrage")
         if not isinstance(cache_arbitrage, dict):
             return {}
         annotations = cache_arbitrage.get("annotations")
@@ -437,10 +438,21 @@ class AnthropicAdapter:
 
     @classmethod
     def _cache_control_enabled(cls, request: Request) -> bool:
-        if request.metadata.get("anthropic_cache_control"):
+        """Return True if Anthropic cache_control should be injected."""
+        if get_canonical_request_value(request, None, "anthropic_cache_control"):
             return True
         if any(msg.metadata.get("cache_control") for msg in request.messages):
             return True
+        # Check _lattice_cache_plan from ExecutionPlan
+        exec_plan_cache = get_canonical_request_value(
+            request, None, "_lattice_cache_plan"
+        )
+        if isinstance(exec_plan_cache, list):
+            provider = getattr(request, "provider", "")
+            for entry in exec_plan_cache:
+                mode = entry.get("provider_mode", "")
+                if mode == "explicit_breakpoint" and provider in (None, "", "anthropic"):
+                    return True
         annotations = cls._cache_arbitrage_annotations(request)
         cache = annotations.get("cache")
         provider = annotations.get("provider")
@@ -450,7 +462,7 @@ class AnthropicAdapter:
 
     @classmethod
     def _cache_ttl_seconds(cls, request: Request) -> int | None:
-        ttl = request.metadata.get("anthropic_cache_ttl_seconds")
+        ttl = get_canonical_request_value(request, None, "anthropic_cache_ttl_seconds")
         if isinstance(ttl, int):
             return ttl
         annotations = cls._cache_arbitrage_annotations(request)

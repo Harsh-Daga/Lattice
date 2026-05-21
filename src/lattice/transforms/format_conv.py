@@ -53,6 +53,7 @@ import structlog
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.primitives import PromptIRV2, SectionV2, SpanV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 
@@ -125,6 +126,72 @@ class FormatConverter(ReversibleSyncTransform):
         self.enable_markdown_tables = enable_markdown_tables
         self._log = logger.bind(transform="format_conversion")
 
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: convert structured data in IR spans to token-efficient formats.
+
+        Uses section type hints (from compiler) to avoid re-parsing, but falls
+        back to content scanning when type is generic.
+        """
+        total_saved = 0
+        converted_count = 0
+        new_sections: list[SectionV2] = []
+
+        for sec in ir.sections:
+            new_spans: list[SpanV2] = []
+            for span in sec.spans:
+                original = span.text
+                converted: str | None = None
+
+                # Use section type hint if available
+                sec_type = sec.type.lower()
+                if sec_type in ("json", "data") or original.strip().startswith(("[", "{")):
+                    converted = self._try_convert(original)
+
+                if sec_type == "table" and converted is None:
+                    md_table = self._detect_markdown_table(original)
+                    if md_table is not None:
+                        converted = self._markdown_to_csv(md_table)
+
+                if sec_type in ("log", "logs") and converted is None:
+                    converted = self._detect_and_compress_log(original)
+
+                # Generic fallback: check for markdown tables or JSON in any section
+                if converted is None and self.enable_markdown_tables:
+                    md_table = self._detect_markdown_table(original)
+                    if md_table is not None:
+                        converted = self._markdown_to_csv(md_table)
+
+                if converted is None:
+                    converted = self._try_convert(original)
+
+                if converted is not None and converted != original:
+                    new_spans.append(span.with_text(converted))
+                    converted_count += 1
+                    total_saved += max(0, len(original) - len(converted))
+                else:
+                    new_spans.append(span)
+
+            new_sections.append(sec.with_spans(tuple(new_spans)))
+
+        if converted_count > 0:
+            context.record_metric(self.name, "spans_converted", converted_count)
+            context.record_metric(self.name, "tokens_saved_estimate", total_saved // 4)
+
+        return Ok(ir.with_sections(tuple(new_sections)))
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
+
     def process(
         self, request: Request, context: TransformContext
     ) -> Result[Request, TransformError]:
@@ -188,48 +255,97 @@ class FormatConverter(ReversibleSyncTransform):
         if not text:
             return None
 
-        # Quick heuristic: starts with [ or { → attempt JSON
-        if text[0] in ("[", "{"):
-            try:
-                parsed = json.loads(text)
-            except json.JSONDecodeError:
-                parsed = None
+        # Try direct conversion first (text starts with JSON)
+        direct = self._try_convert_direct(text)
+        if direct is not None:
+            return direct
 
-            if parsed is not None:
-                shape = self._detect_shape(parsed)
+        # Try extracting embedded JSON blocks
+        extracted = self._try_extract_and_convert(text)
+        if extracted is not None:
+            return extracted
 
-                if shape == DataShape.TABULAR:
-                    return self._to_csv(parsed)
-
-                if shape == DataShape.CONFIG:
-                    return self._to_yaml(parsed)
-
-                # Common API pattern: {"employees": [{...}, {...}]}
-                # Extract the single list value and convert it
-                if isinstance(parsed, dict) and len(parsed) == 1:
-                    sole_value = next(iter(parsed.values()))
-                    if isinstance(sole_value, list) and len(sole_value) >= self.min_tabular_rows:
-                        inner_shape = self._detect_shape(sole_value)
-                        if inner_shape == DataShape.TABULAR:
-                            return self._to_csv(sole_value)
-
-        # Try Markdown table detection
+        # Non-JSON detections (markdown table, diff, log)
         if self.enable_markdown_tables:
             md_table = self._detect_markdown_table(text)
             if md_table is not None:
                 return self._markdown_to_csv(md_table)
 
-        # Try diff detection
         diff_result = self._detect_and_compress_diff(text)
         if diff_result is not None:
             return diff_result
 
-        # Try log detection
         log_result = self._detect_and_compress_log(text)
         if log_result is not None:
             return log_result
 
         return None
+
+    def _try_convert_direct(self, text: str) -> str | None:
+        """Try converting text that starts with JSON."""
+        if not text or text[0] not in ("[", "{"):
+            return None
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+
+        if parsed is not None:
+            shape = self._detect_shape(parsed)
+
+            if shape == DataShape.TABULAR:
+                return self._to_csv(parsed)
+
+            if shape == DataShape.CONFIG:
+                return self._to_yaml(parsed)
+
+            # Common API pattern: {"employees": [{...}, {...}]}
+            if isinstance(parsed, dict) and len(parsed) == 1:
+                sole_value = next(iter(parsed.values()))
+                if isinstance(sole_value, list) and len(sole_value) >= self.min_tabular_rows:
+                    inner_shape = self._detect_shape(sole_value)
+                    if inner_shape == DataShape.TABULAR:
+                        return self._to_csv(sole_value)
+
+        return None
+
+    def _try_extract_and_convert(self, text: str) -> str | None:
+        """Scan for embedded JSON blocks and convert them."""
+        import re
+
+        # Find JSON-like blocks more carefully — require braces or brackets
+        # but exclude markdown table rows (which contain |, not { or [ at start)
+        pattern = r"(?:^|\n)\s*(\{[\s\S]*?\}(?:\s*\n|$)|\[[\s\S]*?\](?:\s*\n|$))"
+        matches = list(re.finditer(pattern, text))
+        if not matches:
+            return None
+
+        result_parts = []
+        last_end = 0
+        any_converted = False
+
+        for match in matches:
+            start, end = match.span()
+            result_parts.append(text[last_end:start])
+            json_text = match.group(1).strip()
+            # Skip if it's a markdown table row
+            if json_text.startswith("|"):
+                result_parts.append(match.group(0))
+                last_end = end
+                continue
+            converted = self._try_convert_direct(json_text)
+            if converted and len(converted) < len(json_text):
+                result_parts.append(converted)
+                any_converted = True
+            else:
+                result_parts.append(match.group(0))
+            last_end = end
+
+        if not any_converted:
+            return None
+
+        result_parts.append(text[last_end:])
+        return "".join(result_parts)
 
     def _detect_shape(self, data: Any) -> DataShape:
         """Determine the shape of parsed JSON data."""

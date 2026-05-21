@@ -11,6 +11,7 @@ from lattice.core.context import TransformContext
 from lattice.core.transport import Message, Request
 from lattice.transforms.format_conv import FormatConverter
 
+
 def gen_table(n=500) -> str:
     return json.dumps([{"id": i, "name": f"u{i}", "status": "active"} for i in range(n)])
 

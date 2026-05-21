@@ -8,6 +8,7 @@ from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
 from lattice.core.transport import Message, Request, Response
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
+from lattice.transforms.content_profiler import ContentProfiler
 
 
 def test_cache_arbitrage_reorders_system_first() -> None:
@@ -572,6 +573,37 @@ def test_manifest_provenance_no_regression() -> None:
     modified3 = unwrap(result3)
     outcome3 = modified3.metadata.get("_cache_arbitrage_outcome", {})
     assert outcome3["skip_reason"] == "provider_not_in_registry"
+
+
+def test_cache_arbitrage_prefers_ir_protocol_manifest_over_side_channel() -> None:
+    """The IR-embedded protocol manifest takes precedence over request metadata."""
+    from lattice.protocol.content import TextPart
+    from lattice.protocol.manifest import build_manifest
+    from lattice.protocol.segments import SegmentType, build_segment
+
+    request = Request(
+        messages=[
+            Message(role="system", content="System prompt."),
+            Message(role="user", content="Hello."),
+        ]
+    )
+    context = TransformContext(provider="openai", model="gpt-4")
+    profiler_result = ContentProfiler().process(request, context)
+    assert is_ok(profiler_result)
+
+    injected = build_manifest(
+        session_id="sess-x",
+        segments=[
+            build_segment(SegmentType.SYSTEM, parts=[TextPart(text="Different.")]),
+        ],
+    )
+    request.metadata["_lattice_manifest"] = injected.to_dict()
+
+    transform = CacheArbitrageOptimizer()
+    result = transform.process(request, context)
+    modified = unwrap(result)
+    outcome = modified.metadata.get("_cache_arbitrage_outcome", {})
+    assert outcome["manifest_source"] == "ir"
 
 
 def test_skip_reason_no_regression() -> None:

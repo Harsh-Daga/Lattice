@@ -55,22 +55,15 @@ class DiagnosticRLE(ReversibleSyncTransform):
             before_len = len(msg.content)
             after = "\n".join(compressed_lines)
             total_saved += before_len - len(after)
-            new_messages.append(Message(role=msg.role, content=after))
+            new_msg = msg.copy()
+            new_msg.content = after
+            new_messages.append(new_msg)
+            context.record_metric(self.name, "groups_created", sum(len(v) for v in grouped.values()))
 
         context.record_metric(self.name, "chars_saved", total_saved)
-        context.record_metric(self.name, "groups_created", sum(len(v) for v in grouped.values()))
-
-        return Ok(
-            Request(
-                model=request.model,
-                messages=new_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                tools=request.tools,
-                tool_choice=request.tool_choice,
-                metadata=request.metadata,
-            )
-        )
+        new_req = request.copy()
+        new_req.messages = new_messages
+        return Ok(new_req)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response

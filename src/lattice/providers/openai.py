@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.transport import Request, Response
 
 
@@ -140,24 +141,30 @@ class OpenAIAdapter:
         # Prompt caching controls. These are explicit provider knobs, not
         # inferred by the serializer: callers/proxy planning must provide the
         # stable cache key or retention policy.
+        # Support _lattice_cache_plan (from ExecutionPlan) as fallback source.
         prompt_cache_key = (
-            request.metadata.get("prompt_cache_key")
-            or request.metadata.get("openai_prompt_cache_key")
+            get_canonical_request_value(request, None, "prompt_cache_key")
+            or get_canonical_request_value(request, None, "openai_prompt_cache_key")
             or request.extra_body.get("prompt_cache_key")
         )
+        if prompt_cache_key is None:
+            cache_plan = get_canonical_request_value(request, None, "_lattice_cache_plan")
+            if isinstance(cache_plan, list) and cache_plan:
+                # Use provider_mode of first entry as the cache key descriptor
+                prompt_cache_key = cache_plan[0].get("provider_mode")
         if prompt_cache_key is not None:
             body["prompt_cache_key"] = prompt_cache_key
 
         prompt_cache_retention = (
-            request.metadata.get("prompt_cache_retention")
-            or request.metadata.get("openai_prompt_cache_retention")
+            get_canonical_request_value(request, None, "prompt_cache_retention")
+            or get_canonical_request_value(request, None, "openai_prompt_cache_retention")
             or request.extra_body.get("prompt_cache_retention")
         )
         if prompt_cache_retention is not None:
             body["prompt_cache_retention"] = prompt_cache_retention
 
         # Vision / image detail
-        image_detail = request.metadata.get("image_detail")
+        image_detail = get_canonical_request_value(request, None, "image_detail")
         if image_detail is not None:
             body["image_detail"] = image_detail
 

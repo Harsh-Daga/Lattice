@@ -25,8 +25,13 @@ from typing import Any
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import build_default_pipeline, pipeline_summary
+from lattice.core.pipeline_factory import (
+    build_default_pipeline,
+    build_v2_pipeline,
+    pipeline_summary,
+)
 from lattice.core.result import is_err, unwrap, unwrap_err
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.serialization import message_from_dict, message_to_dict
 from lattice.core.session import MemorySessionStore, Session
 from lattice.core.transport import Request
@@ -59,6 +64,8 @@ class LatticeMCPTools:
 
     def _build_pipeline(self) -> CompressorPipeline:
         """Build the full compression pipeline."""
+        if getattr(self.config, "use_v2_pipeline", False):
+            return build_v2_pipeline(self.config)
         return build_default_pipeline(self.config)
 
     # ------------------------------------------------------------------
@@ -107,8 +114,12 @@ class LatticeMCPTools:
                 ),
                 "transforms_applied": context.transforms_applied,
                 "content_profile": context.session_state.get("content_profile"),
-                "runtime": compressed.metadata.get("_lattice_runtime", {}),
-                "runtime_budget": compressed.metadata.get("_lattice_runtime_budget", {}),
+                "runtime": get_canonical_request_value(
+                    compressed, None, "_lattice_runtime", {}
+                ),
+                "runtime_budget": get_canonical_request_value(
+                    compressed, None, "_lattice_runtime_budget", {}
+                ),
             }
 
         import asyncio

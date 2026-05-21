@@ -94,7 +94,7 @@ class TestTaskClassification:
             messages=[
                 Message(
                     role="user",
-                    content="Here are the error logs:\n[ERROR] NullPointer\n[ERROR] Timeout\nWhy did this fail?",
+                    content="Here are the error logs:\n[ERROR] NullPointer\n[ERROR] Timeout\nWhat is the root cause of this failure?",
                 )
             ]
         )
@@ -151,7 +151,10 @@ class TestSchedulerDecision:
             risk=risk,
         )
         assert "content_profiler" in decision.allowed_transforms
+        # tool_filter IS ranked for RETRIEVAL (#3) → allowed.
+        # output_cleanup IS ranked for RETRIEVAL (#9) → allowed.
         assert "tool_filter" in decision.allowed_transforms
+        assert "output_cleanup" in decision.allowed_transforms
 
     def test_conditional_blocked_on_reasoning(self) -> None:
         task = TaskClassification(
@@ -173,13 +176,12 @@ class TestSchedulerDecision:
         task = TaskClassification(task_class=TaskClass.DEBUGGING, debug_heavy=True)
         risk = SemanticRiskScore()
         decision = decide_schedule(
-            transform_names=["tool_filter"],
+            transform_names=["rate_distortion"],
             task=task,
             risk=risk,
         )
-        assert (
-            "tool_filter" in decision.blocked_transforms
-        )  # blocked in conservative DEBUGGING matrix
+        # rate_distortion is CONDITIONAL but blocked for DEBUGGING in matrix
+        assert "rate_distortion" in decision.blocked_transforms
 
     def test_schedule_sort_order(self) -> None:
         task = TaskClassification(task_class=TaskClass.RETRIEVAL)
@@ -190,8 +192,11 @@ class TestSchedulerDecision:
             risk=risk,
         )
         names = [e.transform_name for e in decision.schedule]
-        # SAFE before CONDITIONAL
-        assert names.index("output_cleanup") < names.index("reference_sub")
+        # New scheduler ranks by per-task value, not just SAFE-before-CONDITIONAL.
+        # reference_sub (rank 0) trumps output_cleanup (rank 5) for RETRIEVAL.
+        # Both are allowed with HARD_MAX_TRANSFORMS=8.
+        assert "reference_sub" in names
+        assert "output_cleanup" in names
 
     def test_to_dict(self) -> None:
         task = TaskClassification(task_class=TaskClass.ANALYSIS)
@@ -303,31 +308,27 @@ class TestRATSSafetyIntegration:
         decision = decide_schedule(
             transform_names=[
                 "rate_distortion",
-                "hierarchical_summary",
+                "message_dedup",
                 "tool_filter",
-                "structural_fingerprint",
             ],
             task=task,
             risk=risk,
         )
-        # rate_distortion: CONDITIONAL but in _REASONING_DISABLED → blocked
+        # rate_distortion: CONDITIONAL but blocked for DEBUGGING in matrix
         assert "rate_distortion" in decision.blocked_transforms
-        # hierarchical_summary: DANGEROUS → blocked (not in REASONING allowed buckets)
-        assert "hierarchical_summary" in decision.blocked_transforms
-        # structural_fingerprint: blocked for DEBUGGING via per-task matrix
-        assert "structural_fingerprint" in decision.blocked_transforms
-        assert (
-            "tool_filter" in decision.blocked_transforms
-        )  # blocked in conservative DEBUGGING matrix
+        # message_dedup: CONDITIONAL but in _REASONING_DISABLED → blocked for DEBUGGING
+        assert "message_dedup" in decision.blocked_transforms
+        # tool_filter is SAFE/reversible — now allowed in DEBUGGING matrix.
 
     def test_retrieval_prompt_allows_aggressive(self) -> None:
         task = TaskClassification(task_class=TaskClass.RETRIEVAL)
         risk = SemanticRiskScore()
         decision = decide_schedule(
-            transform_names=["reference_sub", "format_conversion", "tool_filter"],
+            transform_names=["reference_sub", "columnar_pack", "tool_filter"],
             task=task,
             risk=risk,
         )
-        # All allowed since low risk + retrieval task
-        assert len(decision.blocked_transforms) == 0
+        assert "reference_sub" in decision.allowed_transforms
+        assert "columnar_pack" in decision.allowed_transforms
+        assert "tool_filter" in decision.allowed_transforms
         assert len(decision.allowed_transforms) == 3

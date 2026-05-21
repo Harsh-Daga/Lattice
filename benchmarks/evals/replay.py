@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import enum
+import hashlib
 import json
 import statistics
 import time
@@ -22,7 +23,7 @@ from benchmarks.metrics.quality import evaluate_response
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import build_default_pipeline
+from lattice.core.pipeline_factory import build_benchmark_pipeline
 from lattice.core.result import unwrap
 from lattice.core.serialization import message_from_dict
 from lattice.core.transport import Request
@@ -37,7 +38,6 @@ from lattice.transforms.speculative import SpeculativeTransform
 from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.utils.token_count import count_message_tokens
 
-
 REPLAY_FEATURE_FLAGS: list[tuple[str, str]] = [
     ("semantic_cache", "semantic_cache_enabled"),
     ("cache_arbitrage", "transform_cache_arbitrage"),
@@ -45,7 +45,7 @@ REPLAY_FEATURE_FLAGS: list[tuple[str, str]] = [
     ("batching", "transform_batching"),
     ("speculation", "transform_speculation"),
     ("tacc", "tacc_enabled"),
-    ("semantic_compress", "transform_semantic_compress"),
+    ("rate_distortion", "transform_rate_distortion"),
     ("message_dedup", "transform_message_dedup"),
     ("reference_sub", "transform_reference_sub"),
 ]
@@ -120,10 +120,7 @@ def select_traces(traces: list[ReplayTrace], names: list[str]) -> list[ReplayTra
 
 def _build_pipeline(config: LatticeConfig) -> Any:
     """Build a compression pipeline that respects all feature flags."""
-    pipeline = build_default_pipeline(
-        config,
-        include_execution_transforms=False,
-    )
+    pipeline = build_benchmark_pipeline(config)
     if config.transform_batching:
         pipeline.register(BatchingTransform())
     if config.transform_speculation:
@@ -151,6 +148,36 @@ class FailureCategory(enum.Enum):
     TRANSPORT_DOWNGRADE = "transport_downgrade"
     STALL_MISCLASSIFICATION = "stall_misclassification"
     PIPELINE_ERROR = "pipeline_error"
+    CANONICAL_DRIFT = "canonical_drift"
+    NON_DETERMINISM = "non_determinism"
+    SURVIVABILITY_REGRESSION = "survivability_regression"
+
+
+def _fingerprint_value(value: Any) -> str:
+    """Return a stable SHA-256 fingerprint for arbitrary JSON-safe values."""
+    if value is None:
+        return ""
+    if hasattr(value, "canonical_fingerprint"):
+        try:
+            fp = value.canonical_fingerprint()
+            if isinstance(fp, str) and fp:
+                return fp
+        except Exception:
+            pass
+    if hasattr(value, "to_dict"):
+        try:
+            value = value.to_dict()
+        except Exception:
+            pass
+    if isinstance(value, bytes):
+        payload = value
+    elif isinstance(value, str):
+        payload = value.encode("utf-8")
+    else:
+        payload = json.dumps(value, sort_keys=True, default=str, separators=(",", ":")).encode(
+            "utf-8"
+        )
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _classify_failure(
@@ -162,6 +189,44 @@ def _classify_failure(
 ) -> list[FailureCategory]:
     """Compare a feature report against baseline and flag regression categories."""
     categories: list[FailureCategory] = []
+
+    baseline_by_name = {scenario.scenario_name: scenario for scenario in baseline_report.scenarios}
+    feature_by_name = {scenario.scenario_name: scenario for scenario in feature_report.scenarios}
+
+    for scenario_name, baseline_scenario in baseline_by_name.items():
+        feature_scenario = feature_by_name.get(scenario_name)
+        if feature_scenario is None:
+            continue
+        if baseline_scenario.request_fingerprint and feature_scenario.request_fingerprint:
+            if baseline_scenario.request_fingerprint != feature_scenario.request_fingerprint:
+                categories.append(FailureCategory.CANONICAL_DRIFT)
+                break
+        if (
+            baseline_scenario.execution_plan_fingerprint
+            and feature_scenario.execution_plan_fingerprint
+            and baseline_scenario.execution_plan_fingerprint
+            != feature_scenario.execution_plan_fingerprint
+        ):
+            categories.append(FailureCategory.CANONICAL_DRIFT)
+            break
+
+    baseline_determinism = statistics.mean(
+        [scenario.determinism_score for scenario in baseline_report.scenarios]
+    ) if baseline_report.scenarios else 1.0
+    feature_determinism = statistics.mean(
+        [scenario.determinism_score for scenario in feature_report.scenarios]
+    ) if feature_report.scenarios else 1.0
+    if feature_determinism + 1e-9 < baseline_determinism:
+        categories.append(FailureCategory.NON_DETERMINISM)
+
+    baseline_survivability = statistics.mean(
+        [scenario.survivability_score for scenario in baseline_report.scenarios]
+    ) if baseline_report.scenarios else 1.0
+    feature_survivability = statistics.mean(
+        [scenario.survivability_score for scenario in feature_report.scenarios]
+    ) if feature_report.scenarios else 1.0
+    if feature_survivability + 1e-9 < baseline_survivability:
+        categories.append(FailureCategory.SURVIVABILITY_REGRESSION)
 
     # Quality drop
     baseline_quality = baseline_report.avg_quality_score
@@ -219,7 +284,7 @@ async def run_trace_replay(
     pipeline = _build_pipeline(config or LatticeConfig(graceful_degradation=True))
     results: list[ScenarioResult] = []
 
-    for trace in traces:
+    for longitudinal_index, trace in enumerate(traces):
         trace_id = trace.trace_id
         trace_provider = trace.provider
         trace_model = trace.model or model
@@ -230,17 +295,19 @@ async def run_trace_replay(
         )
         baseline_tokens = count_message_tokens(trace_messages, model=request.model)
 
-        async def _run_pipeline(
+        ctx = TransformContext(request_id=f"replay-{trace_id}", provider=trace_provider, model=trace_model)
+        response_fingerprints: list[str] = []
+        quality_scores: list[float] = []
+        request_fingerprint = ""
+        execution_plan_fingerprint = ""
+
+        # Latency measurement
+        async def _run_once(
             trace_id: str = trace_id,
             trace_provider: str = trace_provider,
             trace_model: str = trace_model,
             trace_messages: list[dict[str, Any]] = trace_messages,
         ) -> TransformContext:
-            ctx = TransformContext(
-                request_id=f"replay-{trace_id}",
-                provider=trace_provider,
-                model=trace_model,
-            )
             await pipeline.process(
                 Request(
                     messages=[message_from_dict(m) for m in trace_messages],
@@ -250,13 +317,14 @@ async def run_trace_replay(
             )
             return ctx
 
-        lat_samples = await _measure_latency(_run_pipeline, iterations=iterations, warmup=warmup)
+        lat_samples = await _measure_latency(_run_once, iterations=iterations, warmup=warmup)
         latency = LatencyMeasurement(
             pipeline_ms=statistics.mean(lat_samples) if lat_samples else 0.0,
             total_ms=statistics.mean(lat_samples) if lat_samples else 0.0,
         )
 
-        ctx = await _run_pipeline()
+        # Compute optimized tokens after all passes (warmup + measured)
+        ctx = await _run_once()
         compressed = unwrap(
             await pipeline.process(
                 Request(
@@ -288,9 +356,43 @@ async def run_trace_replay(
             baseline_tool_calls=trace.baseline_tool_calls,
             optimized_tool_calls=trace.optimized_tool_calls,
         )
+        quality_scores.append(quality.task_equivalence.composite if quality.task_equivalence is not None else quality.semantic_similarity)
+        response_fingerprints.append(_fingerprint_value(candidate_response))
 
         baseline_response = trace.reference_response or candidate_response
         optimized_response = candidate_response
+
+        if hasattr(compressed, "metadata"):
+            ir_v2 = compressed.metadata.get("_lattice_ir_v2")
+            if ir_v2 is not None and hasattr(ir_v2, "canonical_fingerprint"):
+                request_fingerprint = ir_v2.canonical_fingerprint()
+            plan = compressed.metadata.get("_lattice_execution_plan")
+            if plan is not None:
+                execution_plan_fingerprint = getattr(plan, "fingerprint", "")
+                if not execution_plan_fingerprint:
+                    execution_plan_fingerprint = _fingerprint_value(plan)
+
+        if not request_fingerprint:
+            request_fingerprint = _fingerprint_value(
+                [{"role": m.role, "content": m.content} for m in compressed.messages]
+            )
+        if not execution_plan_fingerprint:
+            execution_plan_fingerprint = _fingerprint_value(
+                getattr(compressed, "metadata", {}).get("_lattice_execution_plan")
+            )
+
+        determinism_score = 1.0
+        if response_fingerprints:
+            counts = {fp: response_fingerprints.count(fp) for fp in set(response_fingerprints)}
+            determinism_score = max(counts.values()) / max(len(response_fingerprints), 1)
+        replay_drift = max(quality_scores) - min(quality_scores) if len(quality_scores) > 1 else 0.0
+        survivability_score = 1.0 if quality.passed else 0.0
+        drift_category = ""
+        if determinism_score < 1.0:
+            drift_category = "non_deterministic"
+        elif survivability_score < 1.0:
+            drift_category = "survivability_drop"
+
         scenario = ScenarioResult(
             scenario_name=trace_id,
             category=trace.category,
@@ -304,6 +406,14 @@ async def run_trace_replay(
             qualities=[quality],
             baseline_response_sample=baseline_response,
             optimized_response_sample=optimized_response,
+            request_fingerprint=request_fingerprint,
+            execution_plan_fingerprint=execution_plan_fingerprint,
+            final_response_fingerprint=_fingerprint_value(optimized_response),
+            replay_drift=replay_drift,
+            determinism_score=determinism_score,
+            longitudinal_index=longitudinal_index,
+            survivability_score=survivability_score,
+            drift_category=drift_category,
             transform_breakdown=await _transform_breakdown(trace_messages, trace_model, config),
             baseline_errors=[],
             optimized_errors=[],
@@ -326,7 +436,7 @@ async def run_trace_replay(
             "transform_batching": (config or LatticeConfig()).transform_batching,
             "transform_speculation": (config or LatticeConfig()).transform_speculation,
             "tacc_enabled": (config or LatticeConfig()).tacc_enabled,
-            "transform_semantic_compress": (config or LatticeConfig()).transform_semantic_compress,
+            "transform_rate_distortion": (config or LatticeConfig()).transform_rate_distortion,
             "transform_message_dedup": (config or LatticeConfig()).transform_message_dedup,
             "transform_reference_sub": (config or LatticeConfig()).transform_reference_sub,
         },
@@ -363,7 +473,7 @@ async def run_feature_isolated_replay(
         transform_batching=True,
         transform_speculation=True,
         tacc_enabled=True,
-        transform_semantic_compress=True,
+        transform_rate_distortion=True,
         transform_message_dedup=True,
         transform_reference_sub=True,
         transform_prefix_opt=True,
@@ -383,7 +493,7 @@ async def run_feature_isolated_replay(
         transform_batching=False,
         transform_speculation=False,
         tacc_enabled=False,
-        transform_semantic_compress=False,
+        transform_rate_distortion=False,
         transform_message_dedup=False,
         transform_reference_sub=False,
         transform_prefix_opt=False,
@@ -399,13 +509,13 @@ async def run_feature_isolated_replay(
         "bare": base_all_off,
     }
 
-    for name, field in REPLAY_FEATURE_FLAGS:
+    for name, flag_name in REPLAY_FEATURE_FLAGS:
         # Off variant: all on except this feature
-        off_config = base_all_on.model_copy(update={field: False})
+        off_config = base_all_on.model_copy(update={flag_name: False})
         configs[f"{name}_off"] = off_config
 
         # On variant: all off except this feature
-        on_config = base_all_off.model_copy(update={field: True})
+        on_config = base_all_off.model_copy(update={flag_name: True})
         configs[f"{name}_on"] = on_config
 
     reports: dict[str, BenchmarkReport] = {}
@@ -447,12 +557,39 @@ async def _transform_breakdown(
         pipeline = CompressorPipeline(config=cfg)
         pipeline.register(transform)
         request = Request(messages=[message_from_dict(m) for m in messages], model=model)
+        ctx = TransformContext(model=model, provider="openai")
+        # PrefixOptimizer requires two-pass to show cache-hit savings.
+        # Simulate multi-turn session: first pass stores prefix hash.
         compressed = unwrap(
             await pipeline.process(
                 request,
-                TransformContext(model=model, provider="openai"),
+                ctx,
             )
         )
+        # Second pass: reuse same context to get cache-hit reduction
+        if name == "prefix_opt":
+            # Process again with same context to trigger cache-hit logic
+            compressed2 = unwrap(
+                await pipeline.process(
+                    Request(messages=[message_from_dict(m) for m in messages], model=model),
+                    ctx,
+                )
+            )
+            compressed = compressed2
+            # For prefix optimization, we compute virtual savings by removing
+            # the prefix tokens from the count (simulating provider-side cache hit)
+            prefix_tokens = compressed.metadata.get("_prefix_tokens", 0)
+            _baseline = baseline_tokens
+            _optimized = max(0, _baseline - prefix_tokens)
+            optimized_tokens = _optimized
+            breakdown[name] = {
+                "before": baseline_tokens,
+                "after": optimized_tokens,
+                "saved": max(0, baseline_tokens - optimized_tokens),
+                "prefix_tokens": prefix_tokens,
+                "cache_hit": compressed.metadata.get("_cache_hit", False),
+            }
+            continue
         optimized_tokens = count_message_tokens(
             [{"role": str(m.role), "content": m.content} for m in compressed.messages],
             model=model,

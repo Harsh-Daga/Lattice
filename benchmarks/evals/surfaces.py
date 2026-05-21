@@ -8,11 +8,18 @@ import json
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import patch
 
 from benchmarks.evals.report import EvalSectionReport
 from lattice.core.config import LatticeConfig
+from lattice.core.tunnel_sidecar import (
+    HTTPProxyServer,
+    LocalSocketServer,
+    ReplayBuffer,
+    TunnelSidecar,
+    WebSocketTunnel,
+)
 from lattice.integrations.claude.install import (
     apply_provider_scope as apply_claude_scope,
 )
@@ -62,15 +69,8 @@ from lattice.protocol.manifest import manifest_from_messages, manifest_summary
 from lattice.protocol.multiplex import MultiStreamMux, ReliabilityMode, StreamType
 from lattice.protocol.reliability import SelectiveReliability
 from lattice.protocol.resume import ReplayWindow, StreamChunk, StreamManager
-from lattice.core.tunnel_sidecar import (
-    HTTPProxyServer,
-    LocalSocketServer,
-    ReplayBuffer,
-    TunnelSidecar,
-    WebSocketTunnel,
-)
-from lattice.providers.transport import ConnectionPoolManager
 from lattice.providers.capabilities import CacheMode, Capability, get_capability_registry
+from lattice.providers.transport import ConnectionPoolManager
 
 
 @contextmanager
@@ -473,12 +473,13 @@ async def run_integration_eval() -> EvalSectionReport:
             "copilot": home / ".copilot" / "config.json",
         }
 
+        cursor_mutation = cast(dict[str, Any], mutations["cursor"])
         wrote = {
             "claude": patch_paths["claude"].exists(),
             "codex": patch_paths["codex"].exists(),
             "opencode": patch_paths["opencode"].exists(),
             "copilot": patch_paths["copilot"].exists(),
-            "cursor": mutations["cursor"]["kind"] == "instructions",
+            "cursor": cursor_mutation.get("kind") == "instructions",
         }
         for name, revert in (
             ("claude", revert_claude_scope),
@@ -486,7 +487,7 @@ async def run_integration_eval() -> EvalSectionReport:
             ("opencode", revert_opencode_scope),
             ("copilot", revert_copilot_scope),
         ):
-            revert(mutations[name])
+            revert(cast(Any, mutations[name]))
 
         reverted = {
             "claude": not patch_paths["claude"].exists() or '"ANTHROPIC_BASE_URL"' not in patch_paths["claude"].read_text(),

@@ -7,7 +7,13 @@ import re
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
+from lattice.core.runtime_state import (
+    get_canonical_state_value,
+    get_ir_metadata_value,
+    thaw_value,
+)
 from lattice.core.transport import Request, Response
 from lattice.utils.validation import lossy_transform_allowed
 
@@ -51,13 +57,61 @@ class RateDistortionCompressor(ReversibleSyncTransform):
         self.max_input_tokens = max_input_tokens
         self.min_sentences = max(1, min_sentences)
 
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: compress spans that are long natural-language (not structured)."""
+        if not lossy_transform_allowed(_request):
+            context.record_metric(self.name, "guarded", 1)
+            return Ok(ir)
+
+        compressed_spans = 0
+        total_saved = 0
+        new_sections = []
+
+        for sec in ir.sections:
+            new_spans = []
+            for span in sec.spans:
+                text = span.text
+                if not text or span.protected or len(text) < self.max_input_tokens * 4:
+                    new_spans.append(span)
+                    continue
+                if self._is_structured(text):
+                    new_spans.append(span)
+                    continue
+                compressed = self._compress_text(text)
+                if compressed != text:
+                    new_spans.append(span.with_text(compressed))
+                    compressed_spans += 1
+                    total_saved += len(text) - len(compressed)
+                else:
+                    new_spans.append(span)
+            new_sections.append(sec.with_spans(tuple(new_spans)))
+
+        if compressed_spans > 0:
+            context.record_metric(self.name, "spans_compressed", compressed_spans)
+            context.record_metric(self.name, "tokens_saved_estimate", total_saved // 4)
+            context.record_metric(self.name, "distortion_budget", self.distortion_budget)
+        return Ok(ir.with_sections(tuple(new_sections)))
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
+
     def process(
         self,
         request: Request,
         context: TransformContext,
     ) -> Result[Request, TransformError]:
-        strategy = request.metadata.get("_lattice_strategy", {})
-        if isinstance(strategy, dict) and strategy.get("semantic_compress") is False:
+        strategy = _strategy(request, context)
+        if isinstance(strategy, dict) and strategy.get("rate_distortion") is False:
             return Ok(request)
         if not lossy_transform_allowed(request):
             context.record_metric(self.name, "guarded", 1)
@@ -150,3 +204,13 @@ class RateDistortionCompressor(ReversibleSyncTransform):
         if index == 0 or index == total - 1:
             cost += 0.015
         return min(0.2, cost)
+
+
+def _strategy(request: Request, context: TransformContext) -> dict[str, object]:
+    ir_strategy = thaw_value(get_ir_metadata_value(context, "_lattice_strategy"))
+    if isinstance(ir_strategy, dict):
+        return ir_strategy
+    strategy = get_canonical_state_value(context, "_lattice_strategy", {})
+    if isinstance(strategy, dict):
+        return strategy
+    return {}
