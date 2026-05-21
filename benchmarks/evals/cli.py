@@ -28,6 +28,7 @@ from benchmarks.evals.runner import (  # noqa: E402
     run_protocol_eval,
     run_transport_eval,
     run_replay_eval,
+    run_replay_hardening,
     run_replay_feature_isolated,
     run_replay_governance,
     run_tacc_eval,
@@ -41,7 +42,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--suite",
         default="all",
-        choices=["all", "feature", "feature-matrix", "provider", "protocol", "transport", "integration", "capability", "replay", "replay-isolated", "replay-governance", "tacc", "control"],
+        choices=["all", "feature", "feature-matrix", "provider", "protocol", "transport", "integration", "capability", "replay", "replay-hardening", "replay-isolated", "replay-governance", "tacc", "control"],
     )
     parser.add_argument("--scenarios", nargs="*", default=[], help="Optional scenario filter")
     parser.add_argument("--providers", nargs="*", default=[], help="Optional provider filter")
@@ -57,11 +58,18 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--warmup", type=int, default=0)
     parser.add_argument("--provider-iterations", type=int, default=1)
     parser.add_argument("--provider-warmup", type=int, default=1)
-    parser.add_argument("--regression-threshold-quality", type=float, default=0.05, help="Max acceptable quality drop (default 0.05 = 5%)")
-    parser.add_argument("--regression-threshold-latency", type=float, default=1.5, help="Max acceptable latency multiplier (default 1.5 = 50% increase)")
+    parser.add_argument("--regression-threshold-quality", type=float, default=0.05, help="Max acceptable quality drop (default 0.05 = 5%%)")
+    parser.add_argument("--regression-threshold-latency", type=float, default=1.5, help="Max acceptable latency multiplier (default 1.5 = 50%% increase)")
     parser.add_argument("--output-json", default="benchmarks/results/production_evals.json")
     parser.add_argument("--output-md", default="benchmarks/results/production_evals.md")
     parser.add_argument("--json-only", action="store_true")
+    parser.add_argument(
+        "--use-v2-pipeline",
+        action="store_true",
+        default=False,
+        help="Use the v2 immutable pipeline (UnifiedPlanner + PipelineV2) for evals. "
+        "When set, the benchmark builds build_v2_pipeline() instead of the optimizer pipeline.",
+    )
     return parser.parse_args()
 
 
@@ -88,6 +96,12 @@ async def main() -> int:
     args = _parse_args()
     provider_models = _parse_provider_models(args.provider_model)
     scenarios = default_scenarios(args.scenarios or None)
+
+    # Phase 5: propagate --use-v2-pipeline to LatticeConfig via env var
+    if args.use_v2_pipeline:
+        import os
+
+        os.environ["LATTICE_USE_V2_PIPELINE"] = "true"
 
     try:
         if args.suite == "feature":
@@ -194,6 +208,20 @@ async def main() -> int:
                 print(json.dumps(payload, indent=2))
             else:
                 print(_render_single_section(section, "replay_eval"))
+            return 0
+
+        if args.suite == "replay-hardening":
+            section = await run_replay_hardening(
+                input_path=args.replay_input,
+                iterations=args.iterations,
+                warmup=args.warmup,
+            )
+            if args.json_only:
+                import json
+
+                print(json.dumps(section.to_dict(), indent=2))
+            else:
+                print(_render_single_section(section, "replay_hardening"))
             return 0
 
         if args.suite == "replay-isolated":

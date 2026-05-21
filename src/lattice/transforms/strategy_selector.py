@@ -33,7 +33,14 @@ import structlog
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
+from lattice.core.runtime_state import (
+    get_canonical_request_value,
+    get_canonical_state_value,
+    get_ir_metadata_value,
+    thaw_value,
+)
 from lattice.core.transport import Request, Response
 
 logger = structlog.get_logger()
@@ -289,6 +296,113 @@ class StrategySelector(ReversibleSyncTransform):
             raise ValueError(f"default_strategy {default_strategy!r} not in arms {self.arms}")
         self._log = logger.bind(transform=self.name)
 
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """Select a compression strategy using LinUCB and store in IR metadata."""
+        state = context.get_transform_state(self.name)
+
+        # Initialize bandit state if missing
+        bandit = self._get_or_init_bandit(state)
+
+        # Extract context features from IR (character count + token estimate analog)
+        features = self._extract_features_ir(ir)
+
+        # Select arm
+        arm = self._preferred_contract_strategy(_request) or self._select_arm(bandit, features)
+
+        # Record decision
+        state["last_arm"] = arm
+        state["last_features"] = features
+        state["last_selection_time"] = context.started_at
+        context.record_metric(self.name, "selected_strategy", arm)
+        context.record_metric(self.name, "feature_norm", math.sqrt(sum(f * f for f in features)))
+
+        # Write strategy into IR metadata for downstream transforms
+        new_ir = ir.add_metadata(_lattice_strategy=arm)
+
+        # Per-strategy enablement flags (stored in context too)
+        self._set_strategy_flags_ir(new_ir, arm, context)
+
+        self._log.debug(
+            "strategy_selected_v2",
+            arm=arm,
+            request_id=context.request_id,
+            session_id=context.session_id,
+            features=features,
+        )
+        return Ok(new_ir)
+
+    def _extract_features_ir(self, ir: PromptIRV2) -> list[float]:
+        """Extract context feature vector from PromptIRV2."""
+        total_chars = 0
+        num_sections = len(ir.sections)
+        num_protected = 0
+        num_compressible = 0
+        has_json = 0.0
+        has_table = 0.0
+        has_log = 0.0
+        for sec in ir.sections:
+            st = sec.type.lower()
+            if "json" in st or "data" in st:
+                has_json = 1.0
+            if "table" in st or "csv" in st:
+                has_table = 1.0
+            if "log" in st:
+                has_log = 1.0
+            for sp in sec.spans:
+                total_chars += len(sp.text)
+                if sp.protected:
+                    num_protected += 1
+                if sp.compressible:
+                    num_compressible += 1
+
+        max_dim = self.feature_dim
+        features = [
+            min(1.0, total_chars / 10000.0),  # normalized length
+            min(1.0, num_sections / 20.0),     # section count
+            min(1.0, (num_sections - num_protected) / max(1, num_sections)),  # editable ratio
+            has_json,
+            has_table,
+            has_log,
+            min(1.0, num_compressible / max(1, num_sections)),  # compressible ratio
+            1.0,  # bias
+        ]
+        if len(features) < max_dim:
+            features.extend([0.0] * (max_dim - len(features)))
+        return features[:max_dim]
+
+    def _set_strategy_flags_ir(
+        self,
+        ir: PromptIRV2,
+        arm: str,
+        context: TransformContext,
+    ) -> PromptIRV2:
+        """Set strategy enablement flags based on the selected arm."""
+        flags = {
+            "submodular": arm in ("submodular", "hybrid"),
+            "rate_distortion": arm in ("rd", "hybrid", "full"),
+            "context_selector": arm in ("submodular", "hybrid", "full"),
+            "tool_optimizer": True,
+            "tool_filter": True,
+        }
+        new_ir = ir
+        for key, value in flags.items():
+            new_ir = new_ir.add_metadata(**{f"_lattice_strategy_{key}": value})
+            context.record_metric(self.name, key, value)
+        return new_ir
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
+
     def process(
         self, request: Request, context: TransformContext
     ) -> Result[Request, TransformError]:
@@ -315,7 +429,7 @@ class StrategySelector(ReversibleSyncTransform):
         request.metadata["_lattice_strategy"] = arm
 
         # Also write per-strategy enablement flags
-        self._set_strategy_flags(request, arm)
+        self._set_strategy_flags(request, arm, context)
 
         self._log.debug(
             "strategy_selected",
@@ -492,9 +606,15 @@ class StrategySelector(ReversibleSyncTransform):
         best = [arm for arm, sc in scores.items() if sc == max_score]
         return best[0]
 
-    def _preferred_contract_strategy(self, request: Request) -> str | None:
+    def _preferred_contract_strategy(
+        self, request: Request, context: TransformContext | None = None
+    ) -> str | None:
         """Return runtime-contract preferred strategy when valid."""
-        contract = request.metadata.get("_lattice_runtime_contract")
+        contract = (
+            get_canonical_state_value(context, "_lattice_runtime_contract")
+            if context is not None
+            else get_canonical_request_value(request, None, "_lattice_runtime_contract")
+        )
         if not isinstance(contract, dict):
             return None
         preferred = contract.get("preferred_strategy")
@@ -502,36 +622,48 @@ class StrategySelector(ReversibleSyncTransform):
             return preferred
         return None
 
-    def _set_strategy_flags(self, request: Request, arm: str) -> None:
+    def _set_strategy_flags(
+        self,
+        request: Request,
+        arm: str,
+        context: TransformContext | None = None,
+    ) -> None:
         """Write per-transform enablement flags into request metadata."""
         # The strategy string itself is the primary signal.
         # Downstream transforms check request.metadata["_lattice_strategy"].
         # We also set individual flags for compatibility.
         flags: dict[str, bool] = {
-            "semantic_compress": True,
+            "rate_distortion": True,
             "submodular_select": False,
             "rd_compress": False,
         }
 
         if arm == "full":
-            flags = {"semantic_compress": True, "submodular_select": True, "rd_compress": True}
+            flags = {"rate_distortion": True, "submodular_select": True, "rd_compress": True}
         elif arm == "submodular":
-            flags = {"semantic_compress": True, "submodular_select": True, "rd_compress": False}
+            flags = {"rate_distortion": True, "submodular_select": True, "rd_compress": False}
         elif arm == "rd":
-            flags = {"semantic_compress": True, "submodular_select": False, "rd_compress": True}
+            flags = {"rate_distortion": True, "submodular_select": False, "rd_compress": True}
         elif arm == "hybrid":
-            flags = {"semantic_compress": True, "submodular_select": True, "rd_compress": True}
+            flags = {"rate_distortion": True, "submodular_select": True, "rd_compress": True}
 
         # Merge into existing _lattice_strategy dict if present
-        existing = request.metadata.get("_lattice_strategy")
+        existing = None
+        if context is not None:
+            existing = thaw_value(get_ir_metadata_value(context, "_lattice_strategy"))
+            if existing is None:
+                existing = get_canonical_state_value(context, "_lattice_strategy")
+        if existing is None:
+            existing = get_canonical_request_value(request, context, "_lattice_strategy")
         if isinstance(existing, str):
             # Convert old string to dict and set new strategy name
             merged: dict[str, Any] = {"name": arm}
             merged.update(flags)
             request.metadata["_lattice_strategy"] = merged
         elif isinstance(existing, dict):
-            existing.update(flags)
             existing["name"] = arm
+            existing.update(flags)
+            request.metadata["_lattice_strategy"] = existing
         else:
             request.metadata["_lattice_strategy"] = {"name": arm, **flags}
 

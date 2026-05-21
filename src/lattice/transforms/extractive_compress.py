@@ -1,12 +1,12 @@
-"""Extractive Compression — LOSSLESS_SAFE alternative to semantic_compress.
+"""Extractive Compression — lossless safe alternative to rate_distortion.
 
 Instead of lossy semantic summarization, uses extractive techniques:
 - Keeps sentences with entities/numbers/keywords
 - Removes boilerplate and filler
 - Preserves all structural elements (code, tables, JSON)
 
-This replaces the lossy semantic_compress / rate_distortion for scenarios
-where quality matters (debugging, reasoning, structured output).
+This replaces lossy rate_distortion for scenarios where quality matters
+(debugging, reasoning, structured output).
 """
 
 from __future__ import annotations
@@ -60,22 +60,20 @@ class ExtractiveCompressor(ReversibleSyncTransform):
         saved = 0
 
         for msg in request.messages:
+            if msg.role in ("tool", "function"):
+                new_messages.append(msg)
+                continue
+
             compressed, saved_delta = _extractive_compress(msg.content)
             saved += saved_delta
-            new_messages.append(Message(role=msg.role, content=compressed))
+            new_msg = msg.copy()
+            new_msg.content = compressed
+            new_messages.append(new_msg)
 
         context.record_metric(self.name, "chars_saved", saved)
-        return Ok(
-            Request(
-                model=request.model,
-                messages=new_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                tools=request.tools,
-                tool_choice=request.tool_choice,
-                metadata=request.metadata,
-            )
-        )
+        new_req = request.copy()
+        new_req.messages = new_messages
+        return Ok(new_req)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response

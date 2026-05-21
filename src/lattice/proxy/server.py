@@ -101,17 +101,22 @@ from lattice._version import __version__
 from lattice.core.config import LatticeConfig
 from lattice.core.errors import ProviderError, ProviderTimeoutError
 from lattice.core.transport import Message
+from lattice.gateway import compat as _gateway_compat
 from lattice.gateway.compat import OperationalRouteDeps, register_operational_routes
 from lattice.gateway.compat import anthropic_passthrough as compat_anthropic_passthrough
+from lattice.gateway.compat import build_routing_headers as _build_routing_headers
 from lattice.gateway.compat import (
     chat_completions_websocket_passthrough as compat_ws_chat,
 )
+from lattice.gateway.compat import deserialize_openai_request as _deserialize_openai_request
+from lattice.gateway.compat import detect_new_messages as _detect_new_messages
 from lattice.gateway.compat import responses_passthrough as compat_responses_passthrough
 from lattice.gateway.compat import (
     responses_websocket_passthrough as compat_responses_websocket_passthrough,
 )
+from lattice.gateway.compat import serialize_messages as _serialize_messages
+from lattice.gateway.compat import serialize_openai_response as _serialize_openai_response
 from lattice.protocol.cache_planner import get_cache_planner
-from lattice.proxy import compat_exports as _compat_exports
 from lattice.proxy.bootstrap import build_proxy_runtime, configure_cors, configure_lifecycle
 from lattice.proxy.routes import (
     ProviderCompatRouteDeps,
@@ -121,29 +126,16 @@ from lattice.proxy.routes import (
 
 logger = structlog.get_logger()
 
+_deserialize_anthropic_request = _gateway_compat.deserialize_anthropic_request
+_serialize_anthropic_response = _gateway_compat.serialize_anthropic_response
+_is_local_origin = _gateway_compat.is_local_origin
+
 # =============================================================================
 # Constants
 # =============================================================================
 
 _SSE_KEEP_ALIVE = "\n"
 _SSE_DONE = "[DONE]\n\n"
-
-# Compatibility exports kept for import stability.
-ProviderDetectionError = _compat_exports.ProviderDetectionError
-_build_routing_headers = _compat_exports._build_routing_headers
-_is_local_origin = _compat_exports._is_local_origin
-_detect_new_messages = _compat_exports._detect_new_messages
-_deserialize_openai_request = _compat_exports._deserialize_openai_request
-_serialize_messages = _compat_exports._serialize_messages
-_serialize_openai_response = _compat_exports._serialize_openai_response
-_deserialize_anthropic_request = _compat_exports._deserialize_anthropic_request
-_serialize_anthropic_response = _compat_exports._serialize_anthropic_response
-_extract_anthropic_text_blocks = _compat_exports._extract_anthropic_text_blocks
-_replace_anthropic_text_blocks = _compat_exports._replace_anthropic_text_blocks
-_extract_responses_text_blocks = _compat_exports._extract_responses_text_blocks
-_replace_responses_text_blocks = _compat_exports._replace_responses_text_blocks
-_compress_anthropic_body = _compat_exports._compress_anthropic_body
-_compress_responses_body = _compat_exports._compress_responses_body
 
 # =============================================================================
 # App factory
@@ -324,7 +316,7 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
     return app
 
 
-# Compatibility exports are re-exported from `proxy.compat_exports`.
+# Compatibility helpers are imported directly from `gateway.compat`.
 
 
 # =============================================================================

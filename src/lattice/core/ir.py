@@ -70,15 +70,17 @@ class Span:
     def to_dict(self) -> dict[str, Any]:
         return {
             "span_id": self.span_id,
+            "text": self.text,
             "role": self.role.value,
             "section_type": self.section_type.value,
-            "entity_count": len(self.entities),
-            "number_count": len(self.numbers),
-            "key_count": len(self.keys),
+            "entities": self.entities,
+            "numbers": self.numbers,
+            "keys": self.keys,
+            "structure": self.structure,
             "protected": self.protected,
             "compressible": self.compressible,
-            "text_len": len(self.text),
-            "text_preview": self.text[:100],
+            "compression_modes_allowed": self.compression_modes_allowed,
+            "metadata": self.metadata,
         }
 
 

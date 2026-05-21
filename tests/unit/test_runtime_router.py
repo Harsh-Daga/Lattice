@@ -118,7 +118,6 @@ class TestRuntimeRouter:
         decision = router.classify(Request(messages=[Message(role="user", content="hi")]))
         skipped = decision.contract["skipped_transforms"]
         assert decision.tier == Tier.SIMPLE
-        assert "self_information" in skipped
         assert "rate_distortion" in skipped
         assert decision.contract["mode"] == "minimal"
 
@@ -154,14 +153,14 @@ class TestRuntimeRouter:
             messages=[Message(role="user", content="hi")],
             metadata={
                 "_lattice_runtime_contract": {
-                    "skipped_transforms": ["self_information"],
+                    "skipped_transforms": ["rate_distortion"],
                 }
             },
         )
         decision = OptimizationPolicy().should_run(
-            "self_information",
+            "rate_distortion",
             req,
             TransformContext(),
         )
         assert isinstance(decision, Skip)
-        assert decision.reason == "disabled_by_runtime_contract"
+        assert decision.reason == "runtime_tier_flagged"

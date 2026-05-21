@@ -11,18 +11,15 @@ LATTICE's pipeline runs 18 transforms in priority order on every request. Each t
 | 3 | **strategy_selector** | SAFE | Routes to submodular/adaptive selection strategies |
 | 9 | **cache_arbitrage** | SAFE | Reorders messages for KV-cache alignment, sets provider cache hints |
 | 10 | **prefix_optimizer** | SAFE | Deduplicates common prefixes across messages |
-| 12 | **structural_fingerprint** | DANGEROUS | Detects repeated structural patterns for compression |
 | 14 | **self_information** | CONDITIONAL | Entropy-based content filtering |
 | 15 | **message_dedup** | CONDITIONAL | Removes exact and near-duplicate messages across turns |
 | 18 | **context_selector** | SAFE | Token-budgeted document selection from long contexts |
 | 19 | **information_theoretic_selector** | CONDITIONAL | Information-theoretic relevance scoring for content selection |
 | 20 | **reference_sub** | CONDITIONAL | Replaces repeated UUIDs, URLs, paths with short inline references |
 | 22 | **rate_distortion** | CONDITIONAL | Semantic/extractive compression of long-form text |
-| 24 | **grammar_compress** | CONDITIONAL | Grammar-based compression of structured data |
-| 25 | **dictionary_compress** | CONDITIONAL | Phrase-level dictionary compression for repeated patterns |
 | 28 | **hierarchical_summary** | DANGEROUS | Recursive summarization of nested document structures |
 | 30 | **tool_filter** | SAFE | Projects tool outputs to keep only relevant fields |
-| 40 | **output_cleanup** | SAFE | Whitespace normalization, trailing boilerplate removal |
+| 40 | **output_cleanup** | SAFE | Response-only — whitespace normalization, trailing boilerplate removal |
 
 ---
 

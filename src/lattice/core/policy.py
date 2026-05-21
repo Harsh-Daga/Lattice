@@ -34,6 +34,7 @@ import structlog
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.transport import Request
 
 logger = structlog.get_logger()
@@ -212,11 +213,17 @@ class OptimizationPolicy:
                 else Skip(reason=f"disabled_for_model_{request.model}")
             )
 
-        runtime_contract = request.metadata.get("_lattice_runtime_contract")
+        runtime_contract = get_canonical_request_value(
+            request, _context, "_lattice_runtime_contract"
+        )
         if isinstance(runtime_contract, dict):
             skipped = runtime_contract.get("skipped_transforms", ())
             if isinstance(skipped, (list, tuple, set)) and transform_name in skipped:
-                return Skip(reason="disabled_by_runtime_contract")
+                # Note: transform was marked skipped by runtime router tier, but
+                # the scheduler has final say. Policy only records the skip for
+                # audit trail — the scheduler may override this. Record as reached
+                # not blocked, since the scheduler gated it above.
+                return Skip(reason="runtime_tier_flagged")
 
         return Allow()
 

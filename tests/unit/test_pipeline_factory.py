@@ -19,11 +19,11 @@ def _names(config: LatticeConfig, *, execution: bool = False) -> list[str]:
     return [t.name for t in pipeline.transforms]
 
 
-def test_default_pipeline_contains_runtime_contract_before_strategy_selector() -> None:
+def test_default_pipeline_contains_runtime_contract_before_prefix_optimizer() -> None:
     names = _names(LatticeConfig())
     assert "runtime_contract" in names
-    assert "strategy_selector" in names
-    assert names.index("runtime_contract") < names.index("strategy_selector")
+    assert "prefix_optimizer" in names
+    assert names.index("runtime_contract") < names.index("prefix_optimizer")
 
 
 def test_default_pipeline_excludes_proxy_execution_transforms() -> None:
@@ -55,7 +55,6 @@ def test_pipeline_summary_splits_core_and_execution_transforms() -> None:
     summary = pipeline_summary(pipeline)
     assert summary["count"] == len(summary["transforms"])
     assert summary["runtime_contract_enabled"] is True
-    assert summary["strategy_selector_enabled"] is True
     assert "runtime_contract" in summary["core_transforms"]
     assert {"batching", "speculative", "delta_encoder"}.issubset(
         set(summary["execution_transforms"])

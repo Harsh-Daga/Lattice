@@ -111,7 +111,7 @@ async def test_feature_isolated_replay_runs_all_features() -> None:
         "batching",
         "speculation",
         "tacc",
-        "semantic_compress",
+        "rate_distortion",
         "message_dedup",
         "reference_sub",
     ]
@@ -239,6 +239,51 @@ def test_failure_categories_present() -> None:
     assert FailureCategory.CACHE_MISS.value in values
 
 
+def test_replay_classifies_canonical_drift_and_determinism() -> None:
+    from benchmarks.evals.replay import FailureCategory, _classify_failure
+    from benchmarks.framework.types import BenchmarkReport, ScenarioResult
+
+    baseline = BenchmarkReport(
+        runner_name="baseline",
+        provider="openai",
+        model="gpt-4",
+        scenarios=[
+            ScenarioResult(
+                scenario_name="s1",
+                category="test",
+                request_fingerprint="fp-a",
+                execution_plan_fingerprint="plan-a",
+                final_response_fingerprint="resp-a",
+                determinism_score=1.0,
+                survivability_score=1.0,
+            )
+        ],
+    )
+    feature = BenchmarkReport(
+        runner_name="feature",
+        provider="openai",
+        model="gpt-4",
+        scenarios=[
+            ScenarioResult(
+                scenario_name="s1",
+                category="test",
+                request_fingerprint="fp-b",
+                execution_plan_fingerprint="plan-b",
+                final_response_fingerprint="resp-b",
+                determinism_score=0.75,
+                survivability_score=0.8,
+            )
+        ],
+    )
+    categories = _classify_failure(
+        baseline, feature, quality_threshold=0.05, latency_threshold=1.5
+    )
+    values = {c.value for c in categories}
+    assert FailureCategory.CANONICAL_DRIFT.value in values
+    assert FailureCategory.NON_DETERMINISM.value in values
+    assert FailureCategory.SURVIVABILITY_REGRESSION.value in values
+
+
 @pytest.mark.asyncio
 async def test_governance_report_pass_fail(tmp_path: Path) -> None:
     from benchmarks.evals.runner import run_replay_governance
@@ -272,6 +317,34 @@ async def test_governance_report_pass_fail(tmp_path: Path) -> None:
     gov = report.details["governance"]
     for feature in gov:
         assert gov[feature]["status"] in ("pass", "fail")
+
+
+@pytest.mark.asyncio
+async def test_replay_hardening_report_exposes_determinism(tmp_path: Path) -> None:
+    from benchmarks.evals.runner import run_replay_hardening
+
+    trace_path = tmp_path / "hardening.jsonl"
+    trace_path.write_text(
+        json.dumps(
+            {
+                "trace_id": "t1",
+                "scenario": "test",
+                "category": "test",
+                "messages": [{"role": "user", "content": "hello world"}],
+                "reference_response": "hello",
+                "optimized_response": "hello",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    section = await run_replay_hardening(
+        input_path=str(trace_path), model="gpt-4", provider="openai", iterations=1, warmup=0
+    )
+    assert section.name == "replay_hardening"
+    assert "avg_determinism_score" in section.summary
+    assert "avg_survivability_score" in section.summary
+    assert "scenarios" in section.details
 
 
 @pytest.mark.asyncio

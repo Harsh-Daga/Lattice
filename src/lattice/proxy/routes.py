@@ -217,6 +217,9 @@ def register_provider_compat_routes(
     responses_deps = ResponsesCompatDeps(
         responses_passthrough=deps.responses_passthrough,
         provider=deps.provider,
+        pipeline=deps.pipeline,
+        config=deps.config,
+        logger=deps.logger,
     )
     compat.models_handler = make_models_handler(responses_deps)
     compat.responses_handler = make_responses_handler(responses_deps)
@@ -297,7 +300,9 @@ def register_provider_compat_routes(
                     )
                 except Exception:
                     pass
-            await deps.chat_completions_websocket_passthrough(websocket)
+            await deps.chat_completions_websocket_passthrough(
+                websocket, logger=logger, pipeline=deps.pipeline, provider=deps.provider
+            )
         finally:
             elapsed_ms = (_time.perf_counter() - start) * 1000
             if metrics is not None:

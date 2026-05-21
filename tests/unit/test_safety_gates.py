@@ -159,11 +159,11 @@ class TestTransformSafetyBuckets:
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.SAFE, name
 
     def test_conditional_transforms(self) -> None:
-        for name in ("reference_sub", "message_dedup", "format_conversion", "semantic_compress"):
+        for name in ("reference_sub", "message_dedup", "format_conversion", "rate_distortion"):
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.CONDITIONAL, name
 
-    def test_dangerous_transforms(self) -> None:
-        for name in ("hierarchical_summary",):
+    def test_deleted_transforms_default_to_dangerous(self) -> None:
+        for name in ("dictionary_compress", "grammar_compress", "alias_manifest"):
             assert get_transform_safety_bucket(name) == TransformSafetyBucket.DANGEROUS, name
 
     def test_unknown_transform_defaults_to_dangerous(self) -> None:
@@ -182,21 +182,15 @@ class TestTransformSafetyBuckets:
             get_transform_safety_bucket("message_deduplicator") == TransformSafetyBucket.CONDITIONAL
         )
 
-    def test_alias_dictionary_compressor_maps_to_conditional(self) -> None:
+    def test_alias_dictionary_compressor_is_dangerous(self) -> None:
         assert (
             get_transform_safety_bucket("dictionary_compressor")
-            == TransformSafetyBucket.CONDITIONAL
-        )
-
-    def test_alias_grammar_compressor_maps_to_conditional(self) -> None:
-        assert (
-            get_transform_safety_bucket("grammar_compressor") == TransformSafetyBucket.CONDITIONAL
-        )
-
-    def test_alias_hierarchical_summarizer_maps_to_dangerous(self) -> None:
-        assert (
-            get_transform_safety_bucket("hierarchical_summarizer")
             == TransformSafetyBucket.DANGEROUS
+        )
+
+    def test_alias_grammar_compressor_is_dangerous(self) -> None:
+        assert (
+            get_transform_safety_bucket("grammar_compressor") == TransformSafetyBucket.DANGEROUS
         )
 
 
@@ -214,7 +208,7 @@ class TestRiskGatingBehavior:
             strict_instructions=30, sensitive_domain=20, high_stakes_entities=15
         )
         assert risk.total > 60
-        allowed, reason = transform_allowed_at_risk("semantic_compress", risk)
+        allowed, reason = transform_allowed_at_risk("rate_distortion", risk)
         assert allowed is False
         assert "blocked" in reason
 
@@ -229,14 +223,14 @@ class TestRiskGatingBehavior:
             sensitive_domain=10, high_stakes_entities=15, strict_instructions=10
         )
         assert risk.level in ("MEDIUM", "HIGH")
-        allowed, reason = transform_allowed_at_risk("hierarchical_summary", risk)
+        allowed, reason = transform_allowed_at_risk("unknown_transform", risk)
         assert allowed is False
         assert "blocked" in reason
 
     def test_dangerous_allowed_at_low_risk(self) -> None:
         risk = SemanticRiskScore()
         assert risk.level == "LOW"
-        allowed, reason = transform_allowed_at_risk("hierarchical_summary", risk)
+        allowed, reason = transform_allowed_at_risk("unknown_transform", risk)
         assert allowed is True
 
 
@@ -287,7 +281,7 @@ class TestScenarioSafetyExpectations:
 
         safety = _SCENARIO_SAFETY.get("tool_call_preservation", {})
         forbidden = safety.get("forbidden_transforms", [])
-        assert "semantic_compress" in forbidden
+        assert "rate_distortion" in forbidden
         assert "reference_sub" in forbidden
 
     def test_simple_baseline_forbids_most_transforms(self) -> None:
@@ -302,8 +296,8 @@ class TestScenarioSafetyExpectations:
         from benchmarks.scenarios.prompts import _SCENARIO_SAFETY
 
         safety = _SCENARIO_SAFETY.get("runtime_contract_pressure", {})
-        # Reasoning-heavy: structural_fingerprint must be forbidden
-        assert "structural_fingerprint" in safety.get("forbidden_transforms", [])
+        risky = safety.get("risky_transforms", [])
+        assert len(risky) > 0
         # Must preserve reasoning
         assert any(
             "reasoning" in p.lower() or "mitigation" in p.lower()

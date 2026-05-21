@@ -320,7 +320,7 @@ class TestComputeAnchorHash:
 
 
 class TestOpenAICachePlanner:
-    def test_stable_prefix_order(self) -> None:
+    def test_openai_plan_basic(self) -> None:
         segments = [
             build_messages_segment([TextPart(text="hi")]),
             build_system_segment("sys"),

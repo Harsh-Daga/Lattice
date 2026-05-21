@@ -74,38 +74,48 @@ class TestMessageDedupHardening:
         assert is_ok(result)
 
 
-class TestDangerousTransforms:
-    """structural_fingerprint and hierarchical_summary are dangerous by default."""
+class TestDeletedTransforms:
+    """Deleted transforms are no longer known in the registry."""
 
-    def test_structural_fingerprint_runs_on_simple_content(self) -> None:
-        from lattice.transforms.structural_fingerprint import StructuralFingerprint
+    def test_structural_fingerprint_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
 
-        transform = StructuralFingerprint()
-        req = Request(
-            messages=[
-                Message(role="system", content="Review code."),
-                Message(role="user", content="File: src/a.py\nFile: src/b.py"),
-            ]
-        )
-        ctx = TransformContext()
-        result = transform.process(req, ctx)
-        assert is_ok(result)
+        assert is_transform_name_known("structural_fingerprint") is False
 
-    def test_hierarchical_summary_runs_on_long_structured_content(self) -> None:
-        from lattice.transforms.hierarchical_summary import HierarchicalSummarizer
+    def test_hierarchical_summary_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
 
-        transform = HierarchicalSummarizer()
-        req = Request(
-            messages=[
-                Message(
-                    role="user", content="## Section 1\nContent here.\n## Section 2\nMore content."
-                ),
-            ]
-        )
-        ctx = TransformContext()
-        result = transform.process(req, ctx)
-        # Should run (hierarchical_summary works on structured content)
-        assert is_ok(result)
+        assert is_transform_name_known("hierarchical_summary") is False
+
+    def test_arithmetic_sequence_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
+
+        assert is_transform_name_known("arithmetic_sequence") is False
+
+    def test_code_factoring_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
+
+        assert is_transform_name_known("code_factoring") is False
+
+    def test_stack_interning_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
+
+        assert is_transform_name_known("stack_interning") is False
+
+    def test_stable_prefix_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
+
+        assert is_transform_name_known("stable_prefix") is False
+
+    def test_instruction_context_sep_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
+
+        assert is_transform_name_known("instruction_context_sep") is False
+
+    def test_self_information_removed(self) -> None:
+        from lattice.core.transform_registry import is_transform_name_known
+
+        assert is_transform_name_known("self_information") is False
 
 
 class TestRateDistortionHardening:

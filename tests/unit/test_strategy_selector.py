@@ -217,7 +217,7 @@ class TestProcess:
         new_req = unwrap(result)
         s = new_req.metadata["_lattice_strategy"]
         assert "name" in s
-        assert "semantic_compress" in s
+        assert "rate_distortion" in s
         assert "submodular_select" in s
         assert "rd_compress" in s
 

@@ -18,7 +18,12 @@ from lattice.core.cost_estimator import CostEstimator
 from lattice.core.credentials import CredentialResolver
 from lattice.core.metrics import get_metrics
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import build_default_pipeline
+from lattice.core.pipeline_factory import (
+    build_default_pipeline,
+    build_optimizer_pipeline,
+    build_v2_pipeline,
+)
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.semantic_cache import SemanticCache
 from lattice.core.serialization import message_to_dict
 from lattice.core.session import MemorySessionStore, SessionManager
@@ -113,11 +118,24 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
 
     session_manager = SessionManager(store, ttl_seconds=config.session_ttl_seconds)
 
-    pipeline = build_default_pipeline(
-        config,
-        include_execution_transforms=True,
-        session_manager=session_manager,
-    )
+    if getattr(config, "use_v2_pipeline", False):
+        pipeline = build_v2_pipeline(
+            config,
+            include_execution_transforms=True,
+            session_manager=session_manager,
+        )
+    elif getattr(config, "use_optimizer_pipeline", False):
+        pipeline = build_optimizer_pipeline(
+            config,
+            include_execution_transforms=True,
+            session_manager=session_manager,
+        )
+    else:
+        pipeline = build_default_pipeline(
+            config,
+            include_execution_transforms=True,
+            session_manager=session_manager,
+        )
 
     credentials = CredentialResolver()
     if config.provider_api_key:
@@ -169,7 +187,9 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
                 stream=False,
                 stop=batched.metadata.get("stop"),
                 provider_name=provider_name,
-                api_key=batched.metadata.get("_lattice_client_api_key"),
+                api_key=get_canonical_request_value(
+                    batched, None, "_lattice_client_api_key"
+                ),
                 metadata=batched.metadata.get("request_metadata", {}),
                 extra_headers=batched.metadata.get("extra_headers"),
                 extra_body=batched.metadata.get("extra_body"),
@@ -226,7 +246,7 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
             stream=False,
             stop=req.stop,
             provider_name=provider_name,
-            api_key=req.metadata.get("_lattice_client_api_key"),
+            api_key=get_canonical_request_value(req, None, "_lattice_client_api_key"),
             metadata=req.metadata,
             extra_headers=req.extra_headers,
             extra_body=req.extra_body,

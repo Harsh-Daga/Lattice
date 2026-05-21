@@ -19,61 +19,47 @@ uv run python benchmarks/evals/cli.py --suite feature
 
 ## Architecture
 
+LATTICE is a **unified optimization + transport system** converging on one canonical v2 runtime:
+
 ```
-Application → [Proxy:8787 or SDK] → Pipeline → DirectHTTPProvider → LLM Provider
+Request → content_profiler → UnifiedPlanner → ExecutionPlan → PipelineV2 → Provider
 ```
 
-Key modules:
-- `src/lattice/core/` — Request/Response models, pipeline orchestrator, session manager, config
-- `src/lattice/providers/` — Per-provider adapters (serialization, streaming, HTTP pooling)
-- `src/lattice/transforms/` — 14+ transforms running in priority order through the pipeline
-- `src/lattice/proxy/` — FastAPI server with OpenAI-compatible endpoints
-- `src/lattice/protocol/` — Canonical segments, cache planners, binary framing
-- `src/lattice/gateway/` — HTTP compatibility layer, routing headers
+The authoritative architecture document is [`docs/architecture/runtime_v2.md`](docs/architecture/runtime_v2.md).
+
+### Key Modules
+
+| Directory | Responsibility |
+|-----------|---------------|
+| `core/` | Immutable primitives (PromptIRV2, Candidate, ExecutionPlan), PipelineV2, UnifiedPlanner, config, guardrails |
+| `transforms/` | Individual transforms — mostly IR-native via `optimize(ir, ...)`, legacy `process()` kept as compat bridge |
+| `optimizer/` | Beam-search orchestrators (representation_optimizer, reference_optimizer, structure_optimizer, etc.) |
+| `protocol/` | Prefix canonicalization, cache planners, binary framing, manifest |
+| `providers/` | Per-provider adapters (serialization, streaming, HTTP pooling) |
+| `proxy/` | FastAPI server with OpenAI-compatible endpoints |
+| `gateway/` | HTTP compatibility layer, routing headers |
 
 ## Code Conventions
 
 - **Result[T,E] monad** for error handling: `Ok(value)` or `Err(error)`
 - **ReversibleSyncTransform** base class for all transforms
-- **Serialization** via `lattice.core.serialization` as single source of truth
-- **Message** uses `content_parts: list[ContentPart]` for multimodal; `content: str` for text
+- **Immutable PromptIRV2** — transforms return new instances via `.with_sections()` / `.with_spans()` / `.with_text()`
+- **Explicit allowlists** — PipelineV2._IR_NATIVE_TRANSFORMS defines which transforms run natively
+- **Single scheduler** — UnifiedPlanner is the only scheduling decision maker
 - **mypy strict**, **ruff** for linting; run both before commits
 
 ## Adding a Transform
 
 1. Extend `ReversibleSyncTransform` with `name` and `priority`
-2. Implement `process(Request, TransformContext) → Result[Request, TransformError]`
-3. Implement `reverse(Response, TransformContext) → Response`
-4. Register in `lattice.core.pipeline_factory.build_default_pipeline()`
-5. Add to `_TRANSFORM_SAFETY_MAP` in `lattice.utils.validation`
-
-## Transform Priority Order
-
-```
- 1: content_profiler     (classifies content, computes risk score)
- 2: runtime_contract     (enforces transform budget)
- 9: cache_arbitrage      (reorders for KV-cache alignment)
-10: prefix_optimizer     (deduplicates common prefixes)
-12: structural_fingerprint (pattern detection)
-14: self_information     (entropy-based filtering)
-15: message_dedup        (exact/near-duplicate removal)
-20: reference_sub        (UUID/URL/hash substitution)
-22: rate_distortion      (semantic compression)
-25: dictionary_compress  (phrase dictionary)
-28: hierarchical_summary (nested structure summarization)
-30: tool_filter          (tool output projection)
-40: output_cleanup       (whitespace normalization)
-```
-
-## Pipeline Risk Gating
-
-Every transform runs through: config check → policy check → runtime budget → **risk gate** → expansion guardrail → execution. The risk gate reads the semantic risk score (computed by `content_profiler`, priority 1) and blocks CONDITIONAL/DANGEROUS transforms on high-risk inputs.
+2. Implement `process(Request, TransformContext) → Result[Request, TransformError]` (legacy path)
+3. Implement `optimize(PromptIRV2, Request, TransformContext) → Result[PromptIRV2, TransformError]` (v2 IR-native path)
+4. Register in `transform_registry.py` and `pipeline_v2.py._IR_NATIVE_TRANSFORMS`
 
 ## Testing
 
-- Unit tests: `tests/unit/` — 1584 tests
-- Integration tests: `tests/integration/` — proxy sessions, Redis, session correctness
-- Safety gate tests: `tests/unit/test_safety_gates.py` — risk scoring, transform buckets, task equivalence
+- Unit tests: `tests/unit/` — 1839+ tests
+- Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
+- E2E tests: `tests/e2e/` — agent wrappers, full pipeline
 - Run with `uv run pytest tests/ -q`
 
 ## Key Environment Variables
@@ -95,3 +81,11 @@ uv run python benchmarks/evals/cli.py --suite all \
 ```
 
 Suites: `all`, `feature`, `feature-matrix`, `provider`, `protocol`, `transport`, `integration`, `capability`, `replay`, `replay-governance`, `tacc`, `control`.
+
+## Latest Benchmark
+
+| Metric | Value |
+|--------|-------|
+| Tests passed | **1839/1839** |
+| ruff errors | **0** |
+| mypy errors | **0** |

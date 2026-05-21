@@ -277,7 +277,7 @@ def check_placeholder_leakage(
     if not new_placeholders:
         return SafetyDecision(action=GuardAction.ALLOW, reason="no_new_placeholders")
 
-    # Check if an ALIAS MAP or manifest is present to declare these new tokens
+    # Check if an alias manifest is present to declare these new tokens
     has_alias_manifest = bool(
         re.search(r"ALIAS\s*MAP\s*:", text_after, re.IGNORECASE)
         or re.search(r"^\s*[A-Z]\d+\s*=\s*", text_after, re.MULTILINE)

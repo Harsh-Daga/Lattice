@@ -94,11 +94,11 @@ class TestConfigConsistency:
             assert cfg.is_transform_enabled(name) is False
             assert is_transform_enabled(cfg, name) is False
 
-    def test_rate_distortion_uses_semantic_compress_flag(self) -> None:
-        cfg = LatticeConfig(transform_semantic_compress=True)
+    def test_rate_distortion_uses_transform_flag(self) -> None:
+        cfg = LatticeConfig(transform_rate_distortion=True)
         assert is_transform_enabled(cfg, "rate_distortion") is True
-        assert is_transform_enabled(cfg, "semantic_compress") is True
-        assert is_transform_enabled(cfg, "semantic_compressor") is True
+        assert is_transform_enabled(cfg, "rate_distortion") is True
+        assert is_transform_enabled(cfg, "rate_distortion_compressor") is True
 
     def test_aliases_match_canonical_enablement(self) -> None:
         cfg = LatticeConfig(transform_prefix_opt=True)
@@ -118,14 +118,18 @@ class TestPipelineConstruction:
         cfg = LatticeConfig()
         pipeline = build_default_pipeline(cfg)
         names = [t.name for t in pipeline.transforms]
-        # Core transforms that should always be present in default config
+        # Production core transforms (always present in default config)
         assert "content_profiler" in names
         assert "runtime_contract" in names
+        assert "cache_arbitrage" in names
         assert "prefix_optimizer" in names
+        assert "reference_sub" in names
+        assert "tool_filter" in names
         assert "output_cleanup" in names
-        # context_selector + information_theoretic_selector when enabled
-        assert "context_selector" in names
-        assert "information_theoretic_selector" in names
+        # Experimental / off-by-default not present
+        assert "context_selector" not in names
+        assert "information_theoretic_selector" not in names
+        assert "message_dedup" not in names
         # Execution transforms absent by default
         assert "batching" not in names
         assert "speculative" not in names
@@ -135,21 +139,28 @@ class TestPipelineConstruction:
         cfg = LatticeConfig(compression_mode="safe")
         pipeline = build_default_pipeline(cfg)
         names = [t.name for t in pipeline.transforms]
-        assert "structural_fingerprint" not in names
-        assert "self_information" not in names
-        assert "hierarchical_summary" not in names
+        assert "rate_distortion" not in names
         assert "context_selector" not in names
         assert "information_theoretic_selector" not in names
 
-    def test_aggressive_mode_includes_all_core(self) -> None:
-        cfg = LatticeConfig(compression_mode="aggressive")
-        pipeline = build_default_pipeline(cfg)
-        names = [t.name for t in pipeline.transforms]
-        assert "structural_fingerprint" in names
-        assert "self_information" in names
-        assert "hierarchical_summary" in names
-        assert "context_selector" in names
-        assert "information_theoretic_selector" in names
+    def test_aggressive_mode_includes_production_core(self) -> None:
+        """All modes use the same 7 production transforms — default_pipeline is the gate."""
+        for mode in ("safe", "balanced", "aggressive"):
+            cfg = LatticeConfig(compression_mode=mode)
+            pipeline = build_default_pipeline(cfg)
+            names = [t.name for t in pipeline.transforms]
+            assert "content_profiler" in names, mode
+            assert "runtime_contract" in names, mode
+            assert "cache_arbitrage" in names, mode
+            assert "prefix_optimizer" in names, mode
+            assert "reference_sub" in names, mode
+            assert "tool_filter" in names, mode
+            assert "output_cleanup" in names, mode
+            # Experimental / off-by-default never appear
+            assert "rate_distortion" not in names, mode
+            assert "message_dedup" not in names, mode
+            assert "context_selector" not in names, mode
+            assert "information_theoretic_selector" not in names, mode
 
     def test_execution_transforms_only_with_flag(self) -> None:
         cfg = LatticeConfig()
@@ -210,10 +221,6 @@ class TestSafetyConsistency:
         bucket = get_transform_safety_bucket("information_theoretic_selector")
         assert bucket == TransformSafetyBucket.CONDITIONAL
 
-    def test_hierarchical_summary_is_dangerous(self) -> None:
-        bucket = get_transform_safety_bucket("hierarchical_summary")
-        assert bucket == TransformSafetyBucket.DANGEROUS
-
     def test_content_profiler_is_safe(self) -> None:
         bucket = get_transform_safety_bucket("content_profiler")
         assert bucket == TransformSafetyBucket.SAFE
@@ -243,9 +250,9 @@ class TestSafetyConsistency:
         allowed, _ = transform_allowed_at_risk("information_theoretic_selector", high)
         assert allowed is False
         # DANGEROUS allowed only at LOW risk
-        allowed, _ = transform_allowed_at_risk("hierarchical_summary", low)
+        allowed, _ = transform_allowed_at_risk("unknown_transform", low)
         assert allowed is True
-        allowed, _ = transform_allowed_at_risk("hierarchical_summary", high)
+        allowed, _ = transform_allowed_at_risk("unknown_transform", high)
         assert allowed is False
 
 
@@ -276,16 +283,19 @@ class TestEndToEndConsistency:
             )
 
     def test_balanced_mode_has_context_selectors(self) -> None:
-        # balanced mode explicitly disables context_selector per apply_compression_mode
-        # but the default config has transform_context_selector=True
-        # This test documents the intended behavior: default config is not "balanced"
-        # When user explicitly sets compression_mode=balanced, context_selector=False
-        # We test the default config (no compression_mode override) instead
+        # In the new architecture, context_selector is experimental and off by default.
+        # Users must explicitly enable it AND register it manually if needed.
         cfg_default = LatticeConfig()
         pipeline = build_default_pipeline(cfg_default)
         names = [t.name for t in pipeline.transforms]
-        assert "context_selector" in names
-        assert "information_theoretic_selector" in names
+        assert "context_selector" not in names
+        assert "information_theoretic_selector" not in names
+        # default_pipeline=False means explicit enablement does NOT auto-register
+        cfg_explicit = LatticeConfig(transform_context_selector=True)
+        pipeline2 = build_default_pipeline(cfg_explicit)
+        names2 = [t.name for t in pipeline2.transforms]
+        assert "context_selector" not in names2
+        assert "information_theoretic_selector" not in names2
 
     def test_no_duplicate_transforms_in_pipeline(self) -> None:
         cfg = LatticeConfig()

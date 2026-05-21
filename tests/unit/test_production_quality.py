@@ -206,7 +206,7 @@ class TestTransformReputationRuntime:
         from lattice.core.transform_reputation import get_reputation_registry
 
         rep = get_reputation_registry()
-        for _ in range(3):
+        for _ in range(5):
             rep.record("rb_test", quality=0.0, compression=0.0, rolled_back=True)
         stats = rep.stats("rb_test")
         assert stats.rollback_rate == pytest.approx(1.0)
@@ -256,7 +256,9 @@ class TestSchedulerGating:
         from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("debugging", {})
-        assert matrix.get("tool_filter") is False
+        # tool_filter is no longer blocked — it's a reversible SAFE transform.
+        # The scheduler ranks it by value instead of blocking it outright.
+        assert "tool_filter" not in matrix
 
     def test_debugging_allows_diagnostic_helpers(self) -> None:
         from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX

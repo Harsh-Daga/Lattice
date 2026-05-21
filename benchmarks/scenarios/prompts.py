@@ -96,7 +96,7 @@ def _gen_uuid_list(count: int = 20) -> str:
         "f47ac10b-58cc-4372-a567-0e02b2c3d479",
         "6ba7b810-9dad-11d1-80b4-00c04fd430c8",  # dup
         "550e8400-e29b-41d4-a716-446655440000",  # dup
-    ]
+  ]
     # Extend with unique-ish UUIDs
     for i in range(count - len(uuids)):
         uuids.append(f"{i:08x}-1234-5678-9abc-def012345678")
@@ -110,7 +110,7 @@ def _gen_build_errors(count: int = 60) -> str:
         ("Module not found", "error"),
         ("Syntax error", "error"),
         ("Type mismatch", "warning"),
-    ]
+  ]
     for i in range(count):
         msg, severity = error_types[i % len(error_types)]
         errors.append({
@@ -127,7 +127,7 @@ def _gen_employee_table(count: int = 100) -> str:
     rows = [
         "| ID | Name | Department | Salary | Status |",
         "|----|------|------------|--------|--------|",
-    ]
+  ]
     for i in range(count):
         rows.append(f"| {i} | Emp_{i} | Engineering | ${100000+i*1000} | active |")
     return "\n".join(rows)
@@ -173,7 +173,7 @@ def _gen_multi_turn_session() -> list[dict[str, Any]]:
         {"role": "user", "content": "Can you explain generator expressions too?"},
         {"role": "assistant", "content": "Generator expressions use (x for x in iterable)..."},
         {"role": "user", "content": "When should I use each?"},
-    ]
+  ]
     return messages
 
 
@@ -210,11 +210,11 @@ def _gen_tool_call_conversation() -> list[dict[str, Any]]:
         {"role": "assistant", "content": "", "tool_calls": [
             {"id": "call_1", "type": "function", "function": {"name": "get_weather", "arguments": '{"location": "NYC"}'}},
             {"id": "call_2", "type": "function", "function": {"name": "get_weather", "arguments": '{"location": "SF"}'}},
-        ]},
+      ]},
         {"role": "tool", "content": "72°F, sunny", "tool_call_id": "call_1"},
         {"role": "tool", "content": "65°F, foggy", "tool_call_id": "call_2"},
         {"role": "user", "content": "What's the average temperature?"},
-    ]
+  ]
 
 
 def _gen_cache_prefix_session() -> list[dict[str, Any]]:
@@ -231,7 +231,7 @@ def _gen_cache_prefix_session() -> list[dict[str, Any]]:
         {"role": "system", "content": system},
         {"role": "assistant", "content": f"Project context:\n{docs}", "metadata": {"is_static_doc": True}},
         {"role": "user", "content": "Given the repeated context, what should the next delta contain?"},
-    ]
+  ]
 
 
 def _gen_dictionary_repetition() -> list[dict[str, Any]]:
@@ -241,7 +241,7 @@ def _gen_dictionary_repetition() -> list[dict[str, Any]]:
     return [
         {"role": "system", "content": "Compress repeated language losslessly."},
         {"role": "user", "content": repeated * 4},
-    ]
+  ]
 
 
 def _gen_context_budget_prompt() -> list[dict[str, Any]]:
@@ -256,7 +256,7 @@ def _gen_context_budget_prompt() -> list[dict[str, Any]]:
         {"role": "system", "content": "Choose only the most relevant documents."},
         {"role": "assistant", "content": "\n".join(docs), "metadata": {"is_static_doc": True}},
         {"role": "user", "content": "Which documents mention the error path and request ids?"},
-    ]
+  ]
 
 
 def _gen_runtime_pressure_prompt() -> list[dict[str, Any]]:
@@ -276,7 +276,7 @@ def _gen_runtime_pressure_prompt() -> list[dict[str, Any]]:
         {"role": "assistant", "content": _gen_code_review_context()},
         {"role": "assistant", "content": reasoning_chain * 12},
         {"role": "user", "content": reasoning_chain * 8},
-    ]
+  ]
 
 
 def _gen_grammar_json_table_prompt() -> list[dict[str, Any]]:
@@ -287,7 +287,7 @@ def _gen_grammar_json_table_prompt() -> list[dict[str, Any]]:
             f"JSON:\n{json.dumps({'services': [{'name': f'svc_{i}', 'status': 'ok', 'latency_ms': 120 + i} for i in range(20)]}, indent=2)}\n\n"
             f"Table:\n{_gen_employee_table(24)}"
         )},
-    ]
+  ]
 
 
 def _gen_cleanup_noise_prompt() -> list[dict[str, Any]]:
@@ -296,7 +296,7 @@ def _gen_cleanup_noise_prompt() -> list[dict[str, Any]]:
         {"role": "system", "content": "Clean up the response without changing meaning."},
         {"role": "user", "content": "  Please   summarize this.  \n\n\nKeep the meaning.   Remove   extra   spaces.   "},
         {"role": "assistant", "content": "Sure.   I will    clean it up.  "},
-    ]
+  ]
 
 
 def _gen_message_dedup_prompt() -> list[dict[str, Any]]:
@@ -308,10 +308,10 @@ def _gen_message_dedup_prompt() -> list[dict[str, Any]]:
         {"role": "user", "content": "Summarize the incident report."},
         {"role": "assistant", "content": "The incident report shows a retry loop."},
         {"role": "user", "content": "Now explain the root cause once."},
-    ]
+  ]
 
 
-def _gen_semantic_compress_prompt() -> list[dict[str, Any]]:
+def _gen_rate_distortion_prompt() -> list[dict[str, Any]]:
     """Generate a long-form narrative that should compress semantically."""
     narrative = (
         "The platform experienced a cascading slowdown after a cache invalidation storm, "
@@ -324,7 +324,7 @@ def _gen_semantic_compress_prompt() -> list[dict[str, Any]]:
     return [
         {"role": "system", "content": "Summarize the incident clearly and keep the root cause."},
         {"role": "user", "content": narrative * 6},
-    ]
+  ]
 
 
 # =============================================================================
@@ -343,7 +343,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         messages=[
             {"role": "system", "content": "Debug transaction failures."},
             {"role": "user", "content": f"Transactions failed:\n{_gen_uuid_list(30)}\n\nWhy did the duplicate UUIDs fail?"},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
@@ -358,7 +358,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
             {"role": "system", "content": "Summarize build errors."},
             {"role": "user", "content": "Why did the build fail?"},
             {"role": "tool", "content": _gen_build_errors(60)},
-        ],
+      ],
         tools=[{"type": "function", "function": {"name": "get_build_errors", "description": "Get build errors"}}],
     ),
 
@@ -373,7 +373,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         messages=[
             {"role": "system", "content": "Analyze employee data and summarize salary trends."},
             {"role": "user", "content": f"Here is the employee data:\n{_gen_employee_table(100)}\n\nWhat are the trends?"},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
@@ -389,30 +389,30 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
 
     BenchmarkScenario(
         name="code_review_patterns",
-        category="structural_fingerprint",
+        category="reference_sub",
         description="Detect repeated code review comment patterns",
         complexity="complex",
         expected_tier="MEDIUM",
-        target_features=["structural_fingerprint", "reference_sub"],
+        target_features=["reference_sub"],
         proof="Repeated code review structure should be compressed while preserving code blocks.",
         messages=[
             {"role": "system", "content": "Review the following code changes."},
             {"role": "user", "content": f"Please review:\n{_gen_code_review_context()}\n\nSummarize the common issues."},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
         name="api_docs_summarization",
-        category="dictionary_compress",
+        category="reference_optimizer",
         description="Remove low-information boilerplate from API docs",
         complexity="medium",
         expected_tier="MEDIUM",
-        target_features=["dictionary_compress"],
+        target_features=["rate_distortion"],
         proof="Boilerplate docs should collapse through lossless phrase compression.",
         messages=[
             {"role": "system", "content": "Summarize API endpoints."},
             {"role": "user", "content": f"Document these endpoints concisely:\n{_gen_api_docs_summary()}"},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
@@ -427,7 +427,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         tools=[
             {"type": "function", "function": {"name": "get_weather", "description": "Get weather", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}}}},
             {"type": "function", "function": {"name": "calculate", "description": "Calculate", "parameters": {"type": "object", "properties": {"expression": {"type": "string"}}}}},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
@@ -436,12 +436,12 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         description="Preserve JSON structure while compressing",
         complexity="medium",
         expected_tier="MEDIUM",
-        target_features=["format_conversion", "grammar_compress"],
+        target_features=["format_conversion"],
         proof="JSON outputs should remain valid after transport optimizations.",
         messages=[
             {"role": "system", "content": "Return JSON with analysis results."},
             {"role": "user", "content": f"Analyze this data:\n{json.dumps({'users': [{'id': i, 'name': f'User_{i}', 'score': i * 10} for i in range(50)]})}\n\nReturn top 5 users as JSON."},
-        ],
+      ],
         expect_json=True,
         json_schema={"required": ["users"]},
     ),
@@ -459,22 +459,22 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
 
     BenchmarkScenario(
         name="dictionary_repetition",
-        category="dictionary_compress",
+        category="reference_optimizer",
         description="Repeated phrases should trigger dictionary compression",
         complexity="medium",
         expected_tier="SIMPLE",
-        target_features=["dictionary_compress"],
+        target_features=["rate_distortion"],
         proof="Repeated phrases should compress to a learned dictionary reference.",
         messages=_gen_dictionary_repetition(),
     ),
 
     BenchmarkScenario(
         name="cleanup_noise",
-        category="output_cleanup",
+        category="normalization",
         description="Whitespace and punctuation noise should be cleaned",
         complexity="simple",
         expected_tier="SIMPLE",
-        target_features=["output_cleanup"],
+        target_features=["format_conversion"],
         proof="Whitespace cleanup should normalize the prompt without semantic loss.",
         messages=_gen_cleanup_noise_prompt(),
     ),
@@ -491,14 +491,14 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
     ),
 
     BenchmarkScenario(
-        name="semantic_compress_longform",
-        category="semantic_compress",
+        name="rate_distortion_longform",
+        category="rate_distortion",
         description="Long narrative should compress while keeping the core incident",
         complexity="complex",
         expected_tier="MEDIUM",
         target_features=["rate_distortion"],
         proof="Narrative summaries should preserve the cause, impact, and mitigation.",
-        messages=_gen_semantic_compress_prompt(),
+        messages=_gen_rate_distortion_prompt(),
     ),
 
     BenchmarkScenario(
@@ -526,16 +526,16 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
             {"type": "function", "function": {"name": "get_policy", "description": "Get policy"}},
             {"type": "function", "function": {"name": "get_budget", "description": "Get budget"}},
             {"type": "function", "function": {"name": "get_mitigation", "description": "Get mitigation"}},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
         name="grammar_json_table",
-        category="grammar_compress",
+        category="structure_optimizer",
         description="Structured JSON and table rows should trigger grammar compression",
         complexity="complex",
         expected_tier="MEDIUM",
-        target_features=["grammar_compress"],
+        target_features=["format_conversion"],
         proof="Structured data should shrink without breaking syntax or tabular semantics.",
         messages=_gen_grammar_json_table_prompt(),
     ),
@@ -550,7 +550,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         proof="Simple requests should avoid unnecessary optimization work.",
         messages=[
             {"role": "user", "content": "Hello, how are you?"},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
@@ -568,7 +568,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
                 f"```json\n{json.dumps({'trace': [{'id': i, 'fn': f'foo_{i}', '_internal': {'ts': 1700000000 + i}} for i in range(30)], 'message': 'Null pointer'})}\n```\n"
                 f"Investigate."
             )},
-        ],
+      ],
     ),
 
     # ---- Stress-test scenarios for SIG/RATS/PSG/MILV architecture ----
@@ -581,17 +581,17 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         expected_tier="REASONING",
         target_features=["runtime_contract"],
         proof="Debugging tasks must never get lossy transforms. Repeated error lines are diagnostic.",
-        safe_transforms=["content_profiler", "runtime_contract", "output_cleanup", "tool_filter"],
+        safe_transforms=["content_profiler", "runtime_contract", "tool_filter"],
         risky_transforms=[],
         forbidden_transforms=[
-            "reference_sub", "semantic_compress", "structural_fingerprint",
-            "hierarchical_summary", "dictionary_compress", "grammar_compress",
+            "reference_sub", "rate_distortion",
+            "hierarchical_summary",
             "message_dedup", "rate_distortion",
-        ],
+      ],
         required_answer_properties=[
             "identifies failure modes", "preserves error counts",
             "mentions root cause", "lists mitigation steps",
-        ],
+      ],
         judge_rubric="Must identify failure modes from logs. Error counts must be preserved. Root cause and mitigation must be explicit.",
         messages=[
             {"role": "system", "content": "You are debugging a production outage."},
@@ -602,7 +602,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
                     for i, ts in enumerate(range(100))
                 )
             )},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
@@ -613,17 +613,17 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         expected_tier="REASONING",
         target_features=["runtime_contract"],
         proof="Reasoning prompts must block all lossy transforms. Placeholders break deduction.",
-        safe_transforms=["content_profiler", "runtime_contract", "output_cleanup"],
+        safe_transforms=["content_profiler", "runtime_contract"],
         risky_transforms=[],
         forbidden_transforms=[
-            "reference_sub", "semantic_compress", "structural_fingerprint",
-            "hierarchical_summary", "dictionary_compress", "grammar_compress",
+            "reference_sub", "rate_distortion",
+            "hierarchical_summary",
             "message_dedup", "rate_distortion", "format_conversion",
-        ],
+      ],
         required_answer_properties=[
             "explains why each step follows", "deduces the root cause",
             "states assumptions", "gives a conclusion",
-        ],
+      ],
         judge_rubric="Must reason step by step. Deduction chain must be intact. Conclusions must follow from premises. Counts and comparisons must be preserved.",
         messages=[
             {"role": "system", "content": "You are reasoning about a complex system failure."},
@@ -634,7 +634,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
                 "Explain why the crash happened, what the root cause was, "
                 "and why the service restarts at 14:28 were insufficient."
             )},
-        ],
+      ],
     ),
 
     BenchmarkScenario(
@@ -645,14 +645,14 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
         expected_tier="MEDIUM",
         target_features=["reference_sub"],
         proof="UUID compression is safe when referent mapping is preserved. Must not break investigative reasoning.",
-        safe_transforms=["reference_sub", "output_cleanup", "prefix_optimizer"],
-        risky_transforms=["dictionary_compress"],
-        forbidden_transforms=["semantic_compress", "structural_fingerprint", "rate_distortion"],
+        safe_transforms=["reference_sub", "prefix_optimizer"],
+        risky_transforms=["rate_distortion"],
+        forbidden_transforms=["rate_distortion"],
         required_answer_properties=[
             "correctly identifies duplicate UUIDs",
             "explains which transaction failed",
             "preserves UUID context",
-        ],
+      ],
         judge_rubric="UUIDs may be compressed to references but must remain identifiable. The investigative chain must be intact. Must identify which UUID caused the failure.",
         messages=[
             {"role": "system", "content": "Investigate transaction failures."},
@@ -664,7 +664,7 @@ ALL_SCENARIOS: list[BenchmarkScenario] = [
                 )
                 + "\n\nWhich transactions failed and what pattern do you see?"
             )},
-        ],
+      ],
     ),
 ]
 
@@ -687,128 +687,128 @@ def list_scenario_names() -> list[str]:
 
 _SCENARIO_SAFETY: dict[str, dict[str, Any]] = {
     "uuid_deduplication": {
-        "safe_transforms": ["reference_sub", "prefix_optimizer", "output_cleanup"],
+        "safe_transforms": ["reference_sub", "prefix_optimizer"],
         "risky_transforms": [],
-        "forbidden_transforms": ["semantic_compress", "dictionary_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["explains duplicate UUID failure", "preserves error context"],
         "judge_rubric": "Answer must explain the duplicate UUID failure. UUID references may be compressed but must remain identifiable.",
     },
     "tool_output_filtering": {
         "safe_transforms": ["tool_filter", "format_conversion"],
         "risky_transforms": ["reference_sub"],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["correct error counts", "removes _internal fields", "preserves severity labels"],
         "judge_rubric": "Answer must correctly count errors (Module not found 20x, Syntax error 20x, Type mismatch 20x). Internal fields stripped.",
     },
     "table_compression": {
         "safe_transforms": ["format_conversion", "prefix_optimizer"],
         "risky_transforms": ["reference_sub"],
-        "forbidden_transforms": ["semantic_compress", "dictionary_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["salary trend analysis", "department homogeneity", "salary range correct"],
         "judge_rubric": "Answer must identify linear salary trend ($1k increments), Engineering-only department, and salary range.",
     },
     "prefix_optimization": {
         "safe_transforms": ["prefix_optimizer"],
         "risky_transforms": ["reference_sub"],
-        "forbidden_transforms": ["semantic_compress"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["explains comprehension types correctly"],
         "judge_rubric": "Answer must correctly explain list/dict/set comprehensions. No meaning drift from compressed prompts allowed.",
     },
     "code_review_patterns": {
-        "safe_transforms": ["reference_sub", "output_cleanup", "prefix_optimizer"],
-        "risky_transforms": ["structural_fingerprint", "dictionary_compress"],
-        "forbidden_transforms": ["semantic_compress"],
+        "safe_transforms": ["reference_sub", "prefix_optimizer"],
+        "risky_transforms": [],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["identifies repeated patterns", "code blocks preserved"],
         "judge_rubric": "Answer must identify repeated code review patterns. Code blocks must remain intact. No placeholder substitution in code.",
     },
     "api_docs_summarization": {
-        "safe_transforms": ["reference_sub", "output_cleanup"],
-        "risky_transforms": ["dictionary_compress", "grammar_compress"],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "safe_transforms": ["reference_sub"],
+        "risky_transforms": [ ],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["endpoint count correct", "parameter structure preserved"],
         "judge_rubric": "Boilerplate may be collapsed but endpoint names, parameters, and response structure must remain identifiable.",
     },
     "tool_call_preservation": {
         "safe_transforms": [],
         "risky_transforms": [],
-        "forbidden_transforms": ["reference_sub", "semantic_compress", "dictionary_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["reference_sub", "rate_distortion"],
         "required_answer_properties": ["tool calls preserved", "call IDs intact", "weather data correct"],
         "judge_rubric": "Tool calls must survive compression roundtrip. Call IDs and arguments must be preserved exactly.",
     },
     "json_response_format": {
-        "safe_transforms": ["format_conversion", "output_cleanup"],
+        "safe_transforms": ["format_conversion"],
         "risky_transforms": ["reference_sub"],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["valid JSON", "top 5 users identified", "scores preserved"],
         "judge_rubric": "Output must be valid JSON with correct top 5 users. Scores must match original values.",
     },
     "cache_arbitrage_prefix": {
         "safe_transforms": ["cache_arbitrage", "prefix_optimizer"],
         "risky_transforms": [],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["stable prefix identified", "preserves context"],
         "judge_rubric": "Stable prefix segments must be correctly identified. Cache-able content should be marked.",
     },
     "dictionary_repetition": {
-        "safe_transforms": ["reference_sub", "output_cleanup"],
-        "risky_transforms": ["dictionary_compress"],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "safe_transforms": ["reference_sub"],
+        "risky_transforms": ["rate_distortion"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["repeated phrase compressed", "semantic meaning preserved"],
         "judge_rubric": "Repeated phrases may be compressed. The core message must remain the same.",
     },
     "cleanup_noise": {
-        "safe_transforms": ["output_cleanup", "prefix_optimizer"],
+        "safe_transforms": ["prefix_optimizer"],
         "risky_transforms": [],
-        "forbidden_transforms": ["semantic_compress", "reference_sub", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion", "reference_sub"],
         "required_answer_properties": ["meaning unchanged", "whitespace normalized"],
         "judge_rubric": "Whitespace should be normalized but semantics must not change. The message must mean the same thing.",
     },
     "message_dedup_turns": {
-        "safe_transforms": ["message_dedup", "output_cleanup"],
+        "safe_transforms": ["message_dedup"],
         "risky_transforms": ["reference_sub"],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["duplicate turns removed", "last message preserved", "root cause explanation intact"],
         "judge_rubric": "Duplicate turns should be removed. The final unique turn (root cause) must be preserved.",
     },
-    "semantic_compress_longform": {
-        "safe_transforms": ["prefix_optimizer", "output_cleanup"],
-        "risky_transforms": ["semantic_compress", "rate_distortion"],
-        "forbidden_transforms": ["structural_fingerprint"],
+    "rate_distortion_longform": {
+        "safe_transforms": ["prefix_optimizer"],
+        "risky_transforms": ["rate_distortion", "rate_distortion"],
+        "forbidden_transforms": [],
         "required_answer_properties": ["root cause preserved", "impact preserved", "mitigation plan preserved"],
         "judge_rubric": "Narrative may be compressed but must preserve: root cause, user-visible impact, and mitigation plan. Incidental repetition may be trimmed.",
     },
     "context_budget_pressure": {
         "safe_transforms": ["context_selector", "strategy_selector", "prefix_optimizer"],
         "risky_transforms": ["reference_sub"],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["most relevant documents selected", "error path documents prioritized"],
         "judge_rubric": "Must select documents about error path and request IDs. Full retention of all 18 documents is a failure.",
     },
     "runtime_contract_pressure": {
         "safe_transforms": ["runtime_contract", "reference_sub"],
-        "risky_transforms": ["semantic_compress"],
-        "forbidden_transforms": ["structural_fingerprint", "dictionary_compress"],
+        "risky_transforms": ["rate_distortion"],
+        "forbidden_transforms": [],
         "required_answer_properties": ["failure modes identified", "mitigation steps listed", "triage ranked"],
         "judge_rubric": "High-complexity reasoning request. Must preserve reasoning chain, failure modes, mitigation, and triage ranking.",
     },
     "grammar_json_table": {
-        "safe_transforms": ["format_conversion", "output_cleanup"],
-        "risky_transforms": ["grammar_compress", "reference_sub"],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "safe_transforms": ["format_conversion"],
+        "risky_transforms": [ "reference_sub"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["JSON keys preserved", "table structure preserved", "values accurate"],
         "judge_rubric": "Structured data may be compressed but JSON keys and table structure must remain. No placeholder substitution in JSON values.",
     },
     "simple_baseline": {
-        "safe_transforms": ["output_cleanup"],
+        "safe_transforms": [],
         "risky_transforms": [],
-        "forbidden_transforms": ["reference_sub", "semantic_compress", "dictionary_compress", "structural_fingerprint", "message_dedup"],
+        "forbidden_transforms": ["reference_sub", "rate_distortion", "message_dedup"],
         "required_answer_properties": ["response is conversational"],
         "judge_rubric": "Simple greeting. No compression should be applied beyond basic cleanup. Output must be conversational.",
     },
     "mixed_realworld": {
         "safe_transforms": ["reference_sub", "format_conversion", "tool_filter"],
         "risky_transforms": [],
-        "forbidden_transforms": ["semantic_compress", "structural_fingerprint"],
+        "forbidden_transforms": ["rate_distortion"],
         "required_answer_properties": ["debugging logic correct", "Null pointer identified", "JSON structure preserved"],
         "judge_rubric": "Mixed real-world prompt. Must preserve debugging logic, identify Null pointer issue, and reference the correct transaction UUID.",
     },

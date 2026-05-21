@@ -158,37 +158,37 @@ class LatticeConfig(BaseSettings):
         description="Compression mode: 'safe', 'balanced', or 'aggressive'. "
         "Maps to transform enablement flags internally.",
     )
-    transform_reference_sub: bool = True
-    transform_tool_filter: bool = True
-    transform_prefix_opt: bool = True
-    transform_output_cleanup: bool = True
-    transform_format_conversion: bool = True
-    transform_message_dedup: bool = True
-    transform_semantic_compress: bool = True
+    # ── Production core ──
     transform_content_profiler: bool = True
     transform_runtime_contract: bool = True
-    transform_structural_fingerprint: bool = True
-    transform_self_information: bool = True
-    transform_hierarchical_summary: bool = True
-    transform_strategy_selector: bool = True
-    transform_context_selector: bool = True
     transform_cache_arbitrage: bool = True
-    transform_dictionary_compress: bool = True
-    transform_grammar_compress: bool = True
-    transform_alias_manifest: bool = True
+    transform_prefix_opt: bool = True
+    transform_reference_sub: bool = True
+    transform_tool_filter: bool = True
+    transform_output_cleanup: bool = True
+    # ── Useful extras ──
+    transform_constraint_lifting: bool = True
+    transform_causal_chain: bool = True
+    transform_message_dedup: bool = True
+    transform_context_selector: bool = True
+    transform_strategy_selector: bool = True
+    transform_format_conversion: bool = True
     transform_diagnostic_rle: bool = True
-    transform_arithmetic_sequence: bool = True
     transform_columnar_pack: bool = True
     transform_json_shape: bool = True
     transform_path_prefix: bool = True
-    transform_stack_interning: bool = True
     transform_extractive_compress: bool = True
-    transform_code_factoring: bool = True
     transform_tool_projection: bool = True
-    transform_stable_prefix: bool = True
-    transform_instruction_context_sep: bool = True
-    transform_constraint_lifting: bool = True
-    transform_causal_chain: bool = True
+    transform_rate_distortion: bool = True
+    # ── Optimizer flags (Phase 3 architecture)
+    transform_representation_optimizer: bool = True
+    transform_structure_optimizer: bool = True
+    transform_reference_optimizer: bool = True
+    transform_tool_optimizer: bool = True
+    transform_context_optimizer: bool = True
+    transform_diagnostic_optimizer: bool = True
+    # ── V2 pipeline wrapper (Phase 5 architecture)
+    transform_pipeline_v2: bool = True
     rate_distortion_budget: float = Field(
         default=0.02,
         ge=0.0,
@@ -204,6 +204,19 @@ class LatticeConfig(BaseSettings):
     strategy_selection_mode: str = Field(
         default="bandit",
         description="Strategy selection mode: 'bandit' (LinUCB) or 'fixed'.",
+    )
+
+    # Optimizer architecture (Phase 3)
+    use_optimizer_pipeline: bool = Field(
+        default=False,
+        description="Enable the new optimizer-based pipeline (representation_optimizer, structure_optimizer, etc.) instead of individual transforms.",
+    )
+    # V2 refoundation opt-in (Phase 5)
+    use_v2_pipeline: bool = Field(
+        default=True,
+        description="Enable the V2 immutable pipeline (UnifiedPlanner + PipelineV2 + flat optimizer hierarchy). "
+        "When True, content_profiler uses UnifiedPlanner, pipeline uses PipelineV2 verbatim execution, "
+        "and optimizer hierarchy is flattened. Defaults to True so the canonical runtime path is production default.",
     )
 
     # ------------------------------------------------------------------
@@ -378,97 +391,35 @@ class LatticeConfig(BaseSettings):
     def apply_compression_mode(self) -> None:
         """Map compression_mode to transform enablement flags.
 
-        safe      — SAFE core + lossless structural (no placeholders, no lossy)
-        balanced  — safe + CONDITIONAL transforms (scheduler blocks per task)
-        aggressive — balanced + RISKY transforms (heavily gated by scheduler)
-
-        SAFE: 17 transforms — observability-only, cache-only, lossless-safe, lossless-contextual
-        CONDITIONAL: 7 transforms — reversible but placeholder-using, structural, format
-        RISKY: 7 transforms — semantic lossy, structural risky, old tool filter
+        Production pipeline has 7 core transforms. Everything else is
+        opt-in via direct config flags (not mode-based).
         """
         mode = self.compression_mode
 
-        # =====================================================================
-        # SAFE: enabled in ALL modes (17 transforms)
-        # =====================================================================
-        # OBSERVABILITY_ONLY — never mutate content
+        # ── Production core (always enabled) ──
         self.transform_content_profiler = True
         self.transform_runtime_contract = True
-        self.transform_constraint_lifting = True
-        self.transform_instruction_context_sep = True
-        self.transform_strategy_selector = True
-
-        # CACHE_ONLY — no prompt mutation
-        self.transform_stable_prefix = True
-        self.transform_cache_arbitrage = True
-
-        # LOSSLESS_SAFE — structural cleanup
         self.transform_prefix_opt = True
+        self.transform_cache_arbitrage = True
+        self.transform_reference_sub = True
+        self.transform_tool_filter = True
         self.transform_output_cleanup = True
-        self.transform_arithmetic_sequence = True
-        self.transform_columnar_pack = True
-        self.transform_json_shape = True
-        self.transform_path_prefix = True
-        self.transform_stack_interning = True
-        self.transform_extractive_compress = True
-        self.transform_causal_chain = True
 
-        # LOSSLESS_CONTEXTUAL — reversible with manifest
-        self.transform_alias_manifest = True
-        self.transform_tool_projection = True
-
-        # =====================================================================
-        # CONDITIONAL: disabled in safe, enabled in balanced+ (7 transforms)
-        # =====================================================================
-        self.transform_reference_sub = False
-        self.transform_diagnostic_rle = False
-        self.transform_format_conversion = False
-        self.transform_message_dedup = False
-        self.transform_dictionary_compress = False
-        self.transform_grammar_compress = False
-        self.transform_code_factoring = False
-
-        # =====================================================================
-        # RISKY: disabled in safe+balanced, enabled in aggressive (7 transforms)
-        # =====================================================================
-        self.transform_structural_fingerprint = False
-        self.transform_semantic_compress = False
-        self.transform_hierarchical_summary = False
-        self.transform_context_selector = False
-        self.transform_self_information = False
-        self.transform_tool_filter = False
-        self.rate_distortion_budget = 0.0
-
-        # ------------------------------------------------------------------
-        # Mode overrides
-        # ------------------------------------------------------------------
-        if mode == "safe":
-            pass  # RISKY + CONDITIONAL all stay False, budget stays 0.0
-        elif mode == "balanced":
-            self.transform_reference_sub = True
-            self.transform_diagnostic_rle = True
-            self.transform_format_conversion = True
-            self.transform_message_dedup = True
-            self.transform_dictionary_compress = True
-            self.transform_grammar_compress = True
-            self.transform_code_factoring = True
-            self.rate_distortion_budget = 0.02
-        elif mode == "aggressive":
-            self.transform_reference_sub = True
-            self.transform_diagnostic_rle = True
-            self.transform_format_conversion = True
-            self.transform_message_dedup = True
-            self.transform_dictionary_compress = True
-            self.transform_grammar_compress = True
-            self.transform_code_factoring = True
-            self.rate_distortion_budget = 0.02
-            self.transform_structural_fingerprint = True
-            self.transform_semantic_compress = True
-            self.transform_hierarchical_summary = True
-            self.transform_context_selector = True
-            self.transform_self_information = True
-            self.transform_tool_filter = True
-            self.rate_distortion_budget = 0.05
+        # ── Conditional: extra transforms via mode ──
+        # balanced + aggressive: enable additional useful transforms
+        self.transform_constraint_lifting = mode in ("balanced", "aggressive")
+        self.transform_causal_chain = mode in ("balanced", "aggressive")
+        self.transform_message_dedup = mode == "aggressive"
+        self.transform_context_selector = mode == "aggressive"
+        self.transform_rate_distortion = mode == "aggressive"
+        self.transform_format_conversion = mode == "aggressive"
+        self.transform_diagnostic_rle = mode == "aggressive"
+        self.transform_columnar_pack = mode == "aggressive"
+        self.transform_json_shape = mode == "aggressive"
+        self.transform_path_prefix = mode == "aggressive"
+        self.transform_extractive_compress = mode == "aggressive"
+        self.transform_tool_projection = mode == "aggressive"
+        self.rate_distortion_budget = 0.05 if mode == "aggressive" else 0.02
 
     def proxy_url(self) -> str:
         """Return the LATTICE proxy base URL (OpenAI-compatible endpoint)."""
@@ -481,7 +432,12 @@ class LatticeConfig(BaseSettings):
         so that config, pipeline, and safety metadata all share one registry.
         """
         # Hard-deleted transforms from Phase 0 cleanup — never enable
-        if name in ("stream_optimizer", "optimal_stopping", "fountain_codes", "convex_selector"):
+        if name in (
+            "stream_optimizer",
+            "optimal_stopping",
+            "fountain_codes",
+            "convex_selector",
+        ):
             return False
         return _registry_is_enabled(self, name)
 

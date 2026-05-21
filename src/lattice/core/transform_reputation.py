@@ -64,7 +64,10 @@ class TransformReputation:
             rb_rate = sum(1 for r in self._rollbacks if r) / n
 
             risk = "LOW"
-            if rb_rate > 0.25:
+            # Require at least 5 samples before declaring HIGH risk.
+            # Transforms with 1-2 rollback samples would get rollback_rate=1.00
+            # and be permanently blocked, which is wrong for startup.
+            if n >= 5 and rb_rate > 0.25:
                 risk = "HIGH"
             elif rb_rate > 0.10 or q_avg < 0.85:
                 risk = "MEDIUM"

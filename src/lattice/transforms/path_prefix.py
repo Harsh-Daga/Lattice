@@ -20,6 +20,7 @@ from collections import Counter
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
 
@@ -27,6 +28,43 @@ from lattice.core.transport import Message, Request, Response
 class PathPrefixCompressor(ReversibleSyncTransform):
     name = "path_prefix"
     priority = 23
+
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: compress repeated path prefixes in span text."""
+        total_saved = 0
+        new_sections = []
+        prefix_map: dict[str, str] = {}
+        for sec in ir.sections:
+            new_spans = []
+            for span in sec.spans:
+                compressed, prefix, saved = _compress_paths(span.text)
+                if prefix and compressed != span.text:
+                    prefix_map[prefix] = compressed
+                    new_spans.append(span.with_text(compressed))
+                    total_saved += saved
+                else:
+                    new_spans.append(span)
+            new_sections.append(sec.with_spans(tuple(new_spans)))
+
+        if prefix_map:
+            state = context.get_transform_state(self.name)
+            state["prefix_map"] = prefix_map
+            context.record_metric(self.name, "chars_saved", total_saved)
+
+        return Ok(ir.with_sections(tuple(new_sections)))
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
 
     def process(
         self, request: Request, context: TransformContext
@@ -40,20 +78,14 @@ class PathPrefixCompressor(ReversibleSyncTransform):
             if prefix:
                 state = context.get_transform_state(self.name)
                 state["prefix"] = prefix
-            new_messages.append(Message(role=msg.role, content=compressed))
+            new_msg = msg.copy()
+            new_msg.content = compressed
+            new_messages.append(new_msg)
 
         context.record_metric(self.name, "chars_saved", saved)
-        return Ok(
-            Request(
-                model=request.model,
-                messages=new_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                tools=request.tools,
-                tool_choice=request.tool_choice,
-                metadata=request.metadata,
-            )
-        )
+        new_req = request.copy()
+        new_req.messages = new_messages
+        return Ok(new_req)
 
     def reverse(self, response: Response, context: TransformContext) -> Response:
         state = context.get_transform_state(self.name)

@@ -20,12 +20,14 @@ from __future__ import annotations
 
 import itertools
 import re
+from typing import Any
 
 from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 from lattice.utils.patterns import (
@@ -187,6 +189,146 @@ class ReferenceSubstitution(ReversibleSyncTransform):
     def _next_alias(self) -> str:
         """Generate a unique alias."""
         return self.alias_format.format(alias=f"ref_{next(self._counter)}")
+
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def _extract_refs_from_text(self, text: str) -> tuple[str, dict[str, str], dict[str, str]]:
+        """Scan text for identifiers and return (modified_text, ref_map, reverse_map)."""
+        ref_map: dict[str, str] = {}
+        reverse_map: dict[str, str] = {}
+
+        # Extract code blocks if configured
+        code_blocks: list[tuple[int, int, str]] = []
+        work_text = text
+        if self.preserve_in_code_blocks:
+            work_text, code_blocks = _extract_code_blocks(text)
+
+        # Regex-based substitution (UUIDs, hex, URLs, identifiers)
+        matches: dict[str, str] = {}
+        for m in UUID_PATTERN.finditer(work_text):
+            original = m.group(0)
+            if original not in matches:
+                alias = self._get_or_create_alias(original, ref_map, reverse_map)
+                matches[original] = alias
+
+        for m in HEX_PATTERN.finditer(work_text):
+            original = m.group(0)
+            if original not in matches and len(original) >= self.min_match_length:
+                alias = self._get_or_create_alias(original, ref_map, reverse_map)
+                matches[original] = alias
+
+        for m in URL_PATTERN.finditer(work_text):
+            original = m.group(0)
+            if original not in matches and len(original) >= 20:
+                alias = self._get_or_create_alias(original, ref_map, reverse_map)
+                matches[original] = alias
+
+        for m in LONG_IDENTIFIER_PATTERN.finditer(work_text):
+            original = m.group(0)
+            if original not in matches and len(original) >= self.min_match_length:
+                alias = self._get_or_create_alias(original, ref_map, reverse_map)
+                matches[original] = alias
+
+        for original in sorted(matches, key=len, reverse=True):
+            work_text = work_text.replace(original, matches[original])
+
+        if code_blocks:
+            work_text = _restore_code_blocks(work_text, code_blocks)
+
+        return work_text, ref_map, reverse_map
+
+    def _merge_ref_maps(
+        self,
+        base_ref_map: dict[str, str],
+        base_reverse_map: dict[str, str],
+        new_ref_map: dict[str, str],
+        new_reverse_map: dict[str, str],
+    ) -> tuple[dict[str, str], dict[str, str]]:
+        """Merge new aliases into base maps without collision."""
+        merged_ref = dict(base_ref_map)
+        merged_rev = dict(base_reverse_map)
+        for orig, alias in new_ref_map.items():
+            if orig not in merged_ref:
+                if alias in merged_rev:
+                    alias = self._next_alias()
+                merged_ref[orig] = alias
+                merged_rev[alias] = orig
+        return merged_ref, merged_rev
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: replace long identifiers in span text, return new PromptIRV2."""
+        from lattice.core.primitives import PromptIRV2, SectionV2
+
+        # Load existing maps from IR metadata first, then context
+        meta = dict(ir.metadata)
+        existing_ref_map = meta.get("_reference_sub_ref_map", {})
+        existing_reverse_map = meta.get("_reference_sub_reverse_map", {})
+        if isinstance(existing_ref_map, frozenset):
+            existing_ref_map = {k: v for k, v in existing_ref_map}
+        if isinstance(existing_reverse_map, frozenset):
+            existing_reverse_map = {k: v for k, v in existing_reverse_map}
+
+        state = context.get_transform_state(self.name)
+        if not existing_ref_map:
+            existing_ref_map = state.get("ref_map", {})
+        if not existing_reverse_map:
+            existing_reverse_map = state.get("reverse_map", {})
+
+        global_ref_map = dict(existing_ref_map)
+        global_reverse_map = dict(existing_reverse_map)
+
+        modified_spans = 0
+        tokens_saved = 0
+
+        new_sections: list[SectionV2] = []
+        for sec in ir.sections:
+            new_spans: list[Any] = []
+            for span in sec.spans:
+                if span.protected or not span.compressible:
+                    new_spans.append(span)
+                    continue
+
+                modified_text, local_ref_map, local_reverse_map = self._extract_refs_from_text(
+                    span.text
+                )
+                if modified_text != span.text:
+                    global_ref_map, global_reverse_map = self._merge_ref_maps(
+                        global_ref_map, global_reverse_map, local_ref_map, local_reverse_map
+                    )
+                    new_spans.append(span.with_text(modified_text))
+                    modified_spans += 1
+                    tokens_saved += len(span.text) - len(modified_text)
+                else:
+                    new_spans.append(span)
+            new_sections.append(sec.with_spans(tuple(new_spans)))
+
+        # Persist maps to context (for reverse() compatibility)
+        state["ref_map"] = global_ref_map
+        state["reverse_map"] = global_reverse_map
+        state["modified_count"] = modified_spans
+        context.record_metric(self.name, "tokens_saved_estimate", tokens_saved // 4)
+        context.record_metric(self.name, "modified_count", modified_spans)
+        context.record_metric(self.name, "unique_refs", len(global_ref_map))
+
+        new_ir = PromptIRV2(
+            sections=tuple(new_sections),
+            metadata=ir.metadata,
+        ).add_metadata(
+            _reference_sub_ref_map=global_ref_map,
+            _reference_sub_reverse_map=global_reverse_map,
+        )
+        return Ok(new_ir)
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
 
     def process(
         self, request: Request, context: TransformContext

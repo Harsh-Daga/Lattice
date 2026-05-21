@@ -16,18 +16,22 @@ from lattice.core.context import TransformContext
 from lattice.core.cost_estimator import CostEstimator
 from lattice.core.credentials import CredentialResolver
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import build_default_pipeline
+from lattice.core.pipeline_factory import build_benchmark_pipeline
 from lattice.core.result import is_err, unwrap, unwrap_err
 from lattice.core.serialization import message_from_dict, message_to_dict
 from lattice.core.transport import Request, Response
 from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
-from lattice.utils.validation import lossy_transform_allowed, request_safety_profile, structure_signature
+from lattice.utils.validation import (
+    lossy_transform_allowed,
+    request_safety_profile,
+    structure_signature,
+)
 
 
 def build_full_pipeline(config: LatticeConfig | None = None) -> CompressorPipeline:
     """Build the complete LATTICE pipeline with all production transforms."""
     config = config or LatticeConfig.auto()
-    return build_default_pipeline(config, include_execution_transforms=False)
+    return build_benchmark_pipeline(config)
 
 
 def setup_provider(provider_name: str, base_url: str | None = None, api_key: str | None = None) -> DirectHTTPProvider:
@@ -127,6 +131,7 @@ async def run_scenario(
             baseline_error,
             f"Pipeline failed: {err.message}",
             baseline_usage,
+            {},
             {},
             {},
             {},
@@ -249,6 +254,7 @@ async def run_scenario(
         "runtime_contract": runtime_metadata.get("_lattice_runtime_contract", {}),
         "transforms": ctx.metrics.get("transforms", {}),
         "transforms_applied": ctx.transforms_applied,
+        "reachability": runtime_metadata.get("_lattice_reachability", {}),
         "pipeline": {
             "tokens_in": ctx.metrics.get("tokens_in", request.token_estimate),
             "tokens_out": ctx.metrics.get("tokens_out", compressed.token_estimate),

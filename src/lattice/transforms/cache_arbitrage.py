@@ -11,10 +11,15 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from lattice.core.context import TransformContext
+from lattice.core.context import (
+    METADATA_KEY_PROTOCOL_MANIFEST,
+    TransformContext,
+)
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
+from lattice.core.runtime_state import get_canonical_request_value, get_canonical_state_value
 from lattice.core.transport import Message, Request, Response, Role
 
 
@@ -86,6 +91,63 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
 
     def __init__(self, track_hits: bool = True) -> None:
         self.track_hits = track_hits
+
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: annotate sections as stable/variable for cache alignment planning."""
+        if len(ir.sections) == 0:
+            return Ok(ir)
+
+        total_char_count = 0
+        stable_char_count = 0
+        for sec in ir.sections:
+            st = sec.type.lower()
+            is_stable = st in ("system", "tool", "static_doc")
+            new_spans = []
+            for span in sec.spans:
+                if is_stable and not span.protected:
+                    stable_char_count += len(span.text)
+                total_char_count += len(span.text)
+                new_spans.append(span)
+
+        # Compute stability score
+        total_chars = max(1, total_char_count)
+        stability_score = stable_char_count / total_chars
+
+        state = context.get_transform_state(self.name)
+        current_hash = ir.canonical_fingerprint() if hasattr(ir, "canonical_fingerprint") else ""
+        if current_hash:
+            previous_hash = state.get("fingerprint_hash")
+            cache_hit = bool(previous_hash and previous_hash == current_hash)
+            if not cache_hit:
+                state["fingerprint_hash"] = current_hash
+                state["miss_count"] = state.get("miss_count", 0) + 1
+            else:
+                state["hit_count"] = state.get("hit_count", 0) + 1
+            context.record_metric(self.name, "cache_hit", cache_hit)
+
+        context.record_metric(self.name, "stability_score", stability_score)
+        context.record_metric(self.name, "stable_chars", stable_char_count)
+
+        return Ok(
+            ir.add_metadata(
+                _cache_arbitrage_stable=stable_char_count,
+                _cache_arbitrage_total=total_chars,
+                _cache_arbitrage_stability_score=stability_score,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
 
     def process(
         self,
@@ -274,22 +336,18 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
                 return
 
             planner = get_cache_planner(provider)
-            manifest = self._resolve_manifest(request)
+            manifest, manifest_source = self._resolve_manifest(request, context)
             plan: CachePlan = planner.plan(manifest)
 
             # Determine manifest source without mutating the Manifest object
-            outcome.manifest_source = (
-                "injected"
-                if request.metadata.get("_lattice_manifest") is not None
-                else "reconstructed"
-            )
+            outcome.manifest_source = manifest_source
 
             # Populate outcome with plan info
             outcome.expected_cached_tokens = plan.expected_cached_tokens
             outcome.breakpoints = plan.breakpoints
             outcome.annotations = plan.annotations
             outcome.plan_summary = {
-                "stable_prefix_tokens": plan.expected_cached_tokens,
+                "prefix_tokens": plan.expected_cached_tokens,
                 "breakpoint_count": len(plan.breakpoints),
                 "cache_mode": cache_mode.value,
             }
@@ -360,14 +418,90 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
             return f"{minutes}m"
         return f"{ttl_seconds}s"
 
-    def _resolve_manifest(self, request: Request) -> Manifest:
-        """Return a Manifest for cache planning, preferring injected over reconstructed."""
-        injected = request.metadata.get("_lattice_manifest")
+    def _resolve_manifest(
+        self, request: Request, context: TransformContext
+    ) -> tuple[Manifest, str]:
+        """Return a Manifest for cache planning, preferring IR metadata first."""
+        ir_manifest = self._manifest_from_ir(context)
+        if ir_manifest is not None:
+            return ir_manifest, "ir"
+
+        injected = get_canonical_request_value(request, context, "_lattice_manifest")
         if isinstance(injected, Manifest):
-            return injected
+            return injected, "injected"
         if isinstance(injected, dict):
-            return Manifest.from_dict(injected)
-        return self._request_to_manifest(request)
+            return Manifest.from_dict(injected), "injected"
+        return self._request_to_manifest(request), "reconstructed"
+
+    def _manifest_from_ir(self, context: TransformContext) -> Manifest | None:
+        ir_v2 = get_canonical_state_value(context, "_lattice_ir_v2")
+        metadata = getattr(ir_v2, "metadata", None)
+        if metadata is None:
+            return None
+        if not isinstance(metadata, dict):
+            try:
+                metadata = dict(metadata)
+            except Exception:
+                return None
+
+        for key in (
+            "protocol",
+            METADATA_KEY_PROTOCOL_MANIFEST,
+            "_lattice_manifest",
+        ):
+            manifest = self._manifest_from_payload(metadata.get(key))
+            if manifest is not None:
+                return manifest
+        return None
+
+    def _manifest_from_payload(self, payload: Any) -> Manifest | None:
+        if payload is None:
+            return None
+        if isinstance(payload, Manifest):
+            return payload
+        if not isinstance(payload, dict):
+            try:
+                payload = dict(payload)
+            except Exception:
+                return None
+        payload = self._thaw_value(payload)
+
+        if "manifest" in payload:
+            nested = payload.get("manifest")
+            if isinstance(nested, Manifest):
+                return nested
+            if isinstance(nested, dict):
+                try:
+                    return Manifest.from_dict(self._thaw_value(nested))
+                except Exception:
+                    return None
+            try:
+                nested_dict = self._thaw_value(dict(nested))
+            except Exception:
+                nested_dict = None
+            if isinstance(nested_dict, dict):
+                try:
+                    return Manifest.from_dict(nested_dict)
+                except Exception:
+                    return None
+
+        if "manifest_id" in payload and "segments" in payload:
+            try:
+                return Manifest.from_dict(payload)
+            except Exception:
+                return None
+        return None
+
+    def _thaw_value(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: self._thaw_value(v) for k, v in value.items()}
+        if isinstance(value, frozenset):
+            if all(isinstance(item, tuple) and len(item) == 2 for item in value):
+                return {k: self._thaw_value(v) for k, v in value}
+            return [self._thaw_value(item) for item in value]
+        if isinstance(value, tuple):
+            return [self._thaw_value(item) for item in value]
+        return value
 
     def _request_to_manifest(self, request: Request) -> Manifest:
         """Build a Manifest from the current request for cache planning."""

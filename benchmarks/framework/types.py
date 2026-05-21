@@ -124,7 +124,7 @@ class TaskEquivalenceScore:
     def passed_for(self, task_class: str) -> bool:
         return self.composite_for(task_class) >= 0.85
 
-    def to_dict(self) -> dict[str, float]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "correctness": self.correctness,
             "completeness": self.completeness,
@@ -206,6 +206,16 @@ class ScenarioResult:
     # Response samples (last iteration only, for inspection)
     baseline_response_sample: str = ""
     optimized_response_sample: str = ""
+
+    # Replay hardening — canonical fingerprints for determinism validation
+    request_fingerprint: str = ""       # PromptIRV2.canonical_fingerprint()
+    execution_plan_fingerprint: str = ""   # ExecutionPlan fingerprint
+    final_response_fingerprint: str = ""  # Canonical final response digest
+    replay_drift: float = 0.0            # max quality variance across N replays
+    determinism_score: float = 1.0      # 1.0 = identical output on identical input
+    longitudinal_index: int = 0         # position in longitudinal series
+    survivability_score: float = 1.0    # task equivalence survives cross-run
+    drift_category: str = ""            # canonical_drift / non_deterministic / survivability_drop
 
     # Pipeline metrics (per-transform breakdown from last iteration)
     transform_breakdown: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)
@@ -370,6 +380,16 @@ class ScenarioResult:
             "response_samples": {
                 "baseline": self.baseline_response_sample[:500],
                 "optimized": self.optimized_response_sample[:500],
+            },
+            "replay_hardening": {
+                "request_fingerprint": self.request_fingerprint,
+                "execution_plan_fingerprint": self.execution_plan_fingerprint,
+                "final_response_fingerprint": self.final_response_fingerprint,
+                "replay_drift": round(self.replay_drift, 4),
+                "determinism_score": round(self.determinism_score, 4),
+                "longitudinal_index": self.longitudinal_index,
+                "survivability_score": round(self.survivability_score, 4),
+                "drift_category": self.drift_category,
             },
         }
 

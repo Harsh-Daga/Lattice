@@ -32,6 +32,8 @@ from typing import Any
 
 from lattice.core.context import (
     METADATA_KEY_PROTECTED_SPANS,
+    METADATA_KEY_PROTOCOL_MANIFEST,
+    METADATA_KEY_PROTOCOL_MANIFEST_SUMMARY,
     METADATA_KEY_RISK_SCORE,
     METADATA_KEY_SCHEDULE,
     METADATA_KEY_SIG,
@@ -40,12 +42,30 @@ from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
+from lattice.core.ir_builder import build_ir
+from lattice.core.ir_normalizer import normalize_ir
+from lattice.core.optimizer_scheduler import OptimizerSchedule, schedule_to_dict
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import freeze_value, prompt_ir_v2_from_legacy
 from lattice.core.result import Ok, Result
-from lattice.core.scheduler import decide_schedule
+from lattice.core.runtime_state import (
+    get_canonical_request_value,
+    get_canonical_state_value,
+    persist_execution_plan_state,
+)
 from lattice.core.semantic_graph import SemanticImportanceGraph, SemanticSpan
+from lattice.core.serialization import message_to_dict
 from lattice.core.task_classifier import TaskClassification, classify_task
 from lattice.core.transport import Request, Response
+from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner
+from lattice.planner.provider_strategy import (
+    build_cache_plan_for_provider,
+    simulate_provider_cache,
+)
+from lattice.transforms.semantic_segmenter import (
+    segment_request,
+    segment_summary,
+)
 from lattice.utils.validation import SemanticRiskScore, compute_risk_score
 
 # =============================================================================
@@ -128,29 +148,95 @@ class ContentProfiler(ReversibleSyncTransform):
         strategy = self._select_strategy(profile, task)
         risk_score = self._compute_risk(request)
 
-        # Build SIG — Semantic Importance Graph
+        # Build Semantic Importance Graph
         sig = _build_importance_graph(request)
 
-        # Build PromptIR — canonical structured representation
-        from lattice.core.compiler import get_compiler
+        # Phase 2: Build semantic segments for optimizer routing
+        segments = segment_request(request)
+        segment_meta = segment_summary(segments)
+        context.session_state["_lattice_segments"] = [s.to_dict() for s in segments]
+        context.session_state["_lattice_segment_summary"] = segment_meta
 
-        compiler = get_compiler()
-        ir = compiler.compile(request, context)
+        # Phase 3: Build prefix canonicalization (transport concern)
+        from lattice.protocol.prefix_canonicalization import canonicalize_request_prefix
+
+        provider = get_canonical_state_value(context, "_lattice_provider", "")
+        previous_hash = get_canonical_state_value(context, "_prefix_hash")
+        prefix_manifest = canonicalize_request_prefix(
+            request, previous_hash=previous_hash, provider=provider
+        )
+        context.session_state["_prefix_hash"] = prefix_manifest.prefix_hash
+        context.session_state["_prefix_manifest"] = prefix_manifest.to_dict()
+        request.metadata["_prefix_manifest"] = prefix_manifest.to_dict()
+        request.metadata["_prefix_hash"] = prefix_manifest.prefix_hash
+        request.metadata["_cache_hit"] = prefix_manifest.cache_hit
+        request.metadata["_prefix_tokens"] = prefix_manifest.prefix_tokens
+        request.metadata["_suffix_tokens"] = prefix_manifest.suffix_tokens
+
+        # Add provider-specific prefix caching headers
+        if not prefix_manifest.cache_hit:
+            request.extra_headers["x-lattice-prefix-hash"] = prefix_manifest.prefix_hash[:16]
+            if prefix_manifest.provider_hint == "anthropic":
+                request.extra_headers["anthropic-beta"] = "prompt-caching-2024-07-31"
+
+        # Build canonical protocol manifest (PromptIR metadata + compatibility state)
+        from lattice.protocol.manifest import manifest_from_messages, manifest_summary
+
+        protocol_session_id = context.session_id or str(
+            request.metadata.get("session_id") or "prompt_ir"
+        )
+        protocol_manifest = manifest_from_messages(
+            session_id=protocol_session_id,
+            messages=[message_to_dict(msg) for msg in request.messages],
+            tools=request.tools,
+            model=request.model,
+            provider=context.provider or "generic",
+        )
+        protocol_summary = manifest_summary(protocol_manifest)
+        protocol_payload = {
+            "manifest": protocol_manifest.to_dict(),
+            "summary": protocol_summary,
+        }
+        context.session_state[METADATA_KEY_PROTOCOL_MANIFEST] = protocol_manifest.to_dict()
+        context.session_state[METADATA_KEY_PROTOCOL_MANIFEST_SUMMARY] = protocol_summary
+        request.metadata[METADATA_KEY_PROTOCOL_MANIFEST] = protocol_manifest.to_dict()
+        request.metadata[METADATA_KEY_PROTOCOL_MANIFEST_SUMMARY] = protocol_summary
+        request.metadata["_lattice_manifest"] = protocol_manifest.to_dict()
+
+        # Build PromptIR directly from builder + normalizer.
+        ir = normalize_ir(build_ir(request))
         request.metadata["_lattice_ir_summary"] = ir.summary()
         request.metadata["_lattice_ir_sections"] = ir.section_types
         if ir.protected_spans > 0:
             request.metadata[METADATA_KEY_PROTECTED_SPANS] = ir.protected_span_ids()
 
-        # Build scheduler decision from SIG + RATS + risk + IR spans
-        transform_names = [
-            t for t in strategy if isinstance(strategy.get(t), bool) and strategy.get(t) is True
-        ]
-        schedule = decide_schedule(
-            transform_names=list(transform_names),
+        # Build or reuse the canonical execution plan.
+        plan = _coerce_execution_plan(
+            get_canonical_request_value(
+                request, context, "_lattice_execution_plan"
+            )
+        )
+        if plan is None:
+            profile_v2 = SemanticProfile(
+                task_class=task.task_class,
+                task_label=task.preferred_strategy,
+                risk_total=int(risk_score.total),
+                context_length=request.token_estimate,
+                has_tool_calls=request.is_tool_conversation,
+                is_streaming=request.stream,
+                is_conservative=task.is_conservative,
+                provider=context.provider or "generic",
+                model=request.model,
+            )
+            plan = UnifiedPlanner().plan(request, profile_v2)
+
+        # Derive legacy scheduler-compatible state from the canonical plan.
+        schedule = _derive_schedule_from_plan(request, task, risk_score, sig, plan)
+        optimizer_schedule = _derive_optimizer_schedule_from_plan(
             task=task,
-            risk=risk_score,
-            protected_span_count=sig.protected_count,
-            total_budget_ms=task.budget_ms,
+            risk_total=risk_score.total,
+            request=request,
+            plan=plan,
         )
 
         # Store in context for downstream transforms
@@ -177,29 +263,82 @@ class ContentProfiler(ReversibleSyncTransform):
         request.metadata[METADATA_KEY_SIG_SUMMARY] = sig.summary()
         request.metadata[METADATA_KEY_PROTECTED_SPANS] = sig.protected_span_ids
         request.metadata[METADATA_KEY_TASK_CLASSIFICATION] = task.to_dict()
-        request.metadata[METADATA_KEY_SCHEDULE] = schedule.to_dict()
+        request.metadata[METADATA_KEY_SCHEDULE] = schedule
+        request.metadata["_lattice_plan_utility"] = getattr(plan, "utility_score", 0.0)
 
-        return Ok(request)
+        context.session_state[METADATA_KEY_RISK_SCORE] = risk_score.to_dict()
+        context.session_state[METADATA_KEY_SIG] = sig.to_dict()
+        context.session_state[METADATA_KEY_SIG_SUMMARY] = sig.summary()
+        context.session_state[METADATA_KEY_PROTECTED_SPANS] = sig.protected_span_ids
+        context.session_state[METADATA_KEY_TASK_CLASSIFICATION] = task.to_dict()
+        context.session_state["_lattice_provider"] = context.provider
+        context.session_state["_lattice_model"] = request.model
+        context.session_state["_lattice_schedule"] = schedule
+        context.session_state["_lattice_plan_utility"] = getattr(plan, "utility_score", 0.0)
+        # NEW: store optimizer-level schedule for Phase 1 cutover
+        context.session_state["_lattice_optimizer_schedule"] = optimizer_schedule
+        request.metadata["_lattice_optimizer_schedule"] = schedule_to_dict(optimizer_schedule)
 
-        profile = self._classify(request)
-        strategy = self._select_strategy(profile, request)
-        risk_score = self._compute_risk(request)
+        cache_plan = get_canonical_request_value(
+            request, context, "_lattice_cache_plan"
+        )
+        if not isinstance(cache_plan, list):
+            cache_plan = build_cache_plan_for_provider(
+                context.provider or "generic",
+                segment_count=len(request.messages),
+                estimated_tokens=request.token_estimate,
+            )
+            request.metadata["_lattice_cache_plan"] = cache_plan
+        cache_simulation = None
+        if plan is not None:
+            cache_simulation = simulate_provider_cache(
+                context.provider or "generic",
+                request.model,
+                estimated_tokens=request.token_estimate,
+                cache_plan=cache_plan,
+                prefix_manifest=request.metadata.get("_prefix_manifest"),
+            )
+            persist_execution_plan_state(
+                request,
+                context,
+                plan,
+                cache_plan=cache_plan,
+                cache_simulation=cache_simulation,
+            )
 
-        # Store in context for downstream transforms
-        state = context.get_transform_state(self.name)
-        state["profile"] = profile.value
-        state["strategy"] = strategy
-        state["risk_score"] = risk_score.to_dict()
-
-        context.record_metric(self.name, "profile", profile.value)
-        context.record_metric(self.name, "total_tokens", request.token_estimate)
-        context.record_metric(self.name, "risk_score", risk_score.total)
-        context.record_metric(self.name, "risk_level", risk_score.level)
-
-        # Set per-transform hints in request metadata
-        request.metadata["_lattice_profile"] = profile.value
-        request.metadata["_lattice_strategy"] = strategy
-        request.metadata["_lattice_risk_score"] = risk_score.to_dict()
+        # Phase 5: Build immutable PromptIRV2 for v2 pipeline, with the
+        # canonical semantic/protocol/transport annotations embedded directly
+        # into IR metadata so consumers can stop reading side channels.
+        ir_v2 = prompt_ir_v2_from_legacy(ir).add_metadata(
+            protocol=protocol_payload,
+            _lattice_protocol_manifest=protocol_manifest.to_dict(),
+            _lattice_protocol_manifest_summary=protocol_summary,
+            _lattice_execution_plan=plan.to_dict() if plan is not None else {},
+            _lattice_profile=profile.value,
+            _lattice_strategy=strategy,
+            _lattice_risk_score=risk_score.to_dict(),
+            _lattice_sig=sig.to_dict(),
+            _lattice_sig_summary=sig.summary(),
+            _lattice_segments=[s.to_dict() for s in segments],
+            _lattice_segment_summary=segment_meta,
+            _prefix_manifest=prefix_manifest.to_dict(),
+            _lattice_task_classification=task.to_dict(),
+            _lattice_schedule=schedule,
+            _lattice_plan_utility=getattr(plan, "utility_score", 0.0),
+            _lattice_optimizer_schedule=schedule_to_dict(optimizer_schedule),
+            _lattice_cache_plan=freeze_value(cache_plan),
+            _lattice_cache_simulation=freeze_value(
+                cache_simulation.to_dict() if cache_simulation is not None else {}
+            ),
+        )
+        request.metadata["_lattice_ir_v2_summary"] = {
+            "sections": len(ir_v2.sections),
+            "spans": ir_v2.total_spans,
+            "protected": ir_v2.protected_spans,
+            "compressible": ir_v2.compressible_spans,
+        }
+        request.metadata["_lattice_ir_v2"] = ir_v2
+        context.session_state["_lattice_ir_v2"] = ir_v2
 
         return Ok(request)
 
@@ -341,7 +480,7 @@ class ContentProfiler(ReversibleSyncTransform):
             "output_cleanup": True,
             "format_conversion": True,
             "message_dedup": True,
-            "semantic_compress": False,
+            "rate_distortion": False,
             "structure_type": profile.value,
         }
 
@@ -349,7 +488,6 @@ class ContentProfiler(ReversibleSyncTransform):
         if task is not None and isinstance(task, TaskClassification) and task.is_conservative:
             base.update(
                 {
-                    "semantic_compress": False,
                     "message_dedup": False,
                     "rate_distortion": False,
                 }
@@ -367,18 +505,18 @@ class ContentProfiler(ReversibleSyncTransform):
         if profile == ContentProfile.CODE_HEAVY:
             return {
                 **base,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "format_conversion": False,
                 "reference_sub": True,
             }
 
         if profile == ContentProfile.TABLE_HEAVY:
-            return {**base, "format_conversion": True, "semantic_compress": False}
+            return {**base, "format_conversion": True, "rate_distortion": False}
 
         if profile == ContentProfile.NARRATIVE_LONG:
             return {
                 **base,
-                "semantic_compress": False,  # Disabled by default — too lossy (92% compression, 0.50 quality)
+                "rate_distortion": False,  # Disabled by default — too lossy (92% compression, 0.50 quality)
                 "compression_ratio": 0.3,
                 "format_conversion": False,
             }
@@ -387,7 +525,7 @@ class ContentProfiler(ReversibleSyncTransform):
             return {
                 **base,
                 "tool_filter": True,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "format_conversion": True,
             }
 
@@ -396,7 +534,7 @@ class ContentProfiler(ReversibleSyncTransform):
             return {
                 **base,
                 "tool_filter": True,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "format_conversion": False,
                 "message_dedup": True,
                 "reference_sub": True,
@@ -408,7 +546,7 @@ class ContentProfiler(ReversibleSyncTransform):
                 **base,
                 "reference_sub": True,
                 "output_cleanup": False,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "format_conversion": False,
             }
 
@@ -418,7 +556,7 @@ class ContentProfiler(ReversibleSyncTransform):
                 **base,
                 "reference_sub": True,
                 "output_cleanup": False,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "format_conversion": False,
                 "tool_filter": False,
             }
@@ -429,7 +567,7 @@ class ContentProfiler(ReversibleSyncTransform):
                 **base,
                 "format_conversion": True,
                 "reference_sub": True,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "output_cleanup": False,
             }
 
@@ -439,7 +577,7 @@ class ContentProfiler(ReversibleSyncTransform):
                 **base,
                 "reference_sub": True,
                 "output_cleanup": False,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "format_conversion": False,
                 "tool_filter": False,
             }
@@ -449,13 +587,75 @@ class ContentProfiler(ReversibleSyncTransform):
             return {
                 **base,
                 "tool_filter": True,
-                "semantic_compress": False,
+                "rate_distortion": False,
                 "format_conversion": True,
                 "output_cleanup": False,
             }
 
         # MIXED
         return base
+
+
+def _derive_schedule_from_plan(
+    request: Request,
+    task: TaskClassification,
+    risk_score: SemanticRiskScore,
+    sig: SemanticImportanceGraph,
+    plan: Any,
+) -> dict[str, Any]:
+    """Project the canonical plan into legacy scheduler metadata."""
+    from lattice.core.transform_registry import list_transform_names
+
+    all_registered = list(list_transform_names())
+    allowed = list(getattr(plan, "transforms", ()) or ())
+    blocked = [name for name in all_registered if name not in allowed]
+    schedule_entries = [
+        {
+            "name": name,
+            "bucket": "safe" if name in allowed else "blocked",
+            "allowed": name in allowed,
+            "reason": "plan_selected" if name in allowed else "plan_excluded",
+        }
+        for name in all_registered
+    ]
+    return {
+        "task_class": task.to_dict(),
+        "risk_level": risk_score.level,
+        "risk_total": risk_score.total,
+        "blocked": blocked,
+        "allowed": allowed,
+        "allowed_optimizers": [name for name in allowed if name.endswith("_optimizer")],
+        "protected_spans": sig.protected_count,
+        "budget_ms": float(getattr(plan, "latency_budget_ms", task.budget_ms)),
+        "budget_exhausted": False,
+        "schedule": schedule_entries,
+        "request_tokens": request.token_estimate,
+    }
+
+
+def _derive_optimizer_schedule_from_plan(
+    *,
+    task: TaskClassification,
+    risk_total: float,
+    request: Request,
+    plan: Any,
+) -> OptimizerSchedule:
+    """Project the canonical plan into optimizer-level scheduling metadata."""
+    allowed = [name for name in getattr(plan, "transforms", ()) if name.endswith("_optimizer")]
+    blocked = {
+        name: "plan_excludes"
+        for name in ("representation_optimizer", "structure_optimizer", "reference_optimizer", "tool_optimizer", "context_optimizer", "diagnostic_optimizer", "ir_structure_optimizer")
+        if name not in allowed
+    }
+    return OptimizerSchedule(
+        tier=task.execution_tier.value,
+        latency_budget_ms=float(getattr(plan, "latency_budget_ms", task.budget_ms)),
+        quality_floor=float(getattr(plan, "quality_floor", 0.85)),
+        allowed_optimizers=allowed,
+        blocked_optimizers=blocked,
+        transport_enabled=request.stream or request.token_estimate > 2000,
+        cache_enabled=True,
+    )
 
 
 # =============================================================================
@@ -764,3 +964,22 @@ def _derive_protected(spans: list[SemanticSpan]) -> None:
             and span.structure_type in ("narrative", "log_line")
             and not span.reasoning_signal
         )
+
+
+def _coerce_execution_plan(plan: Any) -> Any | None:
+    """Accept cached dict payloads or concrete plan objects."""
+    if plan is None:
+        return None
+    if isinstance(plan, dict):
+        try:
+            from lattice.core.primitives import ExecutionPlan as CoreExecutionPlan
+
+            return CoreExecutionPlan.from_dict(plan)
+        except Exception:
+            try:
+                from lattice.planner.execution_plan import ExecutionPlan as LegacyExecutionPlan
+
+                return LegacyExecutionPlan.from_dict(plan)
+            except Exception:
+                return None
+    return plan

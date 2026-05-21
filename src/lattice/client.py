@@ -27,8 +27,13 @@ from typing import Any
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.core.pipeline_factory import build_default_pipeline, pipeline_summary
+from lattice.core.pipeline_factory import (
+    build_default_pipeline,
+    build_v2_pipeline,
+    pipeline_summary,
+)
 from lattice.core.result import is_err, unwrap
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.serialization import message_from_dict, message_to_dict
 from lattice.core.transport import Request, Response
 
@@ -48,6 +53,8 @@ class CompressResult:
 
 def _build_pipeline(config: LatticeConfig) -> CompressorPipeline:
     """Build the standard local compression pipeline."""
+    if getattr(config, "use_v2_pipeline", False):
+        return build_v2_pipeline(config)
     return build_default_pipeline(config)
 
 
@@ -102,8 +109,14 @@ class LatticeClient:
             compressed_tokens=compressed_tokens,
             transforms_applied=[t.name for t in self._pipeline.transforms],
             elapsed_ms=elapsed_ms,
-            runtime=dict(compressed.metadata.get("_lattice_runtime", {})),
-            runtime_budget=dict(compressed.metadata.get("_lattice_runtime_budget", {})),
+            runtime=dict(
+                get_canonical_request_value(compressed, None, "_lattice_runtime", {})
+            ),
+            runtime_budget=dict(
+                get_canonical_request_value(
+                    compressed, None, "_lattice_runtime_budget", {}
+                )
+            ),
         )
 
     def decompress_response(

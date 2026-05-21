@@ -13,6 +13,8 @@ Design principles
 * **One canonical name** — aliases exist for backward compatibility, but every
   lookup resolves to the canonical spec.
 * **Immutable specs** — :class:`TransformSpec` is ``frozen=True, slots=True``.
+* **default_pipeline defaults to False** — only explicitly opted-in transforms
+  join the default pipeline.
 """
 
 from __future__ import annotations
@@ -39,50 +41,33 @@ DANGEROUS = "dangerous"
 class TransformSpec:
     """Metadata for a single built-in transform."""
 
-    # Canonical name used in pipeline, logs, and diagnostics.
     canonical_name: str
-
-    # Alternative names that resolve to this spec (e.g. short aliases).
     aliases: tuple[str, ...] = ()
-
-    # Config field that gates this transform (e.g. "transform_context_selector").
     config_flag: str = ""
-
-    # Priority for pipeline ordering (lower = earlier).
     priority: int = 50
-
-    # Safety classification.
     safety_bucket: str = SAFE
-
-    # Included in the default pipeline (non-execution builds)?
-    default_pipeline: bool = True
-
-    # Only included when ``include_execution_transforms=True`` (proxy-only).
+    default_pipeline: bool = False
     execution_only: bool = False
-
-    # Dotted import path, e.g. "lattice.transforms.content_profiler.ContentProfiler".
-    # Empty string means the transform is handled manually in pipeline_factory.
     factory_path: str = ""
-
-    # Mapping from LatticeConfig field names to constructor kwarg names.
-    # Example: {"submodular_token_budget": "token_budget"}
     factory_kwargs: dict[str, str] = dataclasses.field(default_factory=dict)
-
-    # Human-readable description for docs and diagnostics.
     description: str = ""
 
 
 # ---------------------------------------------------------------------------
 # Built-in transforms — declared in priority order
 # ---------------------------------------------------------------------------
+# ONLY these 7 transforms are default_pipeline=True — the production path.
+# Everything else is off by default (experimental / moved to optimizers).
+# ---------------------------------------------------------------------------
 
 BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
-    # Phase 0 — profiling & governance
+    # ── Production core ──────────────────────────────────────────
     TransformSpec(
         canonical_name="content_profiler",
         config_flag="transform_content_profiler",
         priority=1,
         safety_bucket=SAFE,
+        default_pipeline=True,
         factory_path="lattice.transforms.content_profiler.ContentProfiler",
         description="Classifies content, computes semantic risk score",
     ),
@@ -91,16 +76,75 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         config_flag="transform_runtime_contract",
         priority=2,
         safety_bucket=SAFE,
+        default_pipeline=True,
         factory_path="lattice.transforms.runtime_contract.RuntimeContractTransform",
         description="Enforces per-transform budget and timeout",
     ),
-    # Execution-only — proxy hot path
+    TransformSpec(
+        canonical_name="cache_arbitrage",
+        aliases=("cache_optimizer",),
+        config_flag="transform_cache_arbitrage",
+        priority=9,
+        safety_bucket=SAFE,
+        default_pipeline=True,
+        factory_path="lattice.transforms.cache_arbitrage.CacheArbitrageOptimizer",
+        description="Reorders messages for KV-cache alignment",
+    ),
+    TransformSpec(
+        canonical_name="prefix_optimizer",
+        aliases=("prefix_opt",),
+        config_flag="transform_prefix_opt",
+        priority=10,
+        safety_bucket=SAFE,
+        default_pipeline=True,
+        factory_path="lattice.transforms.prefix_opt.PrefixOptimizer",
+        description="Deduplicates common prefixes across messages",
+    ),
+    TransformSpec(
+        canonical_name="reference_sub",
+        aliases=("reference_substitution",),
+        config_flag="transform_reference_sub",
+        priority=20,
+        safety_bucket=CONDITIONAL,
+        default_pipeline=True,
+        factory_path="lattice.transforms.reference_sub.ReferenceSubstitution",
+        description="UUID/URL/hash substitution with short aliases",
+    ),
+    TransformSpec(
+        canonical_name="tool_filter",
+        aliases=("tool_output_filter",),
+        config_flag="transform_tool_filter",
+        priority=30,
+        safety_bucket=SAFE,
+        default_pipeline=True,
+        factory_path="lattice.transforms.tool_filter.ToolOutputFilter",
+        description="Tool output projection / filtering",
+    ),
+    TransformSpec(
+        canonical_name="output_cleanup",
+        config_flag="transform_output_cleanup",
+        priority=40,
+        safety_bucket=SAFE,
+        default_pipeline=True,
+        factory_path="lattice.transforms.output_cleanup.OutputCleanup",
+        description="Whitespace normalization and JSON repair",
+    ),
+    # ── V2 pipeline wrapper (Phase 5 architecture)
+    TransformSpec(
+        canonical_name="pipeline_v2",
+        config_flag="transform_pipeline_v2",
+        priority=19,
+        safety_bucket=SAFE,
+        default_pipeline=False,  # Only active when use_v2_pipeline=True
+        factory_path="lattice.core.pipeline_v2_wrapper.PipelineV2Wrapper",
+        description="V2 immutable pipeline executor (UnifiedPlanner + PipelineV2)",
+    ),
+    # ── Execution-only (proxy hot path) ─────────────────────────
     TransformSpec(
         canonical_name="speculative",
         config_flag="transform_speculation",
         priority=2,
         safety_bucket=SAFE,
-        default_pipeline=False,
         execution_only=True,
         factory_path="lattice.transforms.speculative.SpeculativeTransform",
         description="Speculative token generation",
@@ -110,30 +154,19 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         config_flag="transform_batching",
         priority=3,
         safety_bucket=SAFE,
-        default_pipeline=False,
         execution_only=True,
         factory_path="lattice.transforms.batching.BatchingTransform",
         description="Request batching for multi-turn workloads",
     ),
     TransformSpec(
         canonical_name="delta_encoder",
-        config_flag="transform_batching",  # gated by execution mode, not a real flag
+        config_flag="transform_batching",
         priority=5,
         safety_bucket=SAFE,
-        default_pipeline=False,
         execution_only=True,
         description="Session-based delta encoding (needs session_manager)",
     ),
-    # Phase 1 — cache & prefix
-    TransformSpec(
-        canonical_name="cache_arbitrage",
-        aliases=("cache_optimizer",),
-        config_flag="transform_cache_arbitrage",
-        priority=9,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.cache_arbitrage.CacheArbitrageOptimizer",
-        description="Reorders messages for KV-cache alignment",
-    ),
+    # ── Experimental / kept for direct use ──────────────────────
     TransformSpec(
         canonical_name="constraint_lifting",
         config_flag="transform_constraint_lifting",
@@ -141,22 +174,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         safety_bucket=SAFE,
         factory_path="lattice.transforms.constraint_lifting.ConstraintLiftingTransform",
         description="Extracts buried constraints and format requirements",
-    ),
-    TransformSpec(
-        canonical_name="stable_prefix",
-        config_flag="transform_stable_prefix",
-        priority=7,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.stable_prefix.StablePrefixHandle",
-        description="Stable prefix cache handle computation",
-    ),
-    TransformSpec(
-        canonical_name="instruction_context_sep",
-        config_flag="transform_instruction_context_sep",
-        priority=8,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.instruction_context.InstructionContextSeparator",
-        description="Instruction/context/task separation for better comprehension",
     ),
     TransformSpec(
         canonical_name="causal_chain",
@@ -167,40 +184,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Causal chain extraction for reasoning and debugging",
     ),
     TransformSpec(
-        canonical_name="prefix_optimizer",
-        aliases=("prefix_opt",),
-        config_flag="transform_prefix_opt",
-        priority=10,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.prefix_opt.PrefixOptimizer",
-        description="Deduplicates common prefixes across messages",
-    ),
-    # Phase 2 — fingerprinting & scoring
-    TransformSpec(
-        canonical_name="structural_fingerprint",
-        config_flag="transform_structural_fingerprint",
-        priority=12,
-        safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.structural_fingerprint.StructuralFingerprint",
-        description="Pattern detection for repeated structures",
-    ),
-    TransformSpec(
-        canonical_name="code_factoring",
-        config_flag="transform_code_factoring",
-        priority=12,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.code_factoring.CodeFactoringTransform",
-        description="Lossless code/file factoring with template extraction",
-    ),
-    TransformSpec(
-        canonical_name="self_information",
-        config_flag="transform_self_information",
-        priority=14,
-        safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.self_information.SelfInformationScorer",
-        description="Entropy-based message filtering",
-    ),
-    TransformSpec(
         canonical_name="message_dedup",
         aliases=("message_deduplicator",),
         config_flag="transform_message_dedup",
@@ -209,7 +192,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         factory_path="lattice.transforms.message_dedup.MessageDeduplicator",
         description="Exact/near-duplicate message removal",
     ),
-    # Phase 3 — context selection
     TransformSpec(
         canonical_name="context_selector",
         config_flag="transform_context_selector",
@@ -237,24 +219,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         factory_path="lattice.transforms.strategy_selector.StrategySelector",
         description="Bandit-based strategy selection",
     ),
-    # Phase 4 — substitution & compression
-    TransformSpec(
-        canonical_name="reference_sub",
-        aliases=("reference_substitution",),
-        config_flag="transform_reference_sub",
-        priority=20,
-        safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.reference_sub.ReferenceSubstitution",
-        description="UUID/URL/hash substitution with short aliases",
-    ),
-    TransformSpec(
-        canonical_name="alias_manifest",
-        config_flag="transform_alias_manifest",
-        priority=16,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.alias_manifest.AliasManifestTransform",
-        description="Reversible alias substitution with human-readable manifest",
-    ),
     TransformSpec(
         canonical_name="diagnostic_rle",
         config_flag="transform_diagnostic_rle",
@@ -262,14 +226,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         safety_bucket=SAFE,
         factory_path="lattice.transforms.diagnostic_rle.DiagnosticRLE",
         description="Run-length encoding for diagnostic repetition patterns",
-    ),
-    TransformSpec(
-        canonical_name="arithmetic_sequence",
-        config_flag="transform_arithmetic_sequence",
-        priority=18,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.arithmetic_sequence.ArithmeticSequenceCompressor",
-        description="Formula-based arithmetic sequence compression",
     ),
     TransformSpec(
         canonical_name="columnar_pack",
@@ -289,8 +245,8 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
     ),
     TransformSpec(
         canonical_name="rate_distortion",
-        aliases=("semantic_compress", "rate_distortion_compressor", "semantic_compressor"),
-        config_flag="transform_semantic_compress",
+        aliases=("rate_distortion_compressor",),
+        config_flag="transform_rate_distortion",
         priority=22,
         safety_bucket=CONDITIONAL,
         factory_path="lattice.transforms.rate_distortion.RateDistortionCompressor",
@@ -304,15 +260,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         safety_bucket=SAFE,
         factory_path="lattice.transforms.extractive_compress.ExtractiveCompressor",
         description="Extractive entity/pattern-preserving compression",
-    ),
-    TransformSpec(
-        canonical_name="grammar_compress",
-        aliases=("grammar_compressor",),
-        config_flag="transform_grammar_compress",
-        priority=24,
-        safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.grammar_compress.GrammarCompressor",
-        description="Grammar-based structural compression",
     ),
     TransformSpec(
         canonical_name="path_prefix",
@@ -331,43 +278,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="OpenAI ↔ Anthropic message format conversion",
     ),
     TransformSpec(
-        canonical_name="dictionary_compress",
-        aliases=("dictionary_compressor",),
-        config_flag="transform_dictionary_compress",
-        priority=25,
-        safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.dictionary_compress.DictionaryCompressor",
-        description="Phrase-dictionary compression",
-    ),
-    TransformSpec(
-        canonical_name="stack_interning",
-        config_flag="transform_stack_interning",
-        priority=26,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.stack_interning.StackTraceInterning",
-        description="Stack trace interning for repeated exception patterns",
-    ),
-    # Phase 5 — summarization
-    TransformSpec(
-        canonical_name="hierarchical_summary",
-        aliases=("hierarchical_summarizer",),
-        config_flag="transform_hierarchical_summary",
-        priority=28,
-        safety_bucket=DANGEROUS,
-        factory_path="lattice.transforms.hierarchical_summary.HierarchicalSummarizer",
-        description="Nested structure summarization",
-    ),
-    # Phase 6 — tool & cleanup
-    TransformSpec(
-        canonical_name="tool_filter",
-        aliases=("tool_output_filter",),
-        config_flag="transform_tool_filter",
-        priority=30,
-        safety_bucket=SAFE,
-        factory_path="lattice.transforms.tool_filter.ToolOutputFilter",
-        description="Tool output projection / filtering",
-    ),
-    TransformSpec(
         canonical_name="tool_projection",
         config_flag="transform_tool_projection",
         priority=29,
@@ -375,13 +285,69 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         factory_path="lattice.transforms.tool_projection.QueryAwareProjection",
         description="Query-aware tool output field projection",
     ),
+)
+
+# ---------------------------------------------------------------------------
+# Optimizer specs (Phase 3 architecture)
+# Registered separately in pipeline_factory_optimizer.
+# ---------------------------------------------------------------------------
+
+OPTIMIZER_SPECS: tuple[TransformSpec, ...] = (
     TransformSpec(
-        canonical_name="output_cleanup",
-        config_flag="transform_output_cleanup",
-        priority=40,
+        canonical_name="representation_optimizer",
+        config_flag="transform_representation_optimizer",
+        priority=19,
         safety_bucket=SAFE,
-        factory_path="lattice.transforms.output_cleanup.OutputCleanup",
-        description="Whitespace normalization and JSON repair",
+        factory_path="lattice.optimizer.representation_optimizer.RepresentationOptimizer",
+        description="Global beam-search optimizer across all representation layers",
+    ),
+    TransformSpec(
+        canonical_name="structure_optimizer",
+        config_flag="transform_structure_optimizer",
+        priority=20,
+        safety_bucket=SAFE,
+        factory_path="lattice.optimizer.structure_optimizer.StructureOptimizer",
+        description="Unified structure compaction (JSON/table/grammar)",
+    ),
+    TransformSpec(
+        canonical_name="ir_structure_optimizer",
+        config_flag="transform_ir_structure_optimizer",
+        priority=20,
+        safety_bucket=SAFE,
+        factory_path="lattice.optimizer.ir_structure_optimizer.IRStructureOptimizer",
+        description="IR-native structure optimizer (JSON/table/log factoring)",
+    ),
+    TransformSpec(
+        canonical_name="reference_optimizer",
+        config_flag="transform_reference_optimizer",
+        priority=21,
+        safety_bucket=SAFE,
+        factory_path="lattice.optimizer.reference_optimizer.ReferenceOptimizer",
+        description="Unified reference/path/phrase substitution",
+    ),
+    TransformSpec(
+        canonical_name="tool_optimizer",
+        config_flag="transform_tool_optimizer",
+        priority=30,
+        safety_bucket=SAFE,
+        factory_path="lattice.optimizer.tool_optimizer.ToolOptimizer",
+        description="Unified tool output projection and cleanup",
+    ),
+    TransformSpec(
+        canonical_name="context_optimizer",
+        config_flag="transform_context_optimizer",
+        priority=22,
+        safety_bucket=CONDITIONAL,
+        factory_path="lattice.optimizer.context_optimizer.ContextOptimizer",
+        description="Long-context selection and compression (lossy, gated)",
+    ),
+    TransformSpec(
+        canonical_name="diagnostic_optimizer",
+        config_flag="transform_diagnostic_optimizer",
+        priority=17,
+        safety_bucket=SAFE,
+        factory_path="lattice.optimizer.diagnostic_optimizer.DiagnosticOptimizer",
+        description="Diagnostic signal preservation (RLE)",
     ),
 )
 
@@ -394,19 +360,20 @@ _PRIORITY_ORDER: tuple[str, ...] | None = None
 
 
 def _build_indices() -> None:
-    """Build lookup indices from BUILTIN_TRANSFORMS."""
+    """Build lookup indices from BUILTIN_TRANSFORMS and OPTIMIZER_SPECS."""
     global _NAME_TO_SPEC, _PRIORITY_ORDER
     if _NAME_TO_SPEC is not None:
         return
     name_to_spec: dict[str, TransformSpec] = {}
     for spec in BUILTIN_TRANSFORMS:
-        # Canonical name
         name_to_spec[spec.canonical_name] = spec
-        # Aliases
+        for alias in spec.aliases:
+            name_to_spec[alias] = spec
+    for spec in OPTIMIZER_SPECS:
+        name_to_spec[spec.canonical_name] = spec
         for alias in spec.aliases:
             name_to_spec[alias] = spec
     _NAME_TO_SPEC = name_to_spec
-    # Sort by priority for deterministic pipeline order
     sorted_specs = sorted(BUILTIN_TRANSFORMS, key=lambda s: s.priority)
     _PRIORITY_ORDER = tuple(s.canonical_name for s in sorted_specs)
 
@@ -480,10 +447,8 @@ def is_transform_enabled(config: Any, name: str) -> bool:
     spec = get_transform_spec(name)
     if spec is None:
         return False
-    # Execution-only transforms are gated by include_execution_transforms, not config flags
     if spec.execution_only:
         return True
-    # Transforms with no config flag are always enabled (e.g. delta_encoder placeholder)
     if not spec.config_flag:
         return True
     return bool(getattr(config, spec.config_flag, False))
@@ -517,6 +482,7 @@ def build_transform_instance(config: Any, spec: TransformSpec) -> Any:
 
 __all__ = [
     "BUILTIN_TRANSFORMS",
+    "OPTIMIZER_SPECS",
     "TransformSpec",
     "SAFE",
     "CONDITIONAL",

@@ -51,18 +51,18 @@ The benchmark suite includes 18 scenarios:
 | tool_output_filtering | tool_filter | Internal field stripping |
 | table_compression | format_conversion | Markdown table → CSV |
 | prefix_optimization | prefix_opt | Multi-turn prefix reuse |
-| code_review_patterns | structural_fingerprint | Code pattern detection |
-| api_docs_summarization | dictionary_compress | Boilerplate removal |
+| code_review_patterns | reference_sub | Code pattern detection |
+| api_docs_summarization | extractive_compress | Boilerplate removal |
 | tool_call_preservation | integration | Tool call roundtrip integrity |
 | json_response_format | format_conversion | JSON structure preservation |
 | cache_arbitrage_prefix | cache_arbitrage | Cache alignment |
-| dictionary_repetition | dictionary_compress | Phrase compression |
+| dictionary_repetition | rate_distortion | Phrase compression |
 | cleanup_noise | output_cleanup | Whitespace normalization |
 | message_dedup_turns | message_dedup | Duplicate turn removal |
-| semantic_compress_longform | semantic_compress | Narrative compression |
+| rate_distortion_longform | rate_distortion | Narrative compression |
 | context_budget_pressure | context_selector | Budgeted selection |
 | runtime_contract_pressure | runtime_contract | Complexity tiering |
-| grammar_json_table | grammar_compress | Structured data |
+| grammar_json_table | structure_optimizer | Structured data |
 | simple_baseline | baseline | No-op check |
 | mixed_realworld | mixed | Full pipeline exercise |
 

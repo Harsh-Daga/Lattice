@@ -311,25 +311,19 @@ class RuntimeRouter:
         features = features or {}
         if tier == Tier.SIMPLE:
             skipped = (
-                "structural_fingerprint",
-                "self_information",
                 "information_theoretic_selector",
                 "rate_distortion",
-                "hierarchical_summary",
             )
             mode = "minimal"
-            budget_ms = 2.0
+            budget_ms = 20.0  # was 2ms — too tight, content_profiler alone needs 10-15ms
             preferred_strategy = "full"
         elif tier == Tier.MEDIUM:
-            skipped = (  # type: ignore[assignment]
-                "self_information",
-                "hierarchical_summary",
-            )
+            skipped = ()  # type: ignore[assignment]
             mode = "balanced"
             budget_ms = 20.0
             preferred_strategy = "submodular"
         elif tier == Tier.COMPLEX:
-            skipped = ("hierarchical_summary",)  # type: ignore[assignment]
+            skipped = ()  # type: ignore[assignment]
             mode = "aggressive"
             budget_ms = 20.0
             preferred_strategy = "hybrid"
@@ -338,11 +332,6 @@ class RuntimeRouter:
             mode = "max_fidelity"
             budget_ms = 50.0
             preferred_strategy = "hybrid"
-
-        # Tool-heavy requests should retain tool/filtering and cache planning;
-        # code/reasoning-heavy requests get higher-fidelity strategies.
-        if features.get("tools", 0) >= 20 and "hierarchical_summary" in skipped:
-            skipped = tuple(s for s in skipped if s != "hierarchical_summary")  # type: ignore[assignment]
 
         return {
             "mode": mode,

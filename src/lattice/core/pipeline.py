@@ -22,6 +22,7 @@ from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.policy import OptimizationPolicy, Reject, Skip
 from lattice.core.result import Err, Ok, Result, is_err, unwrap, unwrap_err
+from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.transport import Request, Response
 
 logger = structlog.get_logger()
@@ -105,36 +106,35 @@ class CompressorPipeline:
             "runtime_contract",
             "strategy_selector",
             "constraint_lifting",
-            "instruction_context_sep",
             "causal_chain",
-            "stable_prefix",
         }
     )
 
     _budget_sensitive_transforms: frozenset[str] = frozenset(
         {
-            "self_information",
             "rate_distortion",
-            "hierarchical_summary",
         }
     )
     _irreversible_transforms: frozenset[str] = frozenset(
         {
             "message_dedup",
             "rate_distortion",
-            "semantic_compress",
-            "structural_fingerprint",
-            "hierarchical_summary",
+            # was semantic_compress (deleted),
         }
     )
+
     # Transforms that intentionally use opaque placeholders (<ref_N> etc.)
     # as part of their normal operation. These store referent mappings in
     # context session_state and restore them via reverse().
     _placeholder_using_transforms: frozenset[str] = frozenset(
         {
             "reference_sub",
-            "grammar_compress",
-            "dictionary_compress",
+            "path_prefix",
+            "crossref_substitution",
+            "crossref_compressor",
+            "representation_optimizer",
+            "reference_optimizer",
+            "pipeline_v2",  # v2 beam search may produce <ref_N> internally
         }
     )
 
@@ -237,6 +237,7 @@ class CompressorPipeline:
 
         # Track pre-transform state for rollback
         backup = working.copy()
+        original_backup = working.copy()
         cumulative_transform_ms = 0.0
 
         for transform in self.transforms:
@@ -287,7 +288,7 @@ class CompressorPipeline:
                     )
                 )
 
-            runtime_budget_ms = self._runtime_budget_ms(working)
+            runtime_budget_ms = self._runtime_budget_ms(working, context)
             if (
                 runtime_budget_ms > 0
                 and transform.name != "runtime_contract"
@@ -338,7 +339,9 @@ class CompressorPipeline:
 
             profiler_present = any(t.name == "content_profiler" for t in self.transforms)
             if profiler_present:
-                risk_data = working.metadata.get("_lattice_risk_score")
+                risk_data = get_canonical_request_value(
+                    working, context, "_lattice_risk_score", {}
+                )
 
                 if risk_data and isinstance(risk_data, dict):
                     risk = SemanticRiskScore(
@@ -383,7 +386,9 @@ class CompressorPipeline:
             # protection (future: per-transform span-safety declarations).
             bucket_at_veto = get_transform_safety_bucket(transform.name)
             if bucket_at_veto == TransformSafetyBucket.DANGEROUS:
-                protected = working.metadata.get("_lattice_protected_spans", [])
+                protected = get_canonical_request_value(
+                    working, context, "_lattice_protected_spans", []
+                )
                 if protected:
                     self._log.info(
                         "transform_vetoed_by_protected_spans",
@@ -396,31 +401,77 @@ class CompressorPipeline:
                     continue
             # ---- End protected-span veto ----
 
-            # ---- Span-aware gating (SIG) ----
-            # Only gate when scheduler has explicitly built a schedule with
-            # allowed/blocked transforms. Empty/missing schedule = no gating.
-            schedule = working.metadata.get("_lattice_schedule")
+            # ---- Span-aware gating (Scheduler) ----
+            # The scheduler produces allowed/blocked lists for ALL registered
+            # transforms (via list_transform_names()). The pipeline gate MUST
+            # enforce both:
+            #   1. Block transforms in the blocked list (safety matrix / risk / reputation)
+            #   2. Block transforms NOT in the allowed list (exceeds max / unranked)
+            # Previously only #1 was enforced, causing unlisted transforms to pass freely.
+            #
+            # Aliases: the scheduler stores canonical names (from registry), but some
+            # transforms may register under aliases. Resolve transform.name to canonical
+            # using the transform_registry (which maps aliases → canonical).
+            #
+            # Optimizers: The scheduler also outputs `allowed_optimizers` which lists
+            # optimizer-level names (e.g. "representation_optimizer"). Optimizers are
+            # NOT in BUILTIN_TRANSFORMS so they don't appear in `allowed`. They should
+            # still run if listed in `allowed_optimizers`.
+            schedule = get_canonical_request_value(
+                working, context, "_lattice_schedule", {}
+            )
             if schedule and isinstance(schedule, dict):
-                blocked_names = schedule.get("blocked", [])
-                if blocked_names and transform.name in blocked_names:
+                blocked_names = set(schedule.get("blocked", []))
+                allowed_names = set(schedule.get("allowed", []))
+                allowed_optimizers = set(schedule.get("allowed_optimizers", []))
+
+                from lattice.core.transform_registry import get_transform_spec
+
+                spec = get_transform_spec(transform.name)
+                canonical = spec.canonical_name if spec else transform.name
+
+                # Phase 5: v2 execution engine is never blocked by legacy scheduler
+                is_v2_engine = canonical == "pipeline_v2"
+                if canonical in blocked_names and not is_v2_engine:
                     self._log.info(
                         "transform_blocked_by_scheduler",
                         request_id=context.request_id,
                         transform=transform.name,
                     )
                     context.record_metric(transform.name, "scheduler_blocked", True)
-                    # Record deferred reason for reachability — important
-                    # for rate_distortion/context_selector which may be
-                    # reached but deferred by scheduler
                     context.record_metric(transform.name, "deferred", True)
                     for entry in schedule.get("schedule", []):
-                        if isinstance(entry, dict) and entry.get("name") == transform.name:
+                        if isinstance(entry, dict) and entry.get("name") == canonical:
                             context.record_metric(
                                 transform.name,
                                 "deferred_reason",
                                 entry.get("reason", "scheduler_blocked"),
                             )
                             break
+                    continue
+
+                # Allow optimizers that are in allowed_optimizers even if not in allowed
+                is_optimizer = canonical.endswith("_optimizer")
+                # Phase 5: pipeline_v2 is the v2 execution engine — its own plan controls
+                # what runs inside it; do not gate it via the legacy scheduler.
+                is_v2_engine = canonical == "pipeline_v2"
+                if is_optimizer and canonical in allowed_optimizers:
+                    pass  # allowed
+                elif is_v2_engine:
+                    pass  # allowed — v2 engine manages its own plan
+                elif allowed_names and canonical not in allowed_names:
+                    self._log.info(
+                        "transform_blocked_by_scheduler_not_allowed",
+                        request_id=context.request_id,
+                        transform=transform.name,
+                    )
+                    context.record_metric(transform.name, "scheduler_blocked", True)
+                    context.record_metric(transform.name, "deferred", True)
+                    context.record_metric(
+                        transform.name,
+                        "deferred_reason",
+                        "not_in_allowed_list",
+                    )
                     continue
             # ---- End span-aware gating ----
 
@@ -533,8 +584,10 @@ class CompressorPipeline:
                 continue
             # ---- End negative savings guard ----
 
-            # ---- Compression limit guard (REASONING tier) ----
-            task_data = working.metadata.get("_lattice_task_classification", {})
+            # ---- Compression limit guard (REASONING / DEBUGGING tiers) ----
+            task_data = get_canonical_request_value(
+                working, context, "_lattice_task_classification", {}
+            )
             tier = task_data.get("execution_tier", "") if isinstance(task_data, dict) else ""
             task_class_value = (
                 task_data.get("task_class", "") if isinstance(task_data, dict) else ""
@@ -566,6 +619,37 @@ class CompressorPipeline:
                             message=(
                                 f"Compression ratio {compression_ratio:.2f} exceeds "
                                 f"{task_class_value} tier limit ({max_compression})"
+                            ),
+                        )
+                    )
+            # Debugging tasks: per-transform compression must not exceed the
+            # task class limit. The debugging limit is 0.40 (40% compression).
+            if task_class_value == "debugging" and tokens_before > 0:
+                from lattice.core.scheduler import _TASK_COMPRESSION_LIMITS
+
+                max_compression = _TASK_COMPRESSION_LIMITS.get("debugging", 0.40)
+                compression_ratio = (tokens_before - working_tokens) / tokens_before
+                if compression_ratio > max_compression and transform.name not in (
+                    "content_profiler",
+                    "runtime_contract",
+                ):
+                    self._log.warning(
+                        "transform_compression_limit_exceeded_debugging",
+                        request_id=context.request_id,
+                        transform=transform.name,
+                        compression_ratio=round(compression_ratio, 2),
+                        max_compression=max_compression,
+                    )
+                    context.record_metric(transform.name, "compression_limited", True)
+                    if self.config.graceful_degradation:
+                        working = backup.copy()
+                        continue
+                    return Err(
+                        TransformError(
+                            transform=transform.name,
+                            code="PSG_DEBUGGING_COMPRESSION_LIMIT",
+                            message=(
+                                f"Debugging compression {compression_ratio:.2f} exceeds limit ({max_compression})"
                             ),
                         )
                     )
@@ -644,10 +728,12 @@ class CompressorPipeline:
                     )
 
             # Entity/format/signal checks only for irreversible transforms that
-            # genuinely discard content. Reversible transforms (reference_sub,
-            # dictionary_compress, grammar_compress) store referent mappings.
+            # genuinely discard content. Reversible transforms (reference_sub)
+            # store referent mappings.
             if transform.name in self._irreversible_transforms:
-                protected_spans: list[int] = working.metadata.get("_lattice_protected_spans", [])
+                protected_spans = get_canonical_request_value(
+                    working, context, "_lattice_protected_spans", []
+                )
                 if protected_spans and _psg_text_before != _psg_text_after:
                     entity_decision = _chk_entity(_psg_text_before, _psg_text_after)
                     if entity_decision.action.value == "rollback":
@@ -721,11 +807,13 @@ class CompressorPipeline:
             # ---- End PSG safety check ----
 
             # ---- MILV runtime judge ----
-            # Skip MILV for placeholder-using transforms (reference_sub, grammar_compress,
-            # dictionary_compress) — they store referent mappings and restore via reverse().
+            # Skip MILV for placeholder-using transforms (reference_sub) —
+            # they store referent mappings and restore via reverse().
             # Skip MILV when no task classification metadata exists — content_profiler
             # didn't run, so we cannot make informed quality decisions.
-            _mdata = working.metadata.get("_lattice_task_classification", {})
+            _mdata = get_canonical_request_value(
+                working, context, "_lattice_task_classification", {}
+            )
             _has_task = bool(_mdata) and isinstance(_mdata, dict) and bool(_mdata.get("task_class"))
             if (
                 _psg_text_before != _psg_text_after
@@ -738,7 +826,9 @@ class CompressorPipeline:
                 from lattice.core.milv import should_trigger_milv, validate_transform
                 from lattice.core.task_classifier import TaskClass, TaskClassification
 
-                _tdata = working.metadata.get("_lattice_task_classification", {})
+                _tdata = get_canonical_request_value(
+                    working, context, "_lattice_task_classification", {}
+                )
                 _tc_str = (
                     _tdata.get("task_class", "simple") if isinstance(_tdata, dict) else "simple"
                 )
@@ -819,7 +909,7 @@ class CompressorPipeline:
         budget_skipped = context.metrics.get("runtime_budget_skipped", [])
         budget_skipped_count = len(budget_skipped) if isinstance(budget_skipped, list) else 0
         risk_blocked = context.metrics.get("risk_blocked_transforms", [])
-        runtime_budget_ms = self._runtime_budget_ms(working)
+        runtime_budget_ms = self._runtime_budget_ms(working, context)
 
         # ---- PSG explainability ----
         safety_reasons: dict[str, Any] = {}
@@ -850,7 +940,11 @@ class CompressorPipeline:
         # ---- End PSG explainability ----
 
         # ---- Reached / Activated / Useful telemetry ----
-        # reached: transform passed all gates (config, policy, risk, scheduler, span veto)
+        # reached: transform passed config + policy gates. Scheduler-blocked
+        # transforms ARE reached — the pipeline evaluated the transform through
+        # all pre-scheduler gates; the scheduler just chose not to execute it.
+        # Risk-blocked transforms are NOT reached — they were gated before
+        # scheduler evaluation ever occurred.
         # activated: transform changed the request (tokens changed)
         # useful: activated AND no safety rollback AND tokens saved
         transforms_reached: list[str] = []
@@ -866,21 +960,59 @@ class CompressorPipeline:
                 has_safety_issue = t_metrics.get("safety_rollback") or t_metrics.get(
                     "expansion_aborted"
                 )
-                was_blocked = t_metrics.get("risk_blocked") or t_metrics.get("scheduler_blocked")
+                was_risk_blocked = t_metrics.get("risk_blocked")
+                was_scheduler_blocked = t_metrics.get("scheduler_blocked")
                 was_deferred = t_metrics.get("deferred")
                 was_executed = "tokens_before" in t_metrics
-                # reached: executed, deferred (budget), or explicitly recorded
-                if not was_blocked and (was_executed or was_deferred or t_metrics.get("reached")):
+                # reached: any transform that passed config + policy + risk gates.
+                # Scheduler-blocked is still reached (pipeline saw it, scheduler gated it).
+                if not was_risk_blocked and (
+                    was_executed or was_deferred or was_scheduler_blocked or t_metrics.get("reached")
+                ):
                     transforms_reached.append(t_name)
-                if not was_blocked and changed:
+                if not was_risk_blocked and not was_scheduler_blocked and changed:
                     transforms_activated.append(t_name)
                 if (
-                    not was_blocked
+                    not was_risk_blocked
+                    and not was_scheduler_blocked
                     and changed
                     and not has_safety_issue
                     and tokens_after < tokens_before
                 ):
                     transforms_useful.append(t_name)
+
+        # ---- Post-pipeline aggregate compression cap (debugging tasks) ----
+        # Per-transform compression limits prevent individual transforms from
+        # over-compressing, but the combined effect of multiple transforms can
+        # still exceed the task-class limit. Revert to backup when aggregate
+        # compression passes 40% for debugging tasks.
+        original_tokens = original_token_estimate
+        aggregate_compression = (original_tokens - final_tokens) / max(original_tokens, 1)
+        task_data = get_canonical_request_value(
+            working, context, "_lattice_task_classification", {}
+        )
+        tc_val = task_data.get("task_class", "") if isinstance(task_data, dict) else ""
+        if tc_val == "debugging" and aggregate_compression > 0.40:
+            self._log.warning(
+                "aggregate_debugging_compression_capped",
+                request_id=context.request_id,
+                original_tokens=original_tokens,
+                final_tokens=final_tokens,
+                aggregate_compression=round(aggregate_compression, 3),
+            )
+            working = original_backup.copy()
+            working.metadata["_lattice_rollback_reason"] = (
+                f"aggregate_debugging_compression_{aggregate_compression:.2f}"
+            )
+            transforms_reached = list(transforms_reached)
+            transforms_activated.clear()
+            transforms_useful.clear()
+            context.record_metric("pipeline", "aggregate_rollback", True)
+            context.record_metric(
+                "pipeline", "aggregate_compression", round(aggregate_compression, 3)
+            )
+            # restore original tokens
+            final_tokens = original_tokens
 
         working.metadata["_lattice_reachability"] = {
             "reached": transforms_reached,
@@ -918,8 +1050,10 @@ class CompressorPipeline:
         return Ok[Request, TransformError](working)
 
     @staticmethod
-    def _runtime_budget_ms(request: Request) -> float:
-        contract = request.metadata.get("_lattice_runtime_contract")
+    def _runtime_budget_ms(request: Request, context: TransformContext) -> float:
+        contract = get_canonical_request_value(
+            request, context, "_lattice_runtime_contract"
+        )
         if not isinstance(contract, dict):
             return 0.0
         value = contract.get("max_transform_latency_ms")

@@ -28,10 +28,12 @@ from __future__ import annotations
 
 import hashlib
 import re
+from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Message, Request, Response
 
@@ -82,6 +84,95 @@ class MessageDeduplicator(ReversibleSyncTransform):
         self.min_message_length = min_message_length
         self.preserve_last_n = preserve_last_n
         self.preserve_roles = preserve_roles or {"tool"}
+
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: remove duplicate sections from PromptIRV2.
+
+        Algorithm:
+        1. Compute stable fingerprint per section (role + normalized text)
+        2. Scan sections in order; keep first occurrence, skip later exact dupes
+        3. Near-duplicate check on section text (n-gram Jaccard)
+        4. Always preserve last N sections and protected sections
+        5. Return new PromptIRV2 with deduplicated sections
+        """
+        if len(ir.sections) <= 1:
+            return Ok(ir)
+
+        original_count = len(ir.sections)
+        seen_hashes: set[str] = set()
+        seen_sketches: list[set[str]] = []
+        removed_count = 0
+        preserved_last = max(0, original_count - self.preserve_last_n)
+
+        new_sections: list[Any] = []
+
+        for idx, sec in enumerate(ir.sections):
+            # Always preserve last N sections
+            if idx >= preserved_last:
+                new_sections.append(sec)
+                continue
+
+            # Preserve sections with any protected span
+            if any(sp.protected for sp in sec.spans):
+                new_sections.append(sec)
+                continue
+
+            # Skip sections too short to deduplicate
+            sec_text = sec.serialize() if hasattr(sec, "serialize") else "\n".join(
+                sp.text for sp in sec.spans
+            )
+            if len(sec_text) < self.min_message_length:
+                new_sections.append(sec)
+                continue
+
+            # Exact duplicate check (structure-aware normalization)
+            content_hash = self._hash_section(sec)
+            if content_hash in seen_hashes:
+                removed_count += 1
+                continue
+
+            # Near-duplicate check
+            if self.enable_near_duplicate:
+                normalized = self._normalize_for_dedup(sec_text, "")
+                sketch = self._ngram_sketch(normalized)
+                if self._is_near_duplicate(sketch, seen_sketches):
+                    removed_count += 1
+                    continue
+                seen_sketches.append(sketch)
+
+            seen_hashes.add(content_hash)
+            new_sections.append(sec)
+
+        if removed_count > 0:
+            context.record_metric(self.name, "removed_count", removed_count)
+            context.record_metric(self.name, "original_count", original_count)
+            tokens_saved = sum(
+                len("\n".join(sp.text for sp in sec.spans))
+                for sec in ir.sections[:removed_count]
+            )
+            context.record_metric(self.name, "tokens_saved_estimate", tokens_saved // 4)
+
+        return Ok(ir.with_sections(tuple(new_sections)))
+
+    @staticmethod
+    def _hash_section(sec: Any) -> str:
+        """Compute a stable hash of section content + type."""
+        sec_text = "\n".join(sp.text for sp in sec.spans)
+        text = f"{sec.type}:{sec_text}"
+        return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
 
     def process(
         self, request: Request, context: TransformContext

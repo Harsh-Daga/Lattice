@@ -15,6 +15,7 @@ import re
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
+from lattice.core.primitives import PromptIRV2
 from lattice.core.result import Ok, Result
 from lattice.core.transport import Request, Response
 
@@ -47,6 +48,39 @@ class ConstraintLiftingTransform(ReversibleSyncTransform):
     name = "constraint_lifting"
     priority = 6
     transform_class = TransformClass.OBSERVABILITY_ONLY
+
+    # ------------------------------------------------------------------
+    # IR-native optimize() — v2 path
+    # ------------------------------------------------------------------
+
+    def optimize(
+        self,
+        ir: PromptIRV2,
+        _request: Request,
+        context: TransformContext,
+    ) -> Result[PromptIRV2, TransformError]:
+        """IR-native: lift constraints from span text and prepend CONSTRAINTS block."""
+        lifted_count = 0
+        new_sections = []
+        for sec in ir.sections:
+            new_spans = []
+            for span in sec.spans:
+                if len(span.text) < 20 or span.protected:
+                    new_spans.append(span)
+                    continue
+                lifted = _lift_constraints(span.text)
+                if lifted != span.text:
+                    new_spans.append(span.with_text(lifted))
+                    lifted_count += 1
+                else:
+                    new_spans.append(span)
+            new_sections.append(sec.with_spans(tuple(new_spans)))
+        context.record_metric(self.name, "spans_lifted", lifted_count)
+        return Ok(ir.with_sections(tuple(new_sections)))
+
+    # ------------------------------------------------------------------
+    # Legacy process()
+    # ------------------------------------------------------------------
 
     def process(
         self, request: Request, context: TransformContext
