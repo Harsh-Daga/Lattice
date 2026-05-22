@@ -101,44 +101,6 @@ class RateDistortionCompressor(ReversibleSyncTransform):
             context.record_metric(self.name, "distortion_budget", self.distortion_budget)
         return Ok(ir.with_sections(tuple(new_sections)))
 
-    # ------------------------------------------------------------------
-    # Legacy process()
-    # ------------------------------------------------------------------
-
-    def process(
-        self,
-        request: Request,
-        context: TransformContext,
-    ) -> Result[Request, TransformError]:
-        strategy = _strategy(request, context)
-        if isinstance(strategy, dict) and strategy.get("rate_distortion") is False:
-            return Ok(request)
-        if not lossy_transform_allowed(request):
-            context.record_metric(self.name, "guarded", 1)
-            return Ok(request)
-
-        compressed_messages = 0
-        total_saved_chars = 0
-
-        for msg in request.messages:
-            original = msg.content
-            if not original or len(original) < self.max_input_tokens * 4:
-                continue
-            if self._is_structured(original):
-                continue
-
-            compressed = self._compress_text(original)
-            if compressed != original:
-                compressed_messages += 1
-                total_saved_chars += len(original) - len(compressed)
-                msg.content = compressed
-
-        if compressed_messages > 0:
-            context.record_metric(self.name, "messages_compressed", compressed_messages)
-            context.record_metric(self.name, "tokens_saved_estimate", total_saved_chars // 4)
-            context.record_metric(self.name, "distortion_budget", self.distortion_budget)
-        return Ok(request)
-
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response
 

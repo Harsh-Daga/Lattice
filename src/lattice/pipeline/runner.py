@@ -255,7 +255,9 @@ class Pipeline:
                         working.metadata["_lattice_ir_v2"] = ir_v2
                         context.session_state["_lattice_ir_v2"] = ir_v2
                         context.mark_transform_applied(tx_name)
-                        continue
+                    else:
+                        context.record_metric(tx_name, "error", str(unwrap_err(result)))
+                    continue
                 result = inst.process(working, context)
             except Exception:
                 context.record_metric(tx_name, "exception", True)

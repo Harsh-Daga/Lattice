@@ -188,59 +188,6 @@ class FormatConverter(ReversibleSyncTransform):
 
         return Ok(ir.with_sections(tuple(new_sections)))
 
-    # ------------------------------------------------------------------
-    # Legacy process()
-    # ------------------------------------------------------------------
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        """Detect and convert structured data in messages."""
-        total_saved = 0
-        converted_count = 0
-
-        for msg in request.messages:
-            original_content = msg.content
-            original_len = len(original_content)
-
-            # Skip if content contains tool calls (structured output, don't touch)
-            if msg.tool_calls:
-                continue
-
-            # Attempt conversion (JSON first, then Markdown)
-            converted = self._try_convert(original_content)
-            if converted is None or converted == original_content:
-                continue
-
-            # Validate round-trip (expensive, disabled in production)
-            if self.validate_roundtrip and not self._validate_roundtrip(
-                original_content, converted
-            ):
-                self._log.warning(
-                    "roundtrip_failed",
-                    request_id=context.request_id,
-                    shape=self._detect_shape(json.loads(original_content)).value,
-                )
-                continue
-
-            # Apply conversion
-            msg.content = converted
-            converted_count += 1
-            saved = max(0, original_len - len(converted))
-            total_saved += saved
-
-        if converted_count > 0:
-            context.record_metric(self.name, "messages_converted", converted_count)
-            context.record_metric(self.name, "tokens_saved_estimate", total_saved // 4)
-            self._log.info(
-                "format_converted",
-                request_id=context.request_id,
-                messages=converted_count,
-                chars_saved=total_saved,
-            )
-
-        return Ok(request)
-
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         """No-op — format conversion is irreversible (not needed)."""
         return response

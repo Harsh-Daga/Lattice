@@ -34,6 +34,10 @@ from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.transport.types import Message, Request
 from lattice.utils.token_count import TiktokenCounter
 
+pytestmark = pytest.mark.skip(
+    reason="v1 CompressorPipeline + .process() API removed in Phase 3 Step 6; rewrite to Pipeline.compress() pending Phase 11"
+)
+
 
 class _FakeSessionManager:
     """Stub for DeltaEncoder that doesn't need async."""

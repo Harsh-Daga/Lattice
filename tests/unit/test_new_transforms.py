@@ -89,6 +89,7 @@ class TestNumericPreservationWithoutArithmeticSequence:
 
 class TestPathPrefix:
     def test_path_prefix_roundtrip(self) -> None:
+        from lattice.ir.primitives import PromptIRV2
         from lattice.transforms.path_prefix import PathPrefixCompressor
 
         t = PathPrefixCompressor()
@@ -99,7 +100,7 @@ class TestPathPrefix:
             ),
         ]
         req = Request(model="test", messages=content)
-        result = t.process(req, ctx)
+        result = t.optimize(PromptIRV2(), req, ctx)
         assert is_ok(result)
 
 

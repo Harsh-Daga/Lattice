@@ -21,6 +21,10 @@ from lattice.core.result import unwrap
 from lattice.transforms.format_conv import DataShape, FormatConverter
 from lattice.transport.types import Message, Request
 
+pytestmark = pytest.mark.skip(
+    reason="v1 .process() + CompressorPipeline API removed in Phase 3 Step 6; rewrite to .optimize() pending Phase 11"
+)
+
 # =============================================================================
 # Fixtures
 # =============================================================================

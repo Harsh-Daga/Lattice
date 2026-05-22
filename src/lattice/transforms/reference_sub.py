@@ -326,65 +326,6 @@ class ReferenceSubstitution(ReversibleSyncTransform):
         )
         return Ok(new_ir)
 
-    # ------------------------------------------------------------------
-    # Legacy process()
-    # ------------------------------------------------------------------
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        """Replace long identifiers with short aliases.
-
-        Algorithm:
-        1. For each message content:
-           a. Extract code blocks (if preserve_in_code_blocks)
-           b. Scan for UUIDs, hashes, URLs, long identifiers
-           c. Replace all occurrences in content
-           d. Restore code blocks
-        2. Cross-message deduplication (if enabled)
-        3. Store ref_map in context.session_state["reference_sub"]
-        """
-        state = context.get_transform_state(self.name)
-        ref_map: dict[str, str] = state.get("ref_map", {})
-        reverse_map: dict[str, str] = state.get("reverse_map", {})
-        cross_ref_map: dict[str, str] = state.get("cross_ref_map", {})
-
-        # Track which messages were modified
-        modified_count = 0
-        tokens_saved = 0
-
-        # Phase 0: Cross-message deduplication
-        if self.enable_cross_message_dedup and len(request.messages) > 1:
-            all_contents = [msg.content for msg in request.messages]
-            cross_refs = _find_repeated_phrases(all_contents)
-            for original, alias in cross_refs.items():
-                if original not in ref_map:
-                    ref_map[original] = alias
-                    reverse_map[alias] = original
-                    cross_ref_map[original] = alias
-
-        # Phase 1: Per-message substitution
-        for msg in request.messages:
-            original = msg.content
-            modified = self._replace_in_text(original, ref_map, reverse_map, cross_ref_map)
-            if modified != original:
-                msg.content = modified
-                modified_count += 1
-
-        # Phase 2: Update state
-        state["ref_map"] = ref_map
-        state["reverse_map"] = reverse_map
-        state["cross_ref_map"] = cross_ref_map
-        state["modified_count"] = modified_count
-
-        # Metrics
-        tokens_saved = sum(len(orig) - len(alias) for orig, alias in ref_map.items())
-        context.record_metric(self.name, "tokens_saved_estimate", tokens_saved // 4)
-        context.record_metric(self.name, "modified_count", modified_count)
-        context.record_metric(self.name, "unique_refs", len(ref_map))
-
-        return Ok(request)
-
     def reverse(self, response: Response, context: TransformContext) -> Response:
         """Restore original values from aliases in the response.
 
