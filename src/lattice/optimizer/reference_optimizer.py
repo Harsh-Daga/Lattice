@@ -17,8 +17,9 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.pipeline import ReversibleSyncTransform
-from lattice.core.result import Ok, Result, is_ok
+from lattice.core.result import Ok, Result, is_ok, unwrap
 from lattice.core.runtime_state import get_ir_metadata_value, thaw_value
+from lattice.optimizer._dispatch import run_constituent
 from lattice.transport.types import Request, Response
 
 # Import constituent transforms
@@ -86,11 +87,11 @@ class ReferenceOptimizer(ReversibleSyncTransform):
             if not t_instance.can_process(original, context):
                 continue
             start = time.perf_counter()
-            result = t_instance.process(original.copy(), context)
+            result = run_constituent(t_name, t_instance, original.copy(), context)
             elapsed_ms = (time.perf_counter() - start) * 1000.0
 
             if is_ok(result):
-                candidate_req = result.unwrap()
+                candidate_req = unwrap(result)
                 placeholder_count = _count_placeholders(candidate_req)
                 candidate = _Candidate(
                     request=candidate_req,
@@ -165,9 +166,9 @@ class ReferenceOptimizer(ReversibleSyncTransform):
         for cand in candidates:
             for t_name, t_inst in self._constituents:
                 if t_name in cand.transforms_used:
-                    result = t_inst.process(working, context)
+                    result = run_constituent(t_name, t_inst, working, context)
                     if is_ok(result):
-                        working = result.unwrap()
+                        working = unwrap(result)
                         transforms_used.append(t_name)
                     else:
                         return None
