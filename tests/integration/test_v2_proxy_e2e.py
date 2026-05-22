@@ -7,7 +7,7 @@ import asyncio
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok
-from lattice.pipeline.factory import build_v2_pipeline
+from lattice.pipeline.factory import build_default_pipeline
 from lattice.proxy.bootstrap import build_proxy_runtime
 from lattice.transport.types import Message, Request, Response
 
@@ -20,7 +20,7 @@ class TestV2ProxyPipeline:
     """Proxy runtime with v2 pipeline — full process + reverse."""
 
     def test_v2_pipeline_runs_and_produces_execution_plan(self) -> None:
-        cfg = LatticeConfig(use_v2_pipeline=True, provider_base_url="http://test")
+        cfg = LatticeConfig(provider_base_url="http://test")
         runtime = build_proxy_runtime(cfg)
 
         request = Request(
@@ -57,8 +57,8 @@ class TestV2ProxyPipeline:
         from lattice.core.unified_planner import UnifiedPlanner, profile_from_legacy
         from lattice.ir.primitives import ExecutionPlan
 
-        cfg = LatticeConfig(use_v2_pipeline=True)
-        pipeline = build_v2_pipeline(cfg)
+        cfg = LatticeConfig()
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[_req('{"status":"ok","data":[1,2,3]}')],

@@ -16,8 +16,8 @@ from lattice.core.context import TransformContext
 from lattice.core.cost_estimator import CostEstimator
 from lattice.core.credentials import CredentialResolver
 from lattice.core.pipeline import CompressorPipeline
-from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.core.result import is_err, unwrap, unwrap_err
+from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
 from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.types import Request, Response
@@ -118,7 +118,7 @@ async def run_scenario(
         model=model,
     )
     pipeline_start = time.perf_counter()
-    result = await pipeline.process(request, ctx)
+    result = pipeline.compress(request, ctx)
     pipeline_ms = (time.perf_counter() - pipeline_start) * 1000
     if is_err(result):
         err = unwrap_err(result)
@@ -166,7 +166,7 @@ async def run_scenario(
                     content=optimized_resp_text,
                     model=model,
                 )
-                restored = await pipeline.reverse(response_obj, ctx)
+                restored = pipeline.reverse(response_obj, ctx)
                 optimized_resp_text = restored.content or optimized_resp_text
             except Exception:
                 pass  # Reverse failure is non-fatal; use raw response

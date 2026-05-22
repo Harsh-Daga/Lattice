@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
@@ -81,7 +79,7 @@ class TestNumericPreservationWithoutArithmeticSequence:
         req = Request(model="test", messages=messages)
         ctx = TransformContext(request_id="test", provider="openai", model="test")
 
-        result = asyncio.run(pipeline.process(req, ctx))
+        result = pipeline.compress(req, ctx)
         if is_ok(result):
             out = unwrap(result)
             combined = "\n".join(m.content for m in out.messages)
@@ -153,7 +151,7 @@ class TestSafetyGates:
         req = Request(model="test", messages=messages)
         ctx = TransformContext(request_id="test", provider="openai", model="test")
 
-        result = asyncio.run(pipeline.process(req, ctx))
+        result = pipeline.compress(req, ctx)
         if is_ok(result):
             out = unwrap(result)
             combined = "\n".join(m.content for m in out.messages)

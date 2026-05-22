@@ -16,7 +16,6 @@ from lattice.core.config import LatticeConfig
 from lattice.core.cost_estimator import CostEstimator
 from lattice.core.credentials import CredentialResolver
 from lattice.core.metrics import get_metrics
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.semantic_cache import SemanticCache
 from lattice.core.session import MemorySessionStore, SessionManager
@@ -25,11 +24,8 @@ from lattice.core.telemetry import DowngradeTelemetry
 from lattice.gateway.compat import HTTPCompatHandler, serialize_messages
 from lattice.gateway.server import LLMTPGateway
 from lattice.pipeline.auto_continuation import AutoContinuation
-from lattice.pipeline.factory import (
-    build_default_pipeline,
-    build_optimizer_pipeline,
-    build_v2_pipeline,
-)
+from lattice.pipeline.factory import build_default_pipeline
+from lattice.pipeline.runner import Pipeline
 from lattice.protocol.framing import BinaryFramer
 from lattice.protocol.resume import StreamManager
 from lattice.providers.transport import DirectHTTPProvider
@@ -45,7 +41,7 @@ class ProxyRuntime:
 
     store: Any
     session_manager: SessionManager
-    pipeline: CompressorPipeline
+    pipeline: Pipeline
     provider: DirectHTTPProvider
     gateway: LLMTPGateway
     compat: HTTPCompatHandler
@@ -118,23 +114,17 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
 
     session_manager = SessionManager(store, ttl_seconds=config.session_ttl_seconds)
 
-    if getattr(config, "use_v2_pipeline", False):
-        pipeline = build_v2_pipeline(
-            config,
-            include_execution_transforms=True,
-            session_manager=session_manager,
-        )
-    elif getattr(config, "use_optimizer_pipeline", False):
-        pipeline = build_optimizer_pipeline(
-            config,
-            include_execution_transforms=True,
-            session_manager=session_manager,
-        )
-    else:
-        pipeline = build_default_pipeline(
-            config,
-            include_execution_transforms=True,
-            session_manager=session_manager,
+    pipeline = build_default_pipeline(config)
+
+    # Execution-only transforms need session-scoped deps; register them
+    # post-build instead of inside the factory. delta_encoder receives the
+    # SessionManager directly. batching/speculative are wired below after
+    # their engines are constructed.
+    if config.is_transform_enabled("delta_encoder"):
+        from lattice.transforms.delta_encode import DeltaEncoder
+
+        pipeline.registry.register_instance(
+            "delta_encoder", DeltaEncoder(session_manager=session_manager)
         )
 
     credentials = CredentialResolver()
@@ -255,8 +245,9 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
         confidence_threshold=0.7,
         provider_caller=_speculative_provider_call,
     )
-    pipeline.unregister("speculative")
-    pipeline.register(SpeculativeTransform(executor=speculative_executor))
+    pipeline.registry.register_instance(
+        "speculative", SpeculativeTransform(executor=speculative_executor)
+    )
 
     cache_backend = None
     if config.semantic_cache_backend == "redis":

@@ -12,7 +12,7 @@ from __future__ import annotations
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.pipeline.factory import build_optimizer_pipeline
+from lattice.pipeline.factory import build_default_pipeline
 from lattice.planner.execution_plan import ExecutionPlan
 from lattice.planner.provider_strategy import get_provider_strategy
 from lattice.planner.request_classifier import RequestClassifier
@@ -87,7 +87,7 @@ class TestRepresentationOptimizerLayer:
 
     def test_optimizer_pipeline_builds_correctly(self) -> None:
         cfg = LatticeConfig(use_optimizer_pipeline=True)
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
         names = [t.name for t in pipeline.transforms]
         assert "content_profiler" in names
         assert "runtime_contract" in names
@@ -136,7 +136,7 @@ class TestRepresentationOptimizerLayer:
         import asyncio
 
         cfg = LatticeConfig(use_optimizer_pipeline=True)
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[_req("Error: stack trace shows ModuleNotFoundError")],
@@ -266,7 +266,7 @@ class TestReverseTransformsEndToEnd:
         import asyncio
 
         cfg = LatticeConfig(use_optimizer_pipeline=True)
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[

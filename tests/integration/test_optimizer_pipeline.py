@@ -12,7 +12,7 @@ from __future__ import annotations
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.pipeline.factory import build_optimizer_pipeline
+from lattice.pipeline.factory import build_default_pipeline
 from lattice.transport.types import Message, Request, Response
 
 
@@ -25,7 +25,7 @@ class TestOptimizerPipelineEndToEnd:
         """Full path: content_profiler → representation_optimizer → allowed optimizers."""
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"  # minimal extra transforms
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         # Verify core transforms + representation_optimizer are registered
         names = [t.name for t in pipeline.transforms]
@@ -122,7 +122,7 @@ class TestOptimizerPipelineEndToEnd:
     def test_optimizer_pipeline_reverse(self) -> None:
         """Reverse should restore placeholder references in response."""
         cfg = LatticeConfig(use_optimizer_pipeline=True)
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[

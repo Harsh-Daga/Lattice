@@ -61,7 +61,7 @@ class PipelineV2Wrapper(ReversibleSyncTransform):
         if plan is None:
             return response
 
-        return self._pipeline_v2.reverse(response, plan, context)
+        return self._pipeline_v2.reverse(response, context, plan=plan)
 
 
 def _coerce_execution_plan(plan: Any) -> Any | None:

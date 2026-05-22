@@ -78,11 +78,11 @@ def config() -> LatticeConfig:
 async def _run_direct_pipeline(
     messages: list[dict[str, Any]], config: LatticeConfig
 ) -> dict[str, Any]:
-    """Simulate the proxy surface: direct pipeline.process()."""
+    """Simulate the proxy surface: direct pipeline.compress()."""
     pipeline = build_default_pipeline(config)
     request = Request(messages=[message_from_dict(m) for m in messages], model="gpt-4")
     ctx = TransformContext(provider="openai", model="gpt-4")
-    result = await pipeline.process(request, ctx)
+    result = pipeline.compress(request, ctx)
     compressed = unwrap(result)
     return {
         "messages": [message_to_dict(m) for m in compressed.messages],

@@ -27,7 +27,7 @@ from lattice.transport.types import Response
 
 
 class _PassthroughPipeline:
-    async def process(self, request: Any, _context: Any) -> Any:
+    def compress(self, request: Any, _context: Any) -> Any:
         return Ok(request)
 
     def reverse(self, response: Response, _context: Any) -> Response:

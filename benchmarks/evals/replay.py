@@ -23,8 +23,8 @@ from benchmarks.metrics.quality import evaluate_response
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
-from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.core.result import unwrap
+from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.transforms.batching import BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
 from lattice.transforms.format_conv import FormatConverter
@@ -129,9 +129,9 @@ def _build_pipeline(config: LatticeConfig) -> Any:
     """Build a compression pipeline that respects all feature flags."""
     pipeline = build_benchmark_pipeline(config)
     if config.transform_batching:
-        pipeline.register(BatchingTransform())
+        pipeline.registry.register_instance("batching", BatchingTransform())
     if config.transform_speculation:
-        pipeline.register(SpeculativeTransform())
+        pipeline.registry.register_instance("speculative", SpeculativeTransform())
     return pipeline
 
 
@@ -328,7 +328,7 @@ async def run_trace_replay(
             trace_model: str = trace_model,
             trace_messages: list[dict[str, Any]] = trace_messages,
         ) -> TransformContext:
-            await pipeline.process(
+            pipeline.compress(
                 Request(
                     messages=[message_from_dict(m) for m in trace_messages],
                     model=trace_model,
@@ -346,7 +346,7 @@ async def run_trace_replay(
         # Compute optimized tokens after all passes (warmup + measured)
         ctx = await _run_once()
         compressed = unwrap(
-            await pipeline.process(
+            pipeline.compress(
                 Request(
                     messages=[message_from_dict(m) for m in trace_messages],
                     model=trace_model,

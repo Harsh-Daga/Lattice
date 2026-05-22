@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-import inspect
 import json
 from typing import Any
 
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import is_err, unwrap
 from lattice.core.runtime_state import (
     get_canonical_request_value,
@@ -17,6 +15,7 @@ from lattice.core.runtime_state import (
     persist_session_plan_state,
 )
 from lattice.core.session import SessionManager
+from lattice.pipeline.runner import Pipeline
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType, MessageAssembler
@@ -42,7 +41,7 @@ class LLMTPGateway:
     def __init__(
         self,
         session_manager: SessionManager,
-        pipeline: CompressorPipeline,
+        pipeline: Pipeline,
         provider: DirectHTTPProvider,
         framer: BinaryFramer,
         stream_manager: StreamManager,
@@ -134,7 +133,7 @@ class LLMTPGateway:
             request, provider_name, exec_plan
         )
 
-        result = await self.pipeline.process(request, ctx)
+        result = self.pipeline.compress(request, ctx)
         if is_err(result):
             error = self.framer.encode_error(422, "pipeline_failed")
             return error.to_bytes(), {"x-lattice-framing": "native"}
@@ -218,7 +217,7 @@ class LLMTPGateway:
             request, provider_name, exec_plan
         )
 
-        result = await self.pipeline.process(request, ctx)
+        result = self.pipeline.compress(request, ctx)
         if is_err(result):
             return (
                 json.dumps({"error": "pipeline_failed"}).encode("utf-8"),
@@ -336,11 +335,8 @@ class LLMTPGateway:
         )
 
     async def _reverse_response(self, response: Response, context: TransformContext) -> Response:
-        """Handle sync or async reverse pipeline implementations."""
-        reversed_result = self.pipeline.reverse(response, context)
-        if inspect.isawaitable(reversed_result):
-            return await reversed_result
-        return reversed_result
+        """Apply reverse pipeline. Pipeline.reverse is sync (CPU-bound)."""
+        return self.pipeline.reverse(response, context)
 
     async def _manage_session_for_request(
         self,

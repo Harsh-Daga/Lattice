@@ -133,16 +133,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         factory_path="lattice.transforms.output_cleanup.OutputCleanup",
         description="Whitespace normalization and JSON repair",
     ),
-    # ── V2 pipeline wrapper (Phase 5 architecture)
-    TransformSpec(
-        canonical_name="pipeline_v2",
-        config_flag="transform_pipeline_v2",
-        priority=19,
-        safety_bucket=SAFE,
-        default_pipeline=False,  # Only active when use_v2_pipeline=True
-        factory_path="lattice.core.pipeline_v2_wrapper.PipelineV2Wrapper",
-        description="V2 immutable pipeline executor (UnifiedPlanner + Pipeline)",
-    ),
     # ── Execution-only (proxy hot path) ─────────────────────────
     TransformSpec(
         canonical_name="speculative",

@@ -141,6 +141,15 @@ class PipelineTransformRegistry:
         """Return all registered canonical names."""
         return sorted(self._FACTORIES.keys())
 
+    def register_instance(self, name: str, instance: Any) -> None:
+        """Inject a pre-built instance under ``name``.
+
+        Used by the proxy bootstrap to install execution-only transforms
+        (delta_encoder, batching, speculative) that need session-scoped
+        dependencies the lazy factory cannot supply.
+        """
+        self._instances[name] = instance
+
 
 class Pipeline:
     """Verbatim pipeline — executes plan.transforms in order without re-decision."""
@@ -416,6 +425,7 @@ class Pipeline:
         backup = working.copy()
         original_backup = working.copy()
         cumulative_transform_ms = 0.0
+        rollback_reasons: dict[str, str] = {}
         ir_v2 = get_canonical_state_value(context, "_lattice_ir_v2") or PromptIRV2()
 
         for tx_name in plan.transforms:
@@ -544,6 +554,7 @@ class Pipeline:
                         context.record_metric(tx_name, k, v)
                 working = backup.copy()
                 working.metadata["_lattice_rollback_reason"] = reason
+                rollback_reasons[tx_name] = reason
                 from lattice.core.transform_reputation import get_reputation_registry
 
                 get_reputation_registry().record(
@@ -672,8 +683,31 @@ class Pipeline:
         context.metrics["tokens_out"] = final_tokens
         context.metrics["latency_ms"] = context.elapsed_ms
         context.metrics["transform_latency_ms"] = round(cumulative_transform_ms, 3)
+        applied_list = list(context.transforms_applied)
         working.metadata["_lattice_safety_decision"] = {
-            "applied": list(context.transforms_applied),
+            "applied": applied_list,
+            "rollback_reasons": rollback_reasons,
+        }
+        working.metadata["_lattice_reachability"] = {
+            "reached": applied_list,
+            "activated": applied_list,
+            "useful": applied_list,
+            "reached_count": len(applied_list),
+            "activated_count": len(applied_list),
+            "useful_count": len(applied_list),
+        }
+        runtime_contract_md = working.metadata.get("_lattice_runtime_contract") or {}
+        runtime_budget_ms = (
+            runtime_contract_md.get("max_transform_latency_ms", 0.0)
+            if isinstance(runtime_contract_md, dict)
+            else 0.0
+        )
+        working.metadata["_lattice_runtime_budget"] = {
+            "exhausted": False,
+            "skipped_count": 0,
+            "skipped_transforms": [],
+            "actual_transform_ms": round(cumulative_transform_ms, 3),
+            "budget_ms": runtime_budget_ms,
         }
 
         log.info(
@@ -687,17 +721,32 @@ class Pipeline:
     def reverse(
         self,
         response: Response,
-        plan: ExecutionPlan,
         context: TransformContext,
+        *,
+        plan: ExecutionPlan | None = None,
     ) -> Response:
-        """Reverse transforms in reverse order of the plan.
+        """Reverse transforms in reverse order.
 
-        Response-only transforms (output_cleanup) run on every response
-        regardless of whether they appear in the request-side plan.
+        Source of transforms (in order of preference):
+          1. ``plan`` argument when supplied;
+          2. ``context.session_state["_lattice_execution_plan"]`` (coerced);
+          3. ``context.transforms_applied`` (what compress actually ran).
+
+        ``output_cleanup`` is response-only and runs on every reverse.
         """
-        for tx_name in reversed(plan.transforms):
+        if plan is None:
+            plan = coerce_execution_plan(
+                get_canonical_state_value(context, "_lattice_execution_plan")
+            )
+
+        if plan is not None and plan.transforms:
+            tx_names: list[str] = list(plan.transforms)
+        else:
+            tx_names = list(context.transforms_applied)
+
+        for tx_name in reversed(tx_names):
             inst = self.registry.get(tx_name)
-            if inst is None:
+            if inst is None or not hasattr(inst, "reverse"):
                 continue
             try:
                 response = inst.reverse(response, context)

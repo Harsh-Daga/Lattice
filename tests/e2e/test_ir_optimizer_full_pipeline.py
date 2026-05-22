@@ -7,7 +7,7 @@ import asyncio
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.pipeline.factory import build_optimizer_pipeline
+from lattice.pipeline.factory import build_default_pipeline
 from lattice.transport.types import Message, Request
 
 
@@ -19,7 +19,7 @@ class TestIRFullPipeline:
     def test_pipeline_with_json_data(self) -> None:
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[_req('[{"status":"ok","name":"alpha"},{"status":"ok","name":"beta"}]')],
@@ -49,7 +49,7 @@ class TestIRFullPipeline:
     def test_pipeline_with_plain_text(self) -> None:
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[_req("What is 2+2?")],

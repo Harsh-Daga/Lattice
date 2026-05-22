@@ -88,13 +88,6 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-json", default="benchmarks/results/production_evals.json")
     parser.add_argument("--output-md", default="benchmarks/results/production_evals.md")
     parser.add_argument("--json-only", action="store_true")
-    parser.add_argument(
-        "--use-v2-pipeline",
-        action="store_true",
-        default=False,
-        help="Use the v2 immutable pipeline (UnifiedPlanner + Pipeline) for evals. "
-        "When set, the benchmark builds build_v2_pipeline() instead of the optimizer pipeline.",
-    )
     return parser.parse_args()
 
 
@@ -121,12 +114,6 @@ async def main() -> int:
     args = _parse_args()
     provider_models = _parse_provider_models(args.provider_model)
     scenarios = default_scenarios(args.scenarios or None)
-
-    # Phase 5: propagate --use-v2-pipeline to LatticeConfig via env var
-    if args.use_v2_pipeline:
-        import os
-
-        os.environ["LATTICE_USE_V2_PIPELINE"] = "true"
 
     try:
         if args.suite == "feature":

@@ -15,7 +15,7 @@ import asyncio
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.pipeline.factory import build_optimizer_pipeline
+from lattice.pipeline.factory import build_default_pipeline
 from lattice.transport.types import Message, Request, Response
 
 
@@ -27,7 +27,7 @@ class TestIROptimizerEndToEnd:
     def test_ir_compilation_flow(self) -> None:
         """A request through content_profiler stores `_lattice_ir_v2` in metadata."""
         cfg = LatticeConfig(use_optimizer_pipeline=True, compression_mode="safe")
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         names = [t.name for t in pipeline.transforms]
         assert "content_profiler" in names
@@ -60,7 +60,7 @@ class TestIROptimizerEndToEnd:
         """
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[
@@ -109,7 +109,7 @@ class TestIROptimizerEndToEnd:
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"
         cfg.transform_format_conversion = False
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         # Use JSON with a constant field so the IR-native optimizer finds
         # something to factor.
@@ -177,7 +177,7 @@ class TestIROptimizerEndToEnd:
         """Original numbers and keys survive after IR-native optimization runs."""
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         original_content = (
             '[{"status":"ok","value":1},{"status":"ok","value":2},{"status":"ok","value":3}]'
@@ -210,7 +210,7 @@ class TestIROptimizerEndToEnd:
         """A simple text request survives the full optimizer pipeline without crashing."""
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[_req("Hello")],
@@ -233,7 +233,7 @@ class TestIROptimizerEndToEnd:
         """Reverse should restore any response references after IR-native optimization."""
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         cfg.compression_mode = "safe"
-        pipeline = build_optimizer_pipeline(cfg)
+        pipeline = build_default_pipeline(cfg)
 
         request = Request(
             messages=[_req('[{"status":"ok","value":42}]')],

@@ -25,7 +25,7 @@ class TestV2TiersEndToEnd:
 
     def _run_pipeline(self, request: Request) -> tuple[Request, TransformContext]:
         """Run v2 pipeline synchronously."""
-        cfg = LatticeConfig(use_v2_pipeline=True)
+        cfg = LatticeConfig()
         runtime = build_proxy_runtime(cfg)
         ctx = TransformContext()
 
