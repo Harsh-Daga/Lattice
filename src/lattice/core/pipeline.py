@@ -10,7 +10,6 @@ and returns the modified Request or an error. It handles:
 
 from __future__ import annotations
 
-import enum
 import inspect
 import time
 from typing import Any
@@ -22,60 +21,21 @@ from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Err, Ok, Result, is_err, unwrap, unwrap_err
 from lattice.core.runtime_state import get_canonical_request_value
+
+# Canonical locations live in pipeline.runner now; re-exported here so the
+# v1 ``from lattice.core.pipeline import ReversibleSyncTransform, TransformClass``
+# imports across transforms still resolve until Step 8 sweeps them.
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.pipeline.policy import OptimizationPolicy, Reject, Skip
 from lattice.transport.types import Request, Response
 
+__all__ = [
+    "CompressorPipeline",
+    "ReversibleSyncTransform",
+    "TransformClass",
+]
+
 logger = structlog.get_logger()
-
-
-class TransformClass(enum.Enum):
-    """Semantic classification of a transform's effect on content."""
-
-    LOSSLESS_SAFE = "lossless_safe"
-    LOSSLESS_CONTEXTUAL = "lossless_contextual"
-    SEMANTIC_LOSSY = "semantic_lossy"
-    STRUCTURAL_RISKY = "structural_risky"
-    CACHE_ONLY = "cache_only"
-    OBSERVABILITY_ONLY = "observability_only"
-
-
-# =============================================================================
-# ReversibleSyncTransform base class
-# =============================================================================
-
-
-class ReversibleSyncTransform:
-    """Base class for transforms that can be reversed.
-
-    Subclasses should implement `process` (forward) and `reverse` (backward).
-    The pipeline will call reverse for each applied transform in reverse order.
-
-    This is an ABC, NOT a Protocol, because it carries shared behavior.
-    """
-
-    name: str = ""
-    enabled: bool = True
-    priority: int = 50
-    transform_class: TransformClass = TransformClass.LOSSLESS_SAFE
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        """Forward pass: compress/optimize the request."""
-        raise NotImplementedError
-
-    def reverse(self, response: Response, _context: TransformContext) -> Response:
-        """Reverse pass: restore original values in the response.
-
-        Only called if this transform was applied during the forward pass.
-        The implementation should use context.session_state[own_name] to
-        retrieve its saved state.
-        """
-        return response
-
-    def can_process(self, _request: Request, _context: TransformContext) -> bool:
-        """Check whether this transform can handle the request."""
-        return self.enabled
 
 
 # =============================================================================
@@ -474,11 +434,16 @@ class CompressorPipeline:
             # Execute
             start = time.perf_counter()
             try:
-                # Handle both sync and async transforms
-                if inspect.iscoroutinefunction(transform.process):
-                    result = await transform.process(working, context)
+                # Handle both sync and async transforms.
+                # v1 callers register arbitrary transforms; some IR-native
+                # transforms no longer expose process() (Phase 3 Step 6).
+                process_fn = getattr(transform, "process", None)
+                if process_fn is None:
+                    continue
+                if inspect.iscoroutinefunction(process_fn):
+                    result = await process_fn(working, context)
                 else:
-                    result = transform.process(working, context)
+                    result = process_fn(working, context)
             except Exception as exc:
                 self._log.warning(
                     "transform_exception",

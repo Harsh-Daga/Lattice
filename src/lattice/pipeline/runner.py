@@ -38,7 +38,12 @@ from lattice.ir.transform import (
     LegacyRequestTransformAdapter,
 )
 from lattice.pipeline import gates as _gates
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.pipeline.policy import OptimizationPolicy, Reject, Skip
+
+# Re-exports — keeps ``from lattice.pipeline.runner import ReversibleSyncTransform``
+# working for callers that prefer the runner module path.
+__all__ = ["Pipeline", "PipelineTransformRegistry", "ReversibleSyncTransform", "TransformClass"]
 from lattice.transport.types import Request, Response
 
 _logger = structlog.get_logger()
