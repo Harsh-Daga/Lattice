@@ -14,8 +14,8 @@ import re
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
+from lattice.pipeline.base import ReversibleSyncTransform
 from lattice.transport.types import Message, Request, Response
 
 

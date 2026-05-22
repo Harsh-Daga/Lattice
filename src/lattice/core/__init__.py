@@ -27,7 +27,6 @@ from lattice.core.errors import (
     TransformNotFoundError,
     ValidationError,
 )
-from lattice.core.pipeline import CompressorPipeline, ReversibleSyncTransform
 from lattice.core.result import Err, Ok, Result, is_err, is_ok, unwrap, unwrap_err
 from lattice.core.segmentation import (
     SegmentKind,
@@ -35,6 +34,7 @@ from lattice.core.segmentation import (
     segment_request,
     segment_summary,
 )
+from lattice.pipeline.base import ReversibleSyncTransform
 from lattice.transport.types import (
     Message,
     Request,
@@ -75,9 +75,8 @@ __all__ = [
     "Role",
     "Transform",
     "SyncTransform",
-    # pipeline protocol (re-export buffer; physical move = Phase 2)
+    # pipeline protocol (canonical home: lattice.pipeline.base)
     "ReversibleSyncTransform",
-    "CompressorPipeline",
     # segmentation (moved from transforms/semantic_segmenter.py in Phase 1)
     "SegmentKind",
     "SemanticSegment",

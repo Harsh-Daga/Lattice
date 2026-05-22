@@ -14,9 +14,9 @@ import re
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.transport.types import Request, Response
 
 _CONSTRAINT_RE = re.compile(

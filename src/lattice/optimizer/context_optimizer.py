@@ -14,7 +14,6 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result, is_ok, unwrap
 from lattice.core.runtime_state import (
     get_canonical_state_value,
@@ -22,6 +21,7 @@ from lattice.core.runtime_state import (
     thaw_value,
 )
 from lattice.optimizer._dispatch import run_constituent
+from lattice.pipeline.base import ReversibleSyncTransform
 from lattice.transport.types import Request, Response
 
 # Import constituent transforms

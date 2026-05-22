@@ -21,10 +21,10 @@ from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import get_canonical_state_value
 from lattice.ir.primitives import PromptIRV2
+from lattice.pipeline.base import ReversibleSyncTransform
 from lattice.transport.types import Request, Response
 
 
