@@ -1,22 +1,96 @@
-"""Execution-time pipeline package — phase 2b-1 structural skeleton.
+"""Execution-time pipeline package — canonical public surface.
 
-Phase 2b-1 lands the file moves only: ``pipeline_v2`` → ``pipeline/runner.py``,
-plus the policy/guardrails/milv/auto_continuation/batch_accumulator/representation_optimizer
-modules from ``core/`` and ``optimizer/``. The class formerly named
-``PipelineV2`` is exported as ``Pipeline`` and ``TransformRegistryV2`` as
-``PipelineTransformRegistry``.
+After Phase 3 removed ``core/pipeline.py`` and ``core/pipeline_v2_wrapper.py``,
+the circular-import constraint that forced this ``__init__.py`` to stay empty
+is gone. Re-export the canonical entry points so callers can write::
 
-This ``__init__.py`` is intentionally empty for Phase 2b-1: eager re-exports
-would trigger a circular import while the legacy ``core/pipeline.py`` (which
-imports from ``lattice.pipeline.policy``) is still alive. Callers import
-through submodule paths instead:
-
-    from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
-    from lattice.pipeline.policy import OptimizationPolicy
-    from lattice.pipeline.guardrails import check_entity_preservation
-    from lattice.pipeline.factory import build_default_pipeline
-
-Phase 2b-2 will delete ``core/pipeline.py`` + ``core/pipeline_v2_wrapper.py``,
-rewrite the factory, rewire ``client.py`` to use ``Pipeline`` directly,
-and broaden this public surface accordingly.
+    from lattice.pipeline import (
+        Pipeline,
+        PipelineTransformRegistry,
+        ReversibleSyncTransform,
+        TransformClass,
+        build_default_pipeline,
+        build_benchmark_pipeline,
+        pipeline_summary,
+        OptimizationPolicy,
+        Allow,
+        Skip,
+        Reject,
+        GuardAction,
+        SafetyDecision,
+        ValidationOutcome,
+        MILVResult,
+        AutoContinuation,
+        ContinuationResult,
+        BatchAccumulator,
+        BatchResult,
+        AccumulatedRequest,
+        RepresentationOptimizer,
+    )
 """
+
+from lattice.pipeline.auto_continuation import AutoContinuation, ContinuationResult
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
+from lattice.pipeline.batch_accumulator import AccumulatedRequest, BatchAccumulator, BatchResult
+from lattice.pipeline.factory import (
+    build_benchmark_pipeline,
+    build_default_pipeline,
+    pipeline_summary,
+)
+from lattice.pipeline.guardrails import (
+    GuardAction,
+    SafetyDecision,
+    ValidationOutcome,
+    check_blank_output,
+    check_critical_signal_loss,
+    check_entity_preservation,
+    check_expansion_guard,
+    check_format_preservation,
+    check_negative_savings,
+    check_placeholder_leakage,
+)
+from lattice.pipeline.milv import MILVResult, should_trigger_milv, validate_transform
+from lattice.pipeline.policy import Allow, OptimizationPolicy, Reject, Skip
+from lattice.pipeline.representation_optimizer import RepresentationOptimizer
+from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
+
+__all__ = [
+    # runner
+    "Pipeline",
+    "PipelineTransformRegistry",
+    "ReversibleSyncTransform",
+    "TransformClass",
+    # factory
+    "build_default_pipeline",
+    "build_benchmark_pipeline",
+    "pipeline_summary",
+    # policy
+    "OptimizationPolicy",
+    "Allow",
+    "Skip",
+    "Reject",
+    # guardrails
+    "GuardAction",
+    "SafetyDecision",
+    "ValidationOutcome",
+    "check_expansion_guard",
+    "check_entity_preservation",
+    "check_format_preservation",
+    "check_critical_signal_loss",
+    "check_placeholder_leakage",
+    "check_negative_savings",
+    "check_blank_output",
+    # MILV
+    "MILVResult",
+    "should_trigger_milv",
+    "validate_transform",
+    # auto continuation
+    "AutoContinuation",
+    "ContinuationResult",
+    # batch accumulator
+    "BatchAccumulator",
+    "BatchResult",
+    "AccumulatedRequest",
+    # representation optimizer
+    "RepresentationOptimizer",
+]
