@@ -117,6 +117,7 @@ from lattice.gateway.compat import serialize_messages as _serialize_messages
 from lattice.gateway.compat import serialize_openai_response as _serialize_openai_response
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.proxy.bootstrap import build_proxy_runtime, configure_cors, configure_lifecycle
+from lattice.proxy.health import HealthManager
 from lattice.proxy.middleware import install_middleware
 from lattice.proxy.routes import (
     ProviderCompatRouteDeps,
@@ -224,7 +225,8 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
         maintenance=maintenance,
     )
 
-    register_health_routes(app, runtime.health_manager, operational_deps)
+    health_manager = HealthManager.from_operational(operational_deps)
+    register_health_routes(app, health_manager)
 
     # ------------------------------------------------------------------
     # Request middleware + operational routes

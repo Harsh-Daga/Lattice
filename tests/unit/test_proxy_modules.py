@@ -75,35 +75,38 @@ class TestAnthropicAdapter:
 class TestHealthManager:
     def test_healthz(self) -> None:
         config = LatticeConfig()
-        hm = HealthManager(config)
+        hm = HealthManager(provider_base_url=config.provider_base_url)
         result = hm.healthz()
         assert result["status"] == "healthy"
         assert "version" in result
 
     def test_readyz_with_transforms(self) -> None:
-        config = LatticeConfig(provider_base_url="http://test")
-        hm = HealthManager(config, pipeline_transform_count=4)
-        result = hm.readyz()
-        assert result["status"] == "ready"
-        assert result["checks"]["pipeline"] is True
+        hm = HealthManager(pipeline_transform_count=4, provider_base_url="http://test")
+        body, status_code = hm.readyz()
+        assert status_code == 200
+        assert body["status"] == "ready"
+        assert body["checks"]["pipeline"] is True
 
     def test_readyz_no_transforms(self) -> None:
         config = LatticeConfig()
-        hm = HealthManager(config, pipeline_transform_count=0)
-        result = hm.readyz()
-        assert result["status"] == "not_ready"
-        assert result["checks"]["pipeline"] is False
+        hm = HealthManager(
+            pipeline_transform_count=0,
+            provider_base_url=config.provider_base_url,
+        )
+        body, status_code = hm.readyz()
+        assert status_code == 503
+        assert body["status"] == "not_ready"
+        assert body["checks"]["pipeline"] is False
 
     def test_startupz(self) -> None:
-        config = LatticeConfig()
-        hm = HealthManager(config)
+        hm = HealthManager()
         result = hm.startupz()
         assert result["status"] == "started"
 
-    def test_stats(self) -> None:
+    def test_stats_minimal(self) -> None:
         config = LatticeConfig()
-        hm = HealthManager(config)
-        result = hm.stats(transform_names=["ref_sub"], session_count=0)
+        hm = HealthManager(provider_base_url=config.provider_base_url)
+        result = hm.stats_minimal(transform_names=["ref_sub"], session_count=0)
         assert result["transforms"] == ["ref_sub"]
         assert result["sessions"] == 0
 

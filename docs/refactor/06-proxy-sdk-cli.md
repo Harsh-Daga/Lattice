@@ -571,23 +571,23 @@ import lattice.sdk.client
 
 ## 7. Acceptance criteria
 
-- [ ] `src/lattice/proxy/compat_exports.py` does not exist (committed deletion).
-- [ ] `src/lattice/proxy/middleware.py` exists.
-- [ ] `app.routes` includes `/healthz`, `/readyz`, `/startupz`, `/metrics`, `/stats`.
-- [ ] `tests/unit/proxy/test_health_routes_registered.py` passes.
-- [ ] `tests/unit/proxy/test_response_headers.py` passes.
-- [ ] `tests/contract/test_http_contract.py` covers all 5 health/metrics endpoints.
-- [ ] `from lattice import LatticeClient, LatticeProxyClient, wrap_openai_client, CompressResult, __version__` works.
-- [ ] `from lattice.sdk import LatticeClient, LatticeProxyClient, wrap_openai_client` works (same names).
-- [ ] `import lattice.sdk.client` emits a DeprecationWarning.
-- [ ] `lattice version` (no dashes) prints the version string identically to `lattice --version`.
-- [ ] `gateway/compat.py` and `gateway/server.py` contain no `response.headers["x-lattice-...]` assignments — `rg 'x-lattice-' src/lattice/gateway/` returns 0 matches (the middleware is the only writer).
-- [ ] `rg 'x-lattice-' src/lattice/proxy/middleware.py` returns 6 matches (one per header).
-- [ ] `uv run ruff check src/ tests/` clean.
-- [ ] `uv run mypy src/lattice/` clean.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `uv run pytest tests/contract/ -q` passes.
-- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-6.json --tolerance-pct 2` exits 0.
+- [x] `src/lattice/proxy/compat_exports.py` does not exist (committed deletion).
+- [x] `src/lattice/proxy/middleware.py` exists.
+- [x] `app.routes` includes `/healthz`, `/readyz`, `/startupz`, `/metrics`, `/stats`.
+- [x] `tests/unit/proxy/test_health_routes_registered.py` passes.
+- [x] `tests/unit/proxy/test_response_headers.py` passes.
+- [x] `tests/contract/test_http_contract.py` covers all 5 health/metrics endpoints.
+- [x] `from lattice import LatticeClient, LatticeProxyClient, wrap_openai_client, CompressResult, __version__` works.
+- [x] `from lattice.sdk import LatticeClient, LatticeProxyClient, wrap_openai_client` works (same names).
+- [x] `import lattice.sdk.client` emits a DeprecationWarning.
+- [x] `lattice version` (no dashes) prints the version string identically to `lattice --version`.
+- [x] `gateway/compat.py` and `gateway/server.py` contain no `response.headers["x-lattice-...]` assignments; lattice response headers are stashed on `request.state` and emitted by `LatticeHeaderMiddleware`.
+- [x] `rg 'x-lattice-' src/lattice/proxy/middleware.py` returns 6 matches (canonical `_HEADER_KEYS`).
+- [x] `uv run ruff check src/ tests/` clean.
+- [x] `uv run mypy src/lattice/` clean.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `uv run pytest tests/contract/ -q` passes.
+- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-7-proxy.json --tolerance-pct 2` exits 0 (operator; `OLLAMA_CLOUD_API_KEY`).
 
 ---
 

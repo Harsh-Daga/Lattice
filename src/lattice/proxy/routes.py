@@ -8,16 +8,14 @@ from typing import Any
 
 from fastapi import FastAPI, Header, Response, WebSocket, status
 from fastapi import Request as FastAPIRequest
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse
 from starlette.responses import Response as StarletteResponse
 
 from lattice.gateway.compat import (
     AnthropicCompatDeps,
     ChatCompatDeps,
     HTTPCompatHandler,
-    OperationalRouteDeps,
     ResponsesCompatDeps,
-    build_proxy_stats_payload,
     make_anthropic_handler,
     make_chat_completion_handler,
     make_models_handler,
@@ -25,6 +23,7 @@ from lattice.gateway.compat import (
 )
 from lattice.gateway.server import ClientConnectionInfo, LLMTPGateway
 from lattice.proxy.health import HealthManager
+from lattice.proxy.middleware import stash_lattice_response_headers
 
 _SENSITIVE_HEADERS: frozenset[str] = frozenset(
     {
@@ -36,44 +35,23 @@ _SENSITIVE_HEADERS: frozenset[str] = frozenset(
 )
 
 
-def register_health_routes(
-    app: FastAPI,
-    health: HealthManager,
-    ops: OperationalRouteDeps,
-) -> None:
+def register_health_routes(app: FastAPI, health: HealthManager) -> None:
     """Register /healthz, /readyz, /startupz, /metrics, /stats."""
 
     @app.get("/healthz", tags=["health"])
     async def healthz() -> dict[str, Any]:
-        return {
-            "status": "healthy",
-            "version": ops.version,
-            "provider": "direct_http",
-            "adapters": ", ".join(ops.provider.registry.list_adapters()),
-        }
+        return health.healthz()
 
     @app.get("/readyz", tags=["health"])
-    async def readyz() -> Any:
-        live, detail = ops.provider.health_check()
-        body = {
-            "status": "ready" if live else "not_ready",
-            "checks": {
-                "config": True,
-                "pipeline": len(ops.pipeline.registry.get_transform_names()) > 0,
-                "provider": live,
-                "provider_detail": detail,
-                "http2_pools": ops.provider.pool.pool_count,
-                "sessions": ops.store.session_count if hasattr(ops.store, "session_count") else 0,
-            },
-        }
-        status_code = status.HTTP_200_OK if live else status.HTTP_503_SERVICE_UNAVAILABLE
+    async def readyz() -> Response:
+        body, status_code = health.readyz()
         return JSONResponse(content=body, status_code=status_code)
 
     @app.get("/startupz", tags=["health"])
     async def startupz() -> dict[str, str]:
         return health.startupz()
 
-    @app.get("/metrics", response_class=PlainTextResponse, tags=["health"])
+    @app.get("/metrics", tags=["health"])
     async def metrics() -> Response:
         return Response(
             content=health.metrics(),
@@ -82,7 +60,7 @@ def register_health_routes(
 
     @app.get("/stats", tags=["health"])
     async def stats() -> dict[str, Any]:
-        return await build_proxy_stats_payload(ops)
+        return await health.stats()
 
 
 def register_native_lattice_routes(app: FastAPI, gateway: LLMTPGateway) -> None:
@@ -148,19 +126,13 @@ def register_native_lattice_routes(app: FastAPI, gateway: LLMTPGateway) -> None:
             dict(fastapi_request.headers.items()),
             client_info=ClientConnectionInfo(**client_info),
         )
-        response_headers: dict[str, str] = {}
-        if "x-lattice-framing" in response_meta:
-            response_headers["x-lattice-framing"] = response_meta["x-lattice-framing"]
+        stash_lattice_response_headers(fastapi_request, dict(response_meta))
         if raw_body[:4] == b"LATT":
-            return StarletteResponse(
-                content=output, media_type="application/octet-stream", headers=response_headers
-            )
+            return StarletteResponse(content=output, media_type="application/octet-stream")
         try:
-            return JSONResponse(json.loads(output.decode("utf-8")), headers=response_headers)
+            return JSONResponse(json.loads(output.decode("utf-8")))
         except (json.JSONDecodeError, TypeError, UnicodeDecodeError):
-            return StarletteResponse(
-                content=output, media_type="application/json", headers=response_headers
-            )
+            return StarletteResponse(content=output, media_type="application/json")
 
 
 @dataclasses.dataclass(slots=True)

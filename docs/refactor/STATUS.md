@@ -25,7 +25,7 @@
 | **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
 | **5**       | ✅ Done             | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) (`05dfd2f`) | Transforms cleanup merged to `main`. See `PHASE_COMPLETION_TRACKER.md`. |
 | **6**       | ✅ Done             | `4798bfb` — PR [#11](https://github.com/Harsh-Daga/Lattice/pull/11) merged | Adapters under `providers/adapters/`; `providers/transport/` package; unified `_stream`. Benchmark `phase-6.json` operator-run. |
-| **7**       | ✅ Done             | `refactor/phase-7-proxy-sdk-cli` | Health routes wired; `LatticeHeaderMiddleware`; top-level `lattice.*` client exports; `sdk/client.py` deprecation shim. |
+| **7**       | ✅ Done (merge PR #12) | `refactor/phase-7-proxy-sdk-cli` | HealthManager + middleware; top-level imports; sdk deprecation shim; doc/MIGRATION slice. |
 
 **Current totals.** 1741 passed, 196 skipped, contract green. **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 

@@ -191,13 +191,14 @@ src/lattice/
 │   ├── __init__.py
 │   └── tier_classifier.py              # was runtime/router.py — RENAMED for honesty
 │
-├── proxy/                              # FastAPI server — UNCHANGED, already clean
-│   ├── __init__.py
+├── proxy/                              # FastAPI server
+│   ├── __init__.py                     # exports create_app, HealthManager
 │   ├── bootstrap.py                    # build_proxy_runtime(config) — DI container
-│   ├── server.py                       # create_app(config)
-│   ├── routes.py                       # route registration
+│   ├── server.py                       # create_app(config); installs LatticeHeaderMiddleware
+│   ├── middleware.py                   # LatticeHeaderMiddleware — sole x-lattice-* response writer
+│   ├── routes.py                       # register_health_routes, compat route wiring
 │   ├── lifecycle.py                    # PIDManager, start_background_server
-│   └── health.py                       # health endpoints — now properly registered via routes.py
+│   └── health.py                       # HealthManager — /healthz … /stats handlers delegate here
 │
 ├── gateway/                            # request/response translation — UNCHANGED, already clean
 │   ├── __init__.py

@@ -17,6 +17,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+from lattice import LatticeClient
 from lattice.core.config import LatticeConfig
 from lattice.integrations.agents import (
     ClaudeCodeIntegration,
@@ -29,7 +30,6 @@ from lattice.integrations.agents import (
 )
 from lattice.integrations.mcp import LatticeMCPTools
 from lattice.proxy.server import create_app
-from lattice.sdk.client import LatticeClient
 from lattice.transport.types import Response
 
 # =============================================================================

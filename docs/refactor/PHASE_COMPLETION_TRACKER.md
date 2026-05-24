@@ -117,6 +117,10 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | No `response.headers["x-lattice-…]` in `gateway/` | ✅ |
 | Six canonical header keys in `proxy/middleware.py` | ✅ |
 | ruff / mypy / pytest / contract | ✅ |
+| `HealthManager` owns all five health route bodies | ✅ |
+| Passthrough + native gateway headers via middleware stash | ✅ |
+| `docs/refactor/MIGRATION.md` Phase 7 `sdk.client` section | ✅ |
+| Doc sync (`06-proxy-sdk-cli` §7, FINAL_LAYOUT, api-surface) | ✅ |
 | Benchmark `phase-7-proxy.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) |
 
 ---

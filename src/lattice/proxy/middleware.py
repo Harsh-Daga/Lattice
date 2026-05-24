@@ -25,10 +25,13 @@ _HEADER_KEYS = {
 
 def stash_lattice_response_headers(request: Any, headers: dict[str, str]) -> None:
     """Merge routing headers onto ``request.state`` for middleware emission."""
-    pending: dict[str, str] | None = getattr(request.state, "lattice_response_headers", None)
+    state = getattr(request, "state", None)
+    if state is None:
+        return
+    pending: dict[str, str] | None = getattr(state, "lattice_response_headers", None)
     if pending is None:
         pending = {}
-        request.state.lattice_response_headers = pending
+        state.lattice_response_headers = pending
     pending.update(headers)
 
 

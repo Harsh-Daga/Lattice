@@ -986,16 +986,20 @@ async def responses_passthrough(
         transport_outcome = TransportOutcome(
             http_version=http_version,
         )
-        return StreamingResponse(
-            _stream_relay(),
-            media_type="text/event-stream",
-            headers=build_routing_headers(
+        attach_routing_headers(
+            fastapi_request,
+            None,
+            build_routing_headers(
                 model_used=model_used,
                 compressed_tokens=compressed_tokens,
                 original_tokens=original_tokens,
                 session_id=session_id or "",
                 transport_outcome=transport_outcome,
             ),
+        )
+        return StreamingResponse(
+            _stream_relay(),
+            media_type="text/event-stream",
         )
 
     # ------------------------------------------------------------------
@@ -1036,14 +1040,16 @@ async def responses_passthrough(
     transport_outcome = TransportOutcome(
         http_version=http_version,
     )
-    response_headers.update(
+    attach_routing_headers(
+        fastapi_request,
+        None,
         build_routing_headers(
             model_used=model_used,
             compressed_tokens=compressed_tokens,
             original_tokens=original_tokens,
             session_id=session_id or "",
             transport_outcome=transport_outcome,
-        )
+        ),
     )
     return StarletteResponse(
         content=http_resp.content,
@@ -1279,16 +1285,20 @@ async def anthropic_passthrough(
         transport_outcome = TransportOutcome(
             http_version=http_version,
         )
-        return StreamingResponse(
-            _stream_relay(),
-            media_type="text/event-stream",
-            headers=build_routing_headers(
+        attach_routing_headers(
+            fastapi_request,
+            None,
+            build_routing_headers(
                 model_used=model_used,
                 compressed_tokens=compressed_tokens,
                 original_tokens=original_tokens,
                 session_id=session_id or "",
                 transport_outcome=transport_outcome,
             ),
+        )
+        return StreamingResponse(
+            _stream_relay(),
+            media_type="text/event-stream",
         )
 
     # ------------------------------------------------------------------
@@ -1341,14 +1351,16 @@ async def anthropic_passthrough(
     transport_outcome = TransportOutcome(
         http_version=http_version,
     )
-    response_headers.update(
+    attach_routing_headers(
+        fastapi_request,
+        None,
         build_routing_headers(
             model_used=model_used,
             compressed_tokens=compressed_tokens,
             original_tokens=original_tokens,
             session_id=session_id or "",
             transport_outcome=transport_outcome,
-        )
+        ),
     )
     return StarletteResponse(
         content=http_resp.content,
@@ -2643,16 +2655,20 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
                     yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
 
             transport_outcome = TransportOutcome(http_version=http_version)
-            return StreamingResponse(
-                _stream_relay(),
-                media_type="text/event-stream",
-                headers=build_routing_headers(
+            attach_routing_headers(
+                fastapi_request,
+                ctx,
+                build_routing_headers(
                     model_used=model_used,
                     compressed_tokens=compressed_tokens,
                     original_tokens=original_tokens,
                     session_id=x_lattice_session_id or "",
                     transport_outcome=transport_outcome,
                 ),
+            )
+            return StreamingResponse(
+                _stream_relay(),
+                media_type="text/event-stream",
             )
         else:
             http_resp = await client.request(
@@ -2684,14 +2700,16 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
                 )
             }
             transport_outcome = TransportOutcome(http_version=http_version)
-            response_headers.update(
+            attach_routing_headers(
+                fastapi_request,
+                ctx,
                 build_routing_headers(
                     model_used=model_used,
                     compressed_tokens=compressed_tokens,
                     original_tokens=original_tokens,
                     session_id=x_lattice_session_id or "",
                     transport_outcome=transport_outcome,
-                )
+                ),
             )
             return StarletteResponse(
                 content=response_body,

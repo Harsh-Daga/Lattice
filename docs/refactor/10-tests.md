@@ -240,16 +240,16 @@ tests/
 │   │   ├── test_main.py
 │   │   ├── test_subcommands_reachable.py          # from Phase 6
 │   │   ├── test_benchmark_wrapper.py              # from Phase 9
-│   │   └── test_doctor_covers_all_agents.py       # from Phase 7
+│   │   └── test_doctor_covers_all_agents.py       # from integrations phase (07-integrations.md)
 │   ├── integrations/
 │   │   ├── test_agents.py
-│   │   ├── test_agent_protocol.py                 # from Phase 7
+│   │   ├── test_agent_protocol.py                 # from integrations phase
 │   │   ├── test_init.py
 │   │   ├── test_lace.py
 │   │   ├── test_unlace.py
 │   │   ├── test_mutation_store.py
-│   │   ├── test_mutation_store_records_lace.py    # from Phase 7
-│   │   ├── test_jsonfile_raises_when_config_missing.py   # from Phase 7
+│   │   ├── test_mutation_store_records_lace.py    # from integrations phase
+│   │   ├── test_jsonfile_raises_when_config_missing.py   # from integrations phase
 │   │   ├── test_tunnel.py
 │   │   ├── claude/    {test_install, test_runtime}
 │   │   ├── codex/     {test_install, test_runtime, test_auth, test_ws_handler}
