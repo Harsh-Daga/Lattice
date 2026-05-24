@@ -1,9 +1,9 @@
-# Phase completion tracker (Phases 0–6)
+# Phase completion tracker (Phases 0–7)
 
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `main` @ `4798bfb` — **1712 passed**, contract green, PR #11 merged.
+**Last verified:** `refactor/phase-7-proxy-sdk-cli` — **1741 passed**, contract green.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -13,7 +13,8 @@
 | **3** | ✅ | V1 kill; `Pipeline.compress()` |
 | **4** | ✅ | Planner collapse; `_normalize_legacy_execution_plan` documented as persisted-plan bridge only |
 | **5** | ✅ | Transforms cleanup + §6.3 tests |
-| **6** | ✅ | Providers/adapters + transport split; see §10 below |
+| **6** | ✅ | Providers/adapters + transport split; see §6 below |
+| **7** | ✅ | Proxy health routes, header middleware, SDK surface; see §7 below |
 
 ---
 
@@ -101,6 +102,26 @@ All import/layout criteria ✅. Benchmark lines excluded.
 
 ---
 
+## Phase 7 — `06-proxy-sdk-cli.md` §7
+
+| Criterion | Status |
+|-----------|--------|
+| `compat_exports.py` absent (never committed on `main`) | ✅ |
+| `proxy/middleware.py` (`LatticeHeaderMiddleware`) | ✅ |
+| `/healthz`, `/readyz`, `/startupz`, `/metrics`, `/stats` on `app.routes` | ✅ |
+| `test_health_routes_registered.py`, `test_response_headers.py` | ✅ |
+| Contract HTTP + headers tests | ✅ |
+| `from lattice import LatticeClient, LatticeProxyClient, wrap_openai_client, CompressResult` | ✅ |
+| `lattice.sdk.client` → `DeprecationWarning` | ✅ |
+| `lattice version` alias | ✅ |
+| No `response.headers["x-lattice-…]` in `gateway/` | ✅ |
+| Six canonical header keys in `proxy/middleware.py` | ✅ |
+| ruff / mypy / pytest / contract | ✅ |
+| Benchmark `phase-7-proxy.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) |
+
+---
+
 ## Remaining operator actions (not code)
 
 1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`); compare vs `phase-0-baseline.json` (±2%).
+2. Run Phase 7 benchmark → `phase-7-proxy.json` (same key); compare vs `phase-0-baseline.json` (±2%).

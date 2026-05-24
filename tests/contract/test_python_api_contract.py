@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import importlib
 
-import pytest
-
 
 def test_lattice_version_exported() -> None:
     import lattice
@@ -32,7 +30,13 @@ def test_lattice_client_module_exports() -> None:
 def test_lattice_sdk_exports() -> None:
     """LatticeClient/LatticeProxyClient/wrap_openai/wrap_anthropic via lattice.sdk."""
     sdk = importlib.import_module("lattice.sdk")
-    for name in ("LatticeClient", "LatticeProxyClient", "wrap_openai", "wrap_anthropic"):
+    for name in (
+        "LatticeClient",
+        "LatticeProxyClient",
+        "wrap_openai",
+        "wrap_openai_client",
+        "wrap_anthropic",
+    ):
         assert hasattr(sdk, name), f"lattice.sdk.{name} missing"
 
 
@@ -163,13 +167,6 @@ def test_all_adapters_importable_at_top_level() -> None:
     )
 
 
-# --- Phase 7 placeholder tests ---------------------------------------------
-# Top-level lattice.* client exports land in Phase 7 (proxy/sdk/cli).
-
-
-@pytest.mark.xfail(
-    reason="Phase 7 hoists LatticeClient et al. to top-level lattice.*", strict=False
-)
 def test_lattice_toplevel_target_imports() -> None:
     from lattice import (  # noqa: F401
         CompressResult,
@@ -177,3 +174,14 @@ def test_lattice_toplevel_target_imports() -> None:
         LatticeProxyClient,
         wrap_openai_client,
     )
+
+
+def test_lattice_sdk_client_deprecation() -> None:
+    import sys
+    import warnings
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        sys.modules.pop("lattice.sdk.client", None)
+        importlib.import_module("lattice.sdk.client")
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)

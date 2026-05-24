@@ -6,22 +6,25 @@ import dataclasses
 import json
 from typing import Any
 
-from fastapi import FastAPI, Header, WebSocket, status
+from fastapi import FastAPI, Header, Response, WebSocket, status
 from fastapi import Request as FastAPIRequest
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.responses import Response as StarletteResponse
 
 from lattice.gateway.compat import (
     AnthropicCompatDeps,
     ChatCompatDeps,
     HTTPCompatHandler,
+    OperationalRouteDeps,
     ResponsesCompatDeps,
+    build_proxy_stats_payload,
     make_anthropic_handler,
     make_chat_completion_handler,
     make_models_handler,
     make_responses_handler,
 )
 from lattice.gateway.server import ClientConnectionInfo, LLMTPGateway
+from lattice.proxy.health import HealthManager
 
 _SENSITIVE_HEADERS: frozenset[str] = frozenset(
     {
@@ -31,6 +34,55 @@ _SENSITIVE_HEADERS: frozenset[str] = frozenset(
         "api-key",
     }
 )
+
+
+def register_health_routes(
+    app: FastAPI,
+    health: HealthManager,
+    ops: OperationalRouteDeps,
+) -> None:
+    """Register /healthz, /readyz, /startupz, /metrics, /stats."""
+
+    @app.get("/healthz", tags=["health"])
+    async def healthz() -> dict[str, Any]:
+        return {
+            "status": "healthy",
+            "version": ops.version,
+            "provider": "direct_http",
+            "adapters": ", ".join(ops.provider.registry.list_adapters()),
+        }
+
+    @app.get("/readyz", tags=["health"])
+    async def readyz() -> Any:
+        live, detail = ops.provider.health_check()
+        body = {
+            "status": "ready" if live else "not_ready",
+            "checks": {
+                "config": True,
+                "pipeline": len(ops.pipeline.registry.get_transform_names()) > 0,
+                "provider": live,
+                "provider_detail": detail,
+                "http2_pools": ops.provider.pool.pool_count,
+                "sessions": ops.store.session_count if hasattr(ops.store, "session_count") else 0,
+            },
+        }
+        status_code = status.HTTP_200_OK if live else status.HTTP_503_SERVICE_UNAVAILABLE
+        return JSONResponse(content=body, status_code=status_code)
+
+    @app.get("/startupz", tags=["health"])
+    async def startupz() -> dict[str, str]:
+        return health.startupz()
+
+    @app.get("/metrics", response_class=PlainTextResponse, tags=["health"])
+    async def metrics() -> Response:
+        return Response(
+            content=health.metrics(),
+            media_type="text/plain; version=0.0.4",
+        )
+
+    @app.get("/stats", tags=["health"])
+    async def stats() -> dict[str, Any]:
+        return await build_proxy_stats_payload(ops)
 
 
 def register_native_lattice_routes(app: FastAPI, gateway: LLMTPGateway) -> None:
@@ -180,6 +232,7 @@ def register_provider_compat_routes(
 
     @app.post("/v1/chat/completions")
     async def chat_completions(
+        fastapi_request: FastAPIRequest,
         body: dict[str, Any],
         x_lattice_session_id: str | None = Header(default=None),
         x_lattice_disable_transforms: str | None = Header(default=None),
@@ -189,6 +242,7 @@ def register_provider_compat_routes(
         x_api_key: str | None = Header(default=None),
     ) -> Any:
         return await compat.handle_chat_completion(
+            fastapi_request,
             body,
             x_lattice_session_id=x_lattice_session_id,
             x_lattice_disable_transforms=x_lattice_disable_transforms,

@@ -29,6 +29,7 @@ from lattice.protocol.framing import BinaryFramer
 from lattice.protocol.resume import StreamManager
 from lattice.providers.credentials import CredentialResolver
 from lattice.providers.transport import DirectHTTPProvider
+from lattice.proxy.health import HealthManager
 from lattice.transforms.batching import BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform
 from lattice.transport.serialization import message_to_dict
@@ -53,6 +54,7 @@ class ProxyRuntime:
     agent_stats: AgentStatsCollector
     metrics: Any
     downgrade_telemetry: DowngradeTelemetry
+    health_manager: HealthManager
 
 
 def configure_lifecycle(
@@ -276,6 +278,12 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
     agent_stats = AgentStatsCollector(metrics=get_metrics(), cost_estimator=cost_estimator)
 
     metrics = get_metrics()
+    transform_names = pipeline.registry.get_transform_names()
+    health_manager = HealthManager(
+        config,
+        pipeline_transform_count=len(transform_names),
+        store_ready=True,
+    )
     return ProxyRuntime(
         store=store,
         session_manager=session_manager,
@@ -291,4 +299,5 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
         agent_stats=agent_stats,
         metrics=metrics,
         downgrade_telemetry=downgrade_telemetry,
+        health_manager=health_manager,
     )

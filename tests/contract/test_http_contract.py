@@ -58,9 +58,7 @@ def test_every_endpoint_in_route_table(api_surface) -> None:
     # Known gaps. Each entry is a documented endpoint that today's proxy
     # does not register. The phase that fixes each is annotated; the gap
     # MUST close before that phase merges.
-    known_gaps = {
-        "/startupz": "Phase 6 wires HealthManager and registers /startupz on app.routes",
-    }
+    known_gaps: dict[str, str] = {}
     hard_missing = [p for p in missing if p not in known_gaps]
     assert not hard_missing, (
         f"Endpoints in api-surface.json missing from proxy app (and not in known_gaps):\n"
@@ -70,13 +68,57 @@ def test_every_endpoint_in_route_table(api_surface) -> None:
 
 
 def test_health_endpoints_registered_or_documented() -> None:
-    """/healthz, /readyz, /startupz, /metrics, /stats — at minimum, the
-    health module exists and exposes them as documented in Phase 6.
-
-    Today's app may or may not register them; Phase 6 wires HealthManager.
-    For now, just assert the module that owns these is importable.
-    """
+    """Health module importable and routes registered on the app."""
     importlib.import_module("lattice.proxy.health")
+    from lattice.core.config import LatticeConfig
+    from lattice.proxy.server import create_app
+
+    app = create_app(LatticeConfig())
+    paths = {getattr(r, "path", None) for r in app.routes}
+    for path in ("/healthz", "/readyz", "/startupz", "/metrics", "/stats"):
+        assert path in paths
+
+
+def test_healthz_shape() -> None:
+    from fastapi.testclient import TestClient
+
+    from lattice.core.config import LatticeConfig
+    from lattice.proxy.server import create_app
+
+    client = TestClient(create_app(LatticeConfig()))
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] in ("healthy", "ok")
+
+
+def test_metrics_prometheus_format() -> None:
+    from fastapi.testclient import TestClient
+
+    from lattice.core.config import LatticeConfig
+    from lattice.proxy.server import create_app
+
+    client = TestClient(create_app(LatticeConfig()))
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    for line in response.text.splitlines():
+        assert line == "" or line.startswith("#") or line[0].isalpha()
+
+
+def test_stats_json_shape() -> None:
+    from fastapi.testclient import TestClient
+
+    from lattice.core.config import LatticeConfig
+    from lattice.proxy.server import create_app
+
+    client = TestClient(create_app(LatticeConfig()))
+    response = client.get("/stats")
+    assert response.status_code == 200
+    body = response.json()
+    for key in ("version", "transforms", "sessions", "provider", "tacc"):
+        assert key in body, f"missing stats key {key}"
+    assert "adapters" in body
 
 
 # ---- Slow contract suite (spins a real proxy) ----

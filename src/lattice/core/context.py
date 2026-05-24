@@ -82,6 +82,13 @@ class TransformContext:
     )
     provider: str = "openai"
     model: str = ""
+    _response_metadata: dict[str, Any] = dataclasses.field(
+        default_factory=dict, repr=False, compare=False
+    )
+
+    def set(self, key: str, value: Any) -> None:
+        """Record a response header value for middleware emission."""
+        self._response_metadata[key] = value
 
     def mark_transform_applied(self, name: str) -> None:
         """Record that a transform was applied.
@@ -149,7 +156,7 @@ class TransformContext:
 
         Useful for logging and debugging.
         """
-        return {
+        summary: dict[str, Any] = {
             "request_id": self.request_id,
             "session_id": self.session_id,
             "provider": self.provider,
@@ -158,3 +165,5 @@ class TransformContext:
             "transforms_applied": self.transforms_applied,
             "metrics": self.metrics,
         }
+        summary.update(self._response_metadata)
+        return summary
