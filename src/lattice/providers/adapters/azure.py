@@ -15,8 +15,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from lattice.providers.openai import OpenAIAdapter
 from lattice.transport.types import Request, Response
+
+from .openai import OpenAIAdapter
 
 
 class AzureAdapter(OpenAIAdapter):

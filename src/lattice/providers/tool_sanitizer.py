@@ -61,6 +61,10 @@ class ToolSanitizer:
         """Return ``True`` if *raw_id* would be changed by ``sanitize``."""
         raise NotImplementedError
 
+    def validate_tool_id(self, tool_id: str) -> bool:
+        """Return ``True`` when *tool_id* needs no sanitization for Anthropic-style rules."""
+        return bool(ANTHROPIC_TOOL_ID_PATTERN.match(tool_id or ""))
+
     @staticmethod
     def register(mapping: dict[str, str], raw_id: str, sanitized_id: str) -> None:
         """Record ``raw <-> sanitized`` in a caller-supplied dict.

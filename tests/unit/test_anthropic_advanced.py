@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from lattice.providers.anthropic import AnthropicAdapter
+from lattice.providers.adapters.anthropic import AnthropicAdapter
 from lattice.transport.types import Message, Request
 
 

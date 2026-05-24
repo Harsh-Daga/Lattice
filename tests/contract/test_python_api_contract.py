@@ -110,6 +110,16 @@ def test_transforms_registry_public_api() -> None:
     assert get_transform_spec("output_cleanup") is not None
 
 
+def test_all_adapters_importable_at_top_level() -> None:
+    from lattice.providers import (
+        AnthropicAdapter,
+        OpenAIAdapter,
+    )
+
+    assert OpenAIAdapter is not None
+    assert AnthropicAdapter is not None
+
+
 # --- Phase 6 placeholder tests ---------------------------------------------
 # These will become PASSING tests after Phase 6 hoists symbols to top level.
 # Until then they xfail to document the target surface without blocking CI.

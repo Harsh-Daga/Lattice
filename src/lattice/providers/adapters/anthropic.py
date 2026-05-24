@@ -42,7 +42,6 @@ import json
 from typing import Any
 
 from lattice.planner.runtime_state import get_canonical_request_value
-from lattice.providers.base import _pop_system, _remap_tool_choice, _remap_tools
 from lattice.providers.mcp_to_anthropic import convert_mcp_to_anthropic, is_mcp_tool
 from lattice.providers.schema_filter import sanitize_json_schema, sanitize_tool_definitions
 from lattice.providers.stream_state import AnthropicStreamState
@@ -52,6 +51,8 @@ from lattice.providers.tool_sanitizer import (
     sanitize_tool_ids,
 )
 from lattice.transport.types import Request, Response
+
+from .base import _pop_system, _remap_tool_choice, _remap_tools
 
 # =============================================================================
 # Context-local storage (async-safe)

@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after Phase 0–5 doc-compliance audit on `refactor/phase-5-transforms-cleanup` (2026-05-24).
+> Last updated after Phase 6 providers/transport split on `refactor/phase-6c-providers-transport-split` (2026-05-24).
 > See **[PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md)** for line-by-line acceptance vs each phase doc.
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
@@ -24,8 +24,9 @@
 | **3**       | ✅ Done           | `refactor/revised-plan` | V1 Kill: deleted `CompressorPipeline` + wrapper; `Pipeline.compress()` + gates; factory/client/proxy rewired; 10 IR-native `process()` deleted. |
 | **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
 | **5**       | ✅ Done             | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) (`05dfd2f`) | Transforms cleanup merged to `main`. See `PHASE_COMPLETION_TRACKER.md`. |
+| **6**       | ✅ Done (code)      | `refactor/phase-6c-providers-transport-split` | Adapters under `providers/adapters/`; `providers/transport/` package; unified `_stream`. Benchmark `phase-6.json` operator-run. |
 
-**Current totals.** 1706 passed, 196 skipped, 1903 collected, 27 contract tests; ruff/format/mypy clean on branch. **Benchmark gates** (`phase-2` … `phase-5.json`) remain operator-run when API key available.
+**Current totals.** 1712 passed, 196 skipped, contract green on Phase 6 branch. **Benchmark gates** (`phase-6.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 

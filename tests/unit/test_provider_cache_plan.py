@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lattice.planner.execution_plan import CachePlanEntry
 from lattice.planner.provider_strategy import build_cache_plan_for_provider
-from lattice.providers.openai import OpenAIAdapter
+from lattice.providers.adapters.openai import OpenAIAdapter
 from lattice.transport.types import Request
 
 

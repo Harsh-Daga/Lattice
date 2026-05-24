@@ -186,7 +186,7 @@ class TestCapabilityRegistry:
 
 class TestAdapterPurity:
     def test_adapters_do_not_mutate_input(self) -> None:
-        from lattice.providers.openai import OpenAIAdapter
+        from lattice.providers.adapters.openai import OpenAIAdapter
         from lattice.transport.types import Message, Request
 
         adapter = OpenAIAdapter()
@@ -200,8 +200,8 @@ class TestAdapterPurity:
         assert original.model == "gpt-4"
 
     def test_adapter_supports_check(self) -> None:
-        from lattice.providers.anthropic import AnthropicAdapter
-        from lattice.providers.openai import OpenAIAdapter
+        from lattice.providers.adapters.anthropic import AnthropicAdapter
+        from lattice.providers.adapters.openai import OpenAIAdapter
 
         openai = OpenAIAdapter()
         anthropic = AnthropicAdapter()

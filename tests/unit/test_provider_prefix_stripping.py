@@ -98,7 +98,7 @@ class TestProviderPrefixStripping:
 
     def test_ollama_cloud_prefix_stripped(self) -> None:
         """Regression test for the ollama-cloud prefix bug."""
-        from lattice.providers.ollama import OllamaCloudAdapter
+        from lattice.providers.adapters.ollama import OllamaCloudAdapter
 
         adapter = OllamaCloudAdapter()
         assert adapter.supports("ollama-cloud/kimi-k2.6:cloud")
