@@ -69,7 +69,7 @@ class TestCompress:
         # the 7 production transforms. Lossy transforms are experimental and off.
         assert any(
             t in result.transforms_applied
-            for t in ("content_profiler", "runtime_contract", "prefix_optimizer")
+            for t in ("content_profiler", "runtime_contract", "reference_sub")
         )
 
     def test_compress_request_includes_runtime_metadata(self, client: LatticeClient) -> None:

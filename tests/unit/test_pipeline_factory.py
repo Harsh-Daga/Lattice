@@ -14,7 +14,7 @@ def test_default_pipeline_returns_pipeline_with_lazy_registry() -> None:
     # Lazy registry exposes the canonical transform names regardless of
     # config — actual enablement is decided by Pipeline.compress() gates.
     assert "runtime_contract" in names
-    assert "prefix_optimizer" in names
+    assert "prefix_optimizer" not in names
     assert "content_profiler" in names
 
 

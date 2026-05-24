@@ -150,7 +150,7 @@ class TestFormatConvHardening:
     """format_conversion preserves table/JSON structure."""
 
     def test_converts_table_content(self) -> None:
-        from lattice.transforms.format_conv import FormatConverter
+        from lattice.transforms.format_converter import FormatConverter
 
         transform = FormatConverter()
         req = Request(

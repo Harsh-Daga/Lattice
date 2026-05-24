@@ -102,10 +102,10 @@ class TestConfigConsistency:
         assert is_transform_enabled(cfg, "rate_distortion") is True
         assert is_transform_enabled(cfg, "rate_distortion_compressor") is True
 
-    def test_aliases_match_canonical_enablement(self) -> None:
+    def test_removed_prefix_optimizer_is_unknown_to_registry(self) -> None:
         cfg = LatticeConfig(transform_prefix_opt=True)
-        assert is_transform_enabled(cfg, "prefix_optimizer") is True
-        assert is_transform_enabled(cfg, "prefix_opt") is True
+        assert is_transform_enabled(cfg, "prefix_optimizer") is False
+        assert is_transform_enabled(cfg, "prefix_opt") is False
 
 
 # =============================================================================

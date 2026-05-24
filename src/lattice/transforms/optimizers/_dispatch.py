@@ -26,11 +26,10 @@ _IR_NATIVE_CONSTITUENTS = frozenset(
     {
         "cache_arbitrage",
         "causal_chain",
-        "constraint_lifting",
+        "content_profiler",
         "format_conversion",
         "message_dedup",
         "path_prefix",
-        "prefix_optimizer",
         "rate_distortion",
         "reference_sub",
         "runtime_contract",

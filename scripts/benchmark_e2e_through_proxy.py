@@ -13,9 +13,8 @@ from lattice.core.context import TransformContext
 from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
 from lattice.transport.types import Message, Request
-from lattice.transforms.format_conv import FormatConverter
+from lattice.transforms.format_converter import FormatConverter
 from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.utils.token_count import TiktokenCounter
@@ -93,7 +92,6 @@ def benchmark_prompt(name, messages, expected_keyword=""):
     # Compress the message ourselves to show savings
     config = LatticeConfig(graceful_degradation=True)
     pipeline = CompressorPipeline(config=config)
-    pipeline.register(PrefixOptimizer())
     pipeline.register(ReferenceSubstitution())
     pipeline.register(FormatConverter())
     pipeline.register(ToolOutputFilter())

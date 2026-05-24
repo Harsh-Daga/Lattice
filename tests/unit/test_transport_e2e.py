@@ -27,7 +27,6 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.providers.transport import DirectHTTPProvider
 from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.transport.types import Message, Request
@@ -207,8 +206,6 @@ class TestPrefixOptimizerBenchmark:
     def test_prefix_token_reduction(self) -> None:
         _ = LatticeConfig(graceful_degradation=True)
         pipeline = None  # placeholder; skipped
-        pipeline.register(PrefixOptimizer())
-
         prefix = "Common system prefix: analyze, optimize, refactor. "
         msgs = []
         for i in range(5):
@@ -243,7 +240,6 @@ class TestFullPipelineBenchmark:
     def test_combined_savings(self) -> None:
         _ = LatticeConfig(graceful_degradation=True)
         pipeline = None  # placeholder; skipped
-        pipeline.register(PrefixOptimizer())
         pipeline.register(ReferenceSubstitution())
         pipeline.register(ToolOutputFilter())
         pipeline.register(OutputCleanup())

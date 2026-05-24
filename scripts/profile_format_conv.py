@@ -9,7 +9,7 @@ import time
 
 from lattice.core.context import TransformContext
 from lattice.transport.types import Message, Request
-from lattice.transforms.format_conv import FormatConverter
+from lattice.transforms.format_converter import FormatConverter
 
 
 def gen_table(n=500) -> str:

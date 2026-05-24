@@ -62,6 +62,7 @@ class TestCausalChain:
         assert "CAUSAL GRAPH" not in out.messages[0].content
 
 
+@pytest.mark.skip(reason="constraint_lifting removed in Phase 5b")
 class TestConstraintLifting:
     def test_constraint_lifting_extracts_json_requirement(self) -> None:
         from lattice.transforms.constraint_lifting import ConstraintLiftingTransform

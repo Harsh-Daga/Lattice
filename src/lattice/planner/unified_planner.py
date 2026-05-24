@@ -116,10 +116,8 @@ class UnifiedPlanner:
     _TRANSFORM_ORDER: tuple[str, ...] = (
         "content_profiler",  # 1 — always runs first
         "runtime_contract",  # 2
-        "constraint_lifting",  # 6
         "cache_arbitrage",  # 9
         "causal_chain",  # 9
-        "prefix_optimizer",  # 10
         "message_dedup",  # 15
         "diagnostic_optimizer",  # 17
         "strategy_selector",  # 19 (bandit arms)
@@ -145,7 +143,6 @@ class UnifiedPlanner:
             "message_dedup",
             "strategy_selector",
             "cache_arbitrage",
-            "prefix_optimizer",
             "reference_optimizer",
             "ir_structure_optimizer",
             "tool_optimizer",
@@ -158,7 +155,6 @@ class UnifiedPlanner:
             "message_dedup",
             "strategy_selector",
             "cache_arbitrage",
-            "prefix_optimizer",
             "diagnostic_optimizer",
             "representation_optimizer",
             "ir_structure_optimizer",
@@ -177,7 +173,6 @@ class UnifiedPlanner:
             "message_dedup",
             "strategy_selector",
             "cache_arbitrage",
-            "prefix_optimizer",
             "diagnostic_optimizer",
             "representation_optimizer",
             "ir_structure_optimizer",
@@ -194,7 +189,6 @@ class UnifiedPlanner:
             "runtime_contract",
             "strategy_selector",
             "cache_arbitrage",
-            "prefix_optimizer",
             "diagnostic_optimizer",
             "representation_optimizer",
             "ir_structure_optimizer",

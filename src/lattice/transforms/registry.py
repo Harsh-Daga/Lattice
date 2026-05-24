@@ -97,16 +97,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Reorders messages for KV-cache alignment",
     ),
     TransformSpec(
-        canonical_name="prefix_optimizer",
-        aliases=("prefix_opt",),
-        config_flag="transform_prefix_opt",
-        priority=10,
-        safety_bucket=SAFE,
-        default_pipeline=True,
-        factory_path="lattice.transforms.prefix_opt.PrefixOptimizer",
-        description="Deduplicates common prefixes across messages",
-    ),
-    TransformSpec(
         canonical_name="reference_sub",
         aliases=("reference_substitution",),
         config_flag="transform_reference_sub",
@@ -165,15 +155,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Session-based delta encoding (needs session_manager)",
     ),
     # ── Experimental / kept for direct use ──────────────────────
-    TransformSpec(
-        canonical_name="constraint_lifting",
-        config_flag="transform_constraint_lifting",
-        priority=6,
-        safety_bucket=SAFE,
-        legacy_only=True,
-        factory_path="lattice.transforms.constraint_lifting.ConstraintLiftingTransform",
-        description="Extracts buried constraints and format requirements",
-    ),
     TransformSpec(
         canonical_name="causal_chain",
         config_flag="transform_causal_chain",
@@ -274,7 +255,7 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         config_flag="transform_format_conversion",
         priority=25,
         safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.format_conv.FormatConverter",
+        factory_path="lattice.transforms.format_converter.FormatConverter",
         description="OpenAI ↔ Anthropic message format conversion",
     ),
     TransformSpec(

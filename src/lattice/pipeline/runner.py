@@ -87,16 +87,11 @@ class PipelineTransformRegistry:
     _FACTORIES: dict[str, tuple[str, str]] = {
         "content_profiler": ("lattice.transforms.content_profiler", "ContentProfiler"),
         "runtime_contract": ("lattice.transforms.runtime_contract", "RuntimeContractTransform"),
-        "constraint_lifting": (
-            "lattice.transforms.constraint_lifting",
-            "ConstraintLiftingTransform",
-        ),
         "message_dedup": ("lattice.transforms.message_dedup", "MessageDeduplicator"),
         "cache_arbitrage": ("lattice.transforms.cache_arbitrage", "CacheArbitrageOptimizer"),
         "causal_chain": ("lattice.transforms.causal_chain", "CausalChainExtractor"),
-        "prefix_optimizer": ("lattice.transforms.prefix_opt", "PrefixOptimizer"),
         "strategy_selector": ("lattice.transforms.strategy_selector", "StrategySelector"),
-        "format_conversion": ("lattice.transforms.format_conv", "FormatConverter"),
+        "format_conversion": ("lattice.transforms.format_converter", "FormatConverter"),
         "rate_distortion": ("lattice.transforms.rate_distortion", "RateDistortionCompressor"),
         "path_prefix": ("lattice.transforms.path_prefix", "PathPrefixCompressor"),
         "tool_projection": ("lattice.transforms.tool_projection", "QueryAwareProjection"),
@@ -174,12 +169,11 @@ class Pipeline:
     # Response-only transforms (output_cleanup) and optimizers without native
     # IR support go through the legacy adapter.
     _IR_NATIVE_TRANSFORMS = {
+        "content_profiler",
         "runtime_contract",
-        "prefix_optimizer",
         "message_dedup",
         "strategy_selector",
         "cache_arbitrage",
-        "constraint_lifting",
         "causal_chain",
         "format_conversion",
         "rate_distortion",
@@ -421,9 +415,20 @@ class Pipeline:
             and "content_profiler" not in context.transforms_applied
         ):
             try:
-                result = profiler.process(working, context)
+                ir_seed = get_canonical_state_value(context, "_lattice_ir_v2") or PromptIRV2()
+                if "content_profiler" in self._IR_NATIVE_TRANSFORMS and hasattr(
+                    profiler, "optimize"
+                ):
+                    result = profiler.optimize(ir_seed, working, context)
+                    if is_ok(result):
+                        ir_v2 = unwrap(result)
+                        working.metadata["_lattice_ir_v2"] = ir_v2
+                        context.session_state["_lattice_ir_v2"] = ir_v2
+                else:
+                    result = profiler.process(working, context)
+                    if is_ok(result):
+                        working = unwrap(result)
                 if is_ok(result):
-                    working = unwrap(result)
                     context.mark_transform_applied("content_profiler")
             except Exception as exc:
                 log.warning("content_profiler_failed", error=str(exc))

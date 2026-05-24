@@ -24,7 +24,7 @@ class TestTransformRegistryV2:
         registry = PipelineTransformRegistry()
         names = registry.get_transform_names()
         assert "content_profiler" in names
-        assert "prefix_optimizer" in names
+        assert "prefix_optimizer" not in names
         assert "output_cleanup" in names
 
 
