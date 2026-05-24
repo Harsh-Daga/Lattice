@@ -77,7 +77,7 @@ def run_constituent(
     # Resolve aliases (e.g. ``"format_conv"`` → ``"format_conversion"``,
     # ``"prefix_opt"`` → ``"prefix_optimizer"``) so the lookup matches the
     # canonical IR-native set regardless of which spelling the caller used.
-    from lattice.core.transform_registry import get_transform_spec
+    from lattice.transforms.registry import get_transform_spec
 
     spec = get_transform_spec(name)
     canonical = spec.canonical_name if spec is not None else name

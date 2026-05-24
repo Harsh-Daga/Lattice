@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.transform_reputation import get_reputation_registry
 from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.pipeline.guardrails import (
     GuardAction,
@@ -20,6 +19,7 @@ from lattice.planner.task_classifier import (
     classify_task,
 )
 from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
+from lattice.transforms.reputation import get_reputation_registry
 from lattice.transport.types import Message, Request
 
 

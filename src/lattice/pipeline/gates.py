@@ -195,7 +195,7 @@ def scheduler_blocks(name: str, request: Request, context: TransformContext) -> 
     allowed_names = set(schedule.get("allowed", []))
     allowed_optimizers = set(schedule.get("allowed_optimizers", []))
 
-    from lattice.core.transform_registry import get_transform_spec
+    from lattice.transforms.registry import get_transform_spec
 
     spec = get_transform_spec(name)
     canonical = spec.canonical_name if spec else name

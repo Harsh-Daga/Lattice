@@ -48,8 +48,6 @@ from lattice.transport.types import Request, Response
 
 _logger = structlog.get_logger()
 
-_RESPONSE_ONLY_TRANSFORMS = {"output_cleanup"}
-
 
 def _serialize_ir_to_messages(ir: PromptIRV2, working: Request) -> None:
     """Map serialized IR sections back to working Request.messages.
@@ -233,12 +231,12 @@ class Pipeline:
         )
 
         # Split: core transforms (verbatim) vs optimizers (beam search)
-        from lattice.core.transform_registry import is_legacy_only
+        from lattice.transforms.registry import is_legacy_only, is_response_side
 
         core_transforms: list[str] = []
         optimizer_transforms: list[str] = []
         for tx_name in plan.transforms:
-            if tx_name in _RESPONSE_ONLY_TRANSFORMS:
+            if is_response_side(tx_name):
                 continue
             if is_legacy_only(tx_name):
                 continue
@@ -413,7 +411,7 @@ class Pipeline:
             )
 
         # ---- Seed context: run content_profiler if available + not already applied ----
-        from lattice.core.transform_registry import is_legacy_only
+        from lattice.transforms.registry import is_legacy_only, is_response_side
 
         profiler = self.registry.get("content_profiler")
         profiler_present = profiler is not None
@@ -433,7 +431,7 @@ class Pipeline:
         # ---- Read plan from context; fallback to a synthetic default plan ----
         plan = coerce_execution_plan(get_canonical_state_value(context, "_lattice_execution_plan"))
         if plan is None:
-            from lattice.core.transform_registry import BUILTIN_TRANSFORMS
+            from lattice.transforms.registry import BUILTIN_TRANSFORMS
 
             names = [
                 spec.canonical_name
@@ -456,7 +454,7 @@ class Pipeline:
         for tx_name in plan.transforms:
             if tx_name in context.transforms_applied:
                 continue
-            if tx_name in _RESPONSE_ONLY_TRANSFORMS:
+            if is_response_side(tx_name):
                 continue
             if is_legacy_only(tx_name):
                 continue
@@ -580,7 +578,7 @@ class Pipeline:
                 working = backup.copy()
                 working.metadata["_lattice_rollback_reason"] = reason
                 rollback_reasons[tx_name] = reason
-                from lattice.core.transform_reputation import get_reputation_registry
+                from lattice.transforms.reputation import get_reputation_registry
 
                 get_reputation_registry().record(
                     tx_name, quality=0.0, compression=0.0, rolled_back=True
@@ -683,7 +681,7 @@ class Pipeline:
 
             if tokens_before > 0:
                 compression = (tokens_before - tokens_after) / tokens_before
-                from lattice.core.transform_reputation import get_reputation_registry
+                from lattice.transforms.reputation import get_reputation_registry
 
                 get_reputation_registry().record(
                     tx_name, quality=1.0, compression=compression, rolled_back=False
@@ -757,8 +755,10 @@ class Pipeline:
           2. ``context.session_state["_lattice_execution_plan"]`` (coerced);
           3. ``context.transforms_applied`` (what compress actually ran).
 
-        ``output_cleanup`` is response-only and runs on every reverse.
+        Response-side transforms (``is_response_side`` in the registry) run here.
         """
+        from lattice.transforms.registry import is_response_side
+
         if plan is None:
             plan = coerce_execution_plan(
                 get_canonical_state_value(context, "_lattice_execution_plan")
@@ -770,6 +770,8 @@ class Pipeline:
             tx_names = list(context.transforms_applied)
 
         for tx_name in reversed(tx_names):
+            if is_response_side(tx_name):
+                continue
             inst = self.registry.get(tx_name)
             if inst is None or not hasattr(inst, "reverse"):
                 continue
@@ -778,10 +780,26 @@ class Pipeline:
             except Exception:
                 pass
 
-        oc = self.registry.get("output_cleanup")
-        if oc is not None:
+        for tx_name in reversed(tx_names):
+            if not is_response_side(tx_name):
+                continue
+            inst = self.registry.get(tx_name)
+            if inst is None or not hasattr(inst, "reverse"):
+                continue
             try:
-                response = oc.reverse(response, context)
+                response = inst.reverse(response, context)
+            except Exception:
+                pass
+
+        # Ensure response-side transforms run even if omitted from plan/applied list.
+        for tx_name in self.registry.get_transform_names():
+            if not is_response_side(tx_name) or tx_name in tx_names:
+                continue
+            inst = self.registry.get(tx_name)
+            if inst is None or not hasattr(inst, "reverse"):
+                continue
+            try:
+                response = inst.reverse(response, context)
             except Exception:
                 pass
 

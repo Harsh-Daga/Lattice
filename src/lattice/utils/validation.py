@@ -319,7 +319,7 @@ def get_transform_safety_bucket(name: str) -> TransformSafetyBucket:
     """Return the safety bucket for a transform by name.
 
     Legacy compatibility aliases are resolved from the local safety map first.
-    Canonical names still defer to :func:`~lattice.core.transform_registry.get_transform_safety_bucket`.
+    Canonical names still defer to :func:`~lattice.transforms.registry.get_transform_safety_bucket`.
     Unknown names default to DANGEROUS — they must be explicitly registered
     to prove safety. This prevents alias-based bypass.
     """
@@ -327,8 +327,8 @@ def get_transform_safety_bucket(name: str) -> TransformSafetyBucket:
     if legacy_bucket is not None:
         return legacy_bucket
 
-    from lattice.core.transform_registry import DANGEROUS
-    from lattice.core.transform_registry import get_transform_safety_bucket as _registry_bucket
+    from lattice.transforms.registry import DANGEROUS
+    from lattice.transforms.registry import get_transform_safety_bucket as _registry_bucket
 
     bucket = _registry_bucket(name)
     if bucket == DANGEROUS:

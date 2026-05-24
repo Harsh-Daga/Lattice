@@ -9,7 +9,8 @@ from __future__ import annotations
 import pytest
 
 from lattice.core.config import LatticeConfig
-from lattice.core.transform_registry import (
+from lattice.pipeline.factory import build_default_pipeline, pipeline_summary
+from lattice.transforms.registry import (
     BUILTIN_TRANSFORMS,
     get_transform_spec,
     is_transform_enabled,
@@ -17,7 +18,6 @@ from lattice.core.transform_registry import (
     list_default_pipeline_names,
     list_transform_names,
 )
-from lattice.pipeline.factory import build_default_pipeline, pipeline_summary
 from lattice.utils.validation import (
     TransformSafetyBucket,
     get_transform_safety_bucket,

@@ -7,7 +7,7 @@ CompressorPipeline still calls their ``process()``.
 
 from __future__ import annotations
 
-from lattice.core.transform_registry import (
+from lattice.transforms.registry import (
     BUILTIN_TRANSFORMS,
     get_transform_spec,
     is_legacy_only,

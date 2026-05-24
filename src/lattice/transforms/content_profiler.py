@@ -599,7 +599,7 @@ def _derive_schedule_from_plan(
     plan: Any,
 ) -> dict[str, Any]:
     """Project the canonical plan into legacy scheduler metadata."""
-    from lattice.core.transform_registry import list_transform_names
+    from lattice.transforms.registry import list_transform_names
 
     all_registered = list(list_transform_names())
     allowed = list(getattr(plan, "transforms", ()) or ())
