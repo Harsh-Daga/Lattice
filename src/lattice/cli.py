@@ -80,7 +80,7 @@ def _unlace_agent(agent: str) -> dict[str, Any]:
 
 
 def _list_mutated_agents() -> list[str]:
-    from lattice.integrations.mutation_store import list_mutated_agents as _fn
+    from lattice.integrations.mutation_store import list_all_active as _fn
 
     return _fn()
 
@@ -940,69 +940,92 @@ def _cmd_agent_status(args: list[str]) -> None:
 
 def _cmd_doctor(args: list[str]) -> None:
     """Diagnose why an agent isn't routing through LATTICE."""
+    from lattice.integrations.agents import (
+        get_agent_integration,
+        list_agents,
+        list_primary_agents,
+    )
+
     if args and args[0] in ("-h", "--help"):
+        supported = ", ".join(list_primary_agents())
         console.print(
             Panel.fit(
                 "[bold]lattice doctor[/bold]\n\n"
-                "Diagnose LATTICE proxy routing issues.\n\n"
+                "Diagnose LATTICE proxy routing for each agent integration.\n\n"
                 "Usage:\n"
-                "  lattice doctor codex\n"
-                "  lattice doctor claude\n"
-                "  lattice doctor opencode\n\n"
-                "Checks:\n"
-                "  1. Is the agent laced (env file / config file patched)?\n"
-                "  2. Are required env vars set in the current shell?\n"
-                "  3. Is the LATTICE proxy running and healthy?\n"
-                "  4. Can we make a test request through the proxy?",
+                "  lattice doctor\n"
+                f"  lattice doctor <agent>   ({supported})\n\n"
+                "Checks per agent:\n"
+                "  1. Is the agent installed (binary / config)?\n"
+                "  2. Durable init or transient lace active?\n"
+                "  3. Is the LATTICE proxy reachable at /healthz?",
                 title="lattice doctor",
                 border_style="blue",
             )
         )
         return
 
-    table = Table(title="LATTICE Doctor — Proxy Connectivity")
+    config = _get_config()
+    if args:
+        agent_names = [args[0].lower()]
+    else:
+        agent_names = list_primary_agents()
+
+    _print_banner()
+
+    for agent_name in agent_names:
+        if agent_name not in list_agents():
+            console.print(f"[red]Unknown agent: {agent_name}[/red]")
+            console.print(f"[dim]Supported: {', '.join(list_primary_agents())}[/dim]")
+            continue
+
+        try:
+            integration = get_agent_integration(agent_name, config)
+            report = integration.doctor()
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            continue
+
+        _print_doctor_report(report)
+
+
+def _print_doctor_report(report: object) -> None:
+    """Render a single agent doctor report."""
+    from lattice.integrations.agents import AgentDoctorReport
+
+    if not isinstance(report, AgentDoctorReport):
+        return
+
+    table = Table(title=f"LATTICE Doctor — {report.agent}")
     table.add_column("Check", style="cyan")
     table.add_column("Status", justify="center")
     table.add_column("Detail")
 
-    # 1. Is proxy running?
-    config = _get_config()
-    proxy_url = f"http://{config.proxy_host}:{config.proxy_port}"
-    import urllib.request
+    def _row(label: str, ok: bool, detail: str) -> None:
+        mark = "[green]✓[/green]" if ok else "[red]✗[/red]"
+        table.add_row(label, mark, detail)
 
-    try:
-        with urllib.request.urlopen(f"{proxy_url}/healthz", timeout=2) as resp:
-            if resp.status == 200:
-                table.add_row("Proxy running", "[green]✓[/green]", proxy_url)
-            else:
-                table.add_row(
-                    "Proxy running", "[yellow]⚠[/yellow]", f"Health check returned {resp.status}"
-                )
-    except Exception as exc:
-        table.add_row("Proxy running", "[red]✗[/red]", f"{exc}\nStart with: lattice proxy run")
+    _row("Installed", report.is_installed, "Binary or config present on this machine")
+    _row(
+        "Durable routing",
+        report.is_patched_durable,
+        "init / wrap_agent config active",
+    )
+    _row(
+        "Transient lace",
+        report.is_patched_transient,
+        "active lattice lace session",
+    )
+    _row(
+        "Proxy /healthz",
+        report.proxy_reachable,
+        f"http://127.0.0.1:{_get_config().proxy_port}/healthz",
+    )
 
-    # 2. Test request through proxy
-    try:
-        req = urllib.request.Request(
-            f"{proxy_url}/v1/models",
-            headers={"Authorization": "Bearer sk-test"},
-            method="GET",
-        )
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            table.add_row("Proxy reachable", "[green]✓[/green]", f"Status {resp.status}")
-    except urllib.error.HTTPError as exc:
-        if exc.code in (401, 403, 404):
-            table.add_row("Proxy reachable", "[green]✓[/green]", f"Responding (HTTP {exc.code})")
-        else:
-            table.add_row("Proxy reachable", "[red]✗[/red]", f"HTTP {exc.code}")
-    except Exception as exc:
-        table.add_row("Proxy reachable", "[red]✗[/red]", str(exc))
-
-    _print_banner()
     console.print(table)
-    note = "\n[bold]Note:[/bold] CLI tools should use [cyan]lattice lace <agent>[/cyan]"
-    console.print(note)
-    console.print("        OAuth tokens are forwarded transparently.")
+    for line in report.diagnostic_lines:
+        console.print(f"  [dim]•[/dim] {line}")
+    console.print()
 
 
 if __name__ == "__main__":

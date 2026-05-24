@@ -44,7 +44,7 @@ src/lattice/core/telemetry.py,203,3,0,,7,8,telemetry/downgrade.py,RENAME
 src/lattice/core/transform_registry.py,499,1,11,,8,4a,transforms/registry.py,MOVE
 src/lattice/core/transform_reputation.py,125,3,1,,4,4a,transforms/reputation.py,MOVE
 src/lattice/core/transport.py,259,6,0,lattice.core.context|lattice.core.result|lattice.protocol.content,135,2,transport/types.py,MOVE
-src/lattice/core/tunnel_sidecar.py,784,8,0,lattice.core.config|lattice.protocol.framing,3,7,integrations/tunnel.py,MOVE
+src/lattice/integrations/tunnel.py,784,8,0,lattice.core.config|lattice.protocol.framing,3,8,integrations/tunnel.py,DONE
 src/lattice/core/unified_planner.py,383,3,1,lattice.core.primitives|lattice.core.task_classifier|lattice.core.transport,9,3,planner/unified_planner.py,MOVE
 src/lattice/gateway/__init__.py,6,0,0,lattice.gateway.compat|lattice.gateway.server,0,-,gateway/__init__.py,KEEP
 src/lattice/gateway/compat.py,3158,5,25,lattice.core.agent_stats|lattice.core.config|lattice.core.context|lattice.core.cost_estimator|lattice.core.credentials|lattice.core.delta_wire|lattice.core.pipeline_factory|lattice.core.result|lattice.core.runtime_state|lattice.core.semantic_cache|lattice.core.serialization|lattice.core.telemetry|lattice.core.transport|lattice.gateway.compat|lattice.gateway.routing|lattice.gateway.server|lattice.integrations.codex.auth|lattice.integrations.codex.ws_handler|lattice.planner.execution_builder|lattice.planner.execution_plan|lattice.planner.fallback_executor|lattice.protocol.manifest|lattice.providers.capabilities|lattice.providers.transport,11,-,gateway/compat.py,KEEP
@@ -64,7 +64,7 @@ src/lattice/integrations/copilot/runtime.py,15,0,1,,2,-,integrations/copilot/run
 src/lattice/integrations/cursor/install.py,29,0,3,lattice.integrations.cursor.runtime,2,-,integrations/cursor/install.py,KEEP
 src/lattice/integrations/cursor/runtime.py,53,1,3,lattice.integrations.claude.runtime|lattice.integrations.codex.runtime,3,-,integrations/cursor/runtime.py,KEEP
 src/lattice/integrations/init.py,195,0,10,lattice.integrations.cursor.runtime|lattice.integrations.mutation_store|lattice.integrations.registry,2,-,integrations/init.py,KEEP
-src/lattice/integrations/lace.py,266,0,5,lattice.core.config|lattice.core.tunnel_sidecar|lattice.integrations.mutation_store|lattice.integrations.registry|lattice.proxy.lifecycle,2,-,integrations/lace.py,KEEP
+src/lattice/integrations/lace.py,266,0,5,lattice.core.config|lattice.integrations.tunnel|lattice.integrations.mutation_store|lattice.integrations.registry|lattice.proxy.lifecycle,2,8,integrations/lace.py,KEEP
 src/lattice/integrations/mcp.py,294,1,1,lattice._version|lattice.core.config|lattice.core.context|lattice.core.pipeline|lattice.core.pipeline_factory|lattice.core.result|lattice.core.runtime_state|lattice.core.serialization|lattice.core.session|lattice.core.transport|lattice.integrations.mcp|lattice.providers.transport|lattice.utils.token_count,7,-,integrations/mcp.py,KEEP
 src/lattice/integrations/mutation_store.py,78,0,7,,4,-,integrations/mutation_store.py,KEEP
 src/lattice/integrations/opencode/install.py,116,0,6,lattice.providers.capabilities,2,-,integrations/opencode/install.py,KEEP

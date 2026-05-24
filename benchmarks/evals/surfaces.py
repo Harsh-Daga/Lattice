@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 from benchmarks.evals.report import EvalSectionReport
 from lattice.core.config import LatticeConfig
-from lattice.core.tunnel_sidecar import (
+from lattice.integrations.tunnel import (
     HTTPProxyServer,
     LocalSocketServer,
     ReplayBuffer,

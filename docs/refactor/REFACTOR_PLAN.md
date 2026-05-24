@@ -200,7 +200,7 @@ Each phase has its own file in this directory. The phases are sequenced so each 
 | 4 | Transforms — audit, split 3 god-files, delete `prefix_opt`, gate `strategy_selector`/`context_selector` on benchmarks | [04-transforms.md](04-transforms.md) | varies (see file) |
 | 5 | Providers & transport — split `providers/transport.py` (1539 LoC) into 7-file package, merge duplicated streaming methods | [05-providers-transport.md](05-providers-transport.md) | +5 (split) but −300 LoC of duplication |
 | 6 | Proxy / Gateway / SDK / CLI — wire health routes, lock public surface | [06-proxy-sdk-cli.md](06-proxy-sdk-cli.md) — ✅ STATUS Phase 7 | −1 (delete `compat_exports.py` if not already) |
-| 7 | Agent integrations — extract base, per-agent diffs only | [07-integrations.md](07-integrations.md) — ⏳ STATUS Phase 8 | 0 |
+| 7 | Agent integrations — extract base, per-agent diffs only | [07-integrations.md](07-integrations.md) — ✅ STATUS Phase 8 | 0 |
 | 8 | Observability / state / protocol / utils — populate `telemetry/`, move state files, redistribute utils | [08-observability-state.md](08-observability-state.md) | −1 (`utils/` shrinks to 1 file or empty) |
 | 9 | Benchmarks & evals — `src/lattice/evals/` deleted, `benchmarks/` canonical, every README claim has a measurable run | [09-benchmarks.md](09-benchmarks.md) | −1 dir (`src/lattice/evals/`) |
 | 10 | Tests reshape — mirror `tests/unit/` to new `src/` layout; feature-parity matrix | [10-tests.md](10-tests.md) | 0 (only moves) |

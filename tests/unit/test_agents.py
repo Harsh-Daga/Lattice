@@ -787,6 +787,7 @@ class TestRegistry:
         assert "cursor" in agents
         assert "claude" in agents
         assert "codex" in agents
+        assert "copilot" in agents
 
     def test_wrap_unknown_agent(self, lattice_config: LatticeConfig) -> None:
         result = wrap_agent("unknown-agent", lattice_config)

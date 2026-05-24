@@ -91,6 +91,15 @@ def test_proxy_subcommands_listed_in_help() -> None:
         assert sub in out, f"`lattice proxy --help` does not mention `{sub}`:\n{out[:600]}"
 
 
+def test_doctor_no_args_lists_all_agents() -> None:
+    """``lattice doctor`` with no arg reports on every primary agent."""
+    result = run_lattice(["doctor"])
+    assert result.returncode == 0, result.stderr
+    combined = (result.stdout or "") + (result.stderr or "")
+    for agent in ("claude", "codex", "cursor", "opencode", "copilot"):
+        assert agent in combined
+
+
 def test_supported_agent_args_present_in_lace_help(api_surface) -> None:
     """`lattice lace --help` should reference the supported agents list."""
     result = run_lattice(["lace", "--help"])

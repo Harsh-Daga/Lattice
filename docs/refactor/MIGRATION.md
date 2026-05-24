@@ -29,3 +29,20 @@ DeprecationWarning: lattice.sdk.client is deprecated; import from `lattice` or
 ### CLI
 
 - `lattice version` is an alias for `lattice --version` (unchanged output).
+
+## Phase 8 — Agent integrations (shipped on `refactor/phase-8-integrations`)
+
+### Python imports
+
+| Old | New |
+|-----|-----|
+| `from lattice.core.tunnel_sidecar import TunnelSidecar` | `from lattice.integrations.tunnel import TunnelSidecar` |
+| `from lattice.core.tunnel_sidecar import SidecarThread` | `from lattice.integrations.tunnel import SidecarThread` |
+| `from lattice.core.tunnel_sidecar import TunnelState` | `from lattice.integrations.tunnel import TunnelState` |
+
+### CLI behavior
+
+- `lattice doctor` with no argument runs health checks for all five primary agents (`claude`, `codex`, `cursor`, `opencode`, `copilot`).
+- `lattice doctor <agent>` uses per-integration `doctor()` (install / durable / transient lace / proxy `/healthz`).
+- `JsonFileIntegration.patch()` (via `wrap_agent` / durable patch paths) raises `AgentNotInstalledError` when the agent config file is missing (non–dry-run).
+- `lattice status` uses `mutation_store.list_all_active()` (durable init ∪ live transient lace).

@@ -27,7 +27,7 @@ src/lattice/
 │   ├── errors.py                       # LatticeError + 15 subclasses
 │   ├── result.py                       # Result[T,E], Ok, Err
 │   ├── segmentation.py                 # was transforms/semantic_segmenter.py (data structure module)
-│   └── tunnel_sidecar.py               # OPTIONAL — may move to integrations/ in v1.0.0
+│   └── (tunnel moved to integrations/tunnel.py in Phase 8)
 │
 ├── safety/                             # NEW domain
 │   ├── __init__.py
@@ -212,14 +212,15 @@ src/lattice/
 │   ├── proxy_client.py                 # HTTP client for running proxy
 │   └── wrappers.py                     # OpenAI SDK monkey-patch wrapper
 │
-├── integrations/                       # agent integrations — UNCHANGED structure
+├── integrations/                       # agent integrations (Phase 8)
 │   ├── __init__.py
-│   ├── agents.py                       # AgentIntegration base + 6 subclasses (claude/codex/cursor/opencode/copilot/generic)
+│   ├── agents.py                       # AgentIntegration + protocol + doctor + CopilotIntegration
+│   ├── tunnel.py                       # was core/tunnel_sidecar.py — lace sidecar
 │   ├── init.py                         # durable setup (detect → patch → store mutation)
-│   ├── lace.py                         # transient routing
+│   ├── lace.py                         # transient routing + transient_laces.json
 │   ├── unlace.py                       # restore
-│   ├── registry.py                     # list_supported_agents
-│   ├── mutation_store.py               # track what was patched
+│   ├── registry.py                     # list_supported_agents (= primary five)
+│   ├── mutation_store.py               # durable mutations + transient lace
 │   ├── claude/    {install.py, runtime.py}
 │   ├── codex/     {install.py, runtime.py, auth.py, ws_handler.py}
 │   ├── cursor/    {install.py, runtime.py}

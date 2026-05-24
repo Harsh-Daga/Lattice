@@ -1,5 +1,7 @@
 # Phase 7 (REFACTOR_PLAN) / STATUS Phase 8 — Agent Integrations
 
+> **STATUS Phase 8** (this file is REFACTOR_PLAN Phase 7 in the original numbering).
+
 > **Goal.** The five agent integrations (Claude Code, Codex, Cursor, OpenCode, GitHub Copilot) are already well-decomposed via `EnvFileIntegration` / `JsonFileIntegration` base classes in `agents.py`. Phase 7 verifies that decomposition holds, surfaces a couple of latent issues found in the audit (`mutation_store` not consistently used by every concrete class; one agent integration silently no-ops on patch when its config file is missing instead of raising), tightens the `AgentIntegration` Protocol so mypy can prove every subclass is complete, ensures `lattice doctor <agent>` covers all five, and decides the fate of `core/tunnel_sidecar.py` (784 LoC).
 >
 > **Outcome.** `from lattice.integrations import AgentIntegration, ClaudeCodeIntegration, CodexIntegration, CursorIntegration, OpenCodeIntegration, CopilotIntegration` works. Each concrete integration has identical lifecycle (patch / unpatch / is_patched / status). `lattice doctor <agent>` runs a per-agent health check matrix. `tunnel_sidecar.py` moves to `integrations/tunnel.py`.
@@ -392,22 +394,22 @@ def test_doctor_no_args_lists_all_agents():
 
 ## 7. Acceptance criteria
 
-- [ ] `src/lattice/core/tunnel_sidecar.py` does not exist.
-- [ ] `src/lattice/integrations/tunnel.py` exists; identical content (modulo header).
-- [ ] `pyproject.toml`'s `per-file-ignores` references the new path.
-- [ ] `from lattice.integrations.tunnel import TunnelSidecar, TunnelState, SidecarThread` works.
-- [ ] `from lattice.integrations.agents import AgentNotInstalledError, AgentIntegrationProtocol, AgentDoctorReport` works.
-- [ ] Every integration class (Claude, Codex, Cursor, OpenCode, Copilot, Generic) implements `patch()`, `unpatch()`, `is_patched()`, `doctor()`, `name`, `proxy_url`.
-- [ ] `JsonFileIntegration.patch()` raises `AgentNotInstalledError` when `_config_path()` returns a path that doesn't exist.
-- [ ] `lattice doctor <agent>` exits 0 for every one of the five supported agents.
-- [ ] `lattice doctor` (no args) reports on all five.
-- [ ] `mutation_store.list_all_active()` returns the union of durable + transient lacing.
-- [ ] `lattice lace` (real, not `--dry-run`) records into `transient_laces.json`; on exit (Ctrl-C, SIGTERM, normal exit), the record is cleared.
-- [ ] All new tests in §5.1 pass.
-- [ ] `uv run ruff check src/ tests/` clean.
-- [ ] `uv run mypy src/lattice/` clean (the new Protocol catches any missing method on subclasses).
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `uv run pytest tests/contract/ -q` passes.
+- [x] `src/lattice/core/tunnel_sidecar.py` does not exist.
+- [x] `src/lattice/integrations/tunnel.py` exists; identical content (modulo header).
+- [x] `pyproject.toml`'s `per-file-ignores` references the new path.
+- [x] `from lattice.integrations.tunnel import TunnelSidecar, TunnelState, SidecarThread` works.
+- [x] `from lattice.integrations.agents import AgentNotInstalledError, AgentIntegrationProtocol, AgentDoctorReport` works.
+- [x] Every integration class (Claude, Codex, Cursor, OpenCode, Copilot, Generic) implements `patch()`, `unpatch()`, `is_patched()`, `doctor()`, `name`, `proxy_url`.
+- [x] `JsonFileIntegration.patch()` raises `AgentNotInstalledError` when `_config_path()` returns a path that doesn't exist.
+- [x] `lattice doctor <agent>` exits 0 for every one of the five supported agents.
+- [x] `lattice doctor` (no args) reports on all five.
+- [x] `mutation_store.list_all_active()` returns the union of durable + transient lacing.
+- [x] `lattice lace` (real, not `--dry-run`) records into `transient_laces.json`; on exit (Ctrl-C, SIGTERM, normal exit), the record is cleared.
+- [x] All new tests in §5.1 pass.
+- [x] `uv run ruff check src/ tests/` clean.
+- [x] `uv run mypy src/lattice/` clean (the new Protocol catches any missing method on subclasses).
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `uv run pytest tests/contract/ -q` passes.
 
 ---
 

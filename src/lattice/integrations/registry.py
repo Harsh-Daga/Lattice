@@ -216,8 +216,15 @@ def _render_env_display(env: dict[str, str]) -> list[str]:
 
 
 def list_supported_agents() -> list[str]:
-    """Return all agent names registered in the env-builder map."""
-    return sorted(_ensure_builders().keys())
+    """Return primary product agents for init/lace/doctor.
+
+    Intentionally the five canonical names from ``list_primary_agents()``, not
+    every key in ``_AGENT_REGISTRY`` (which also includes ``claude-code``,
+    ``vscode``, and ``generic`` wrap aliases).
+    """
+    from lattice.integrations.agents import list_primary_agents
+
+    return list_primary_agents()
 
 
 def list_durable_agents() -> list[str]:

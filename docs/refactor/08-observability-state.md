@@ -1,8 +1,10 @@
-# Phase 8 — Observability, State, Cache, Safety, Utils
+# Phase 7 (REFACTOR_PLAN) / STATUS Phase 9 — Observability, State, Cache, Safety, Utils
+
+> **STATUS Phase 9** (this file is REFACTOR_PLAN Phase 8 in the original numbering).
 
 > **Goal.** Populate the empty `observability/` directory (renamed `telemetry/`) with the six telemetry-related modules currently scattered through `core/`. Move `core/session.py` and `core/store.py` to `state/` (alongside `state/segment_store.py`) so all stateful persistence lives in one place. Move `core/semantic_cache.py` to a new `cache/` top-level domain. Move `utils/validation.py` to a new `safety/` domain. Move `utils/streaming_sketches.py` into `telemetry/`. Shrink `utils/` to just `token_count.py`. The result: `core/` becomes a pure leaf — six files — exactly what the dependency direction in REFACTOR_PLAN.md §5 mandates.
 >
-> **Outcome.** `from lattice.telemetry import MetricsCollector, DowngradeTelemetry, AgentStatsCollector, CostEstimator, MaintenanceCoordinator` works. `from lattice.state import Session, SessionManager, SessionStore, MemorySessionStore, RedisSessionStore, SegmentStore` works. `from lattice.cache import SemanticCache, ContentClass` works. `from lattice.safety import compute_risk_score, SemanticRiskScore` works. `core/` has only `config.py`, `context.py`, `errors.py`, `result.py`, `segmentation.py`, and (kept) `tunnel_sidecar.py` already moved in Phase 7.
+> **Outcome.** `from lattice.telemetry import MetricsCollector, DowngradeTelemetry, AgentStatsCollector, CostEstimator, MaintenanceCoordinator` works. `from lattice.state import Session, SessionManager, SessionStore, MemorySessionStore, RedisSessionStore, SegmentStore` works. `from lattice.cache import SemanticCache, ContentClass` works. `from lattice.safety import compute_risk_score, SemanticRiskScore` works. `core/` has only `config.py`, `context.py`, `errors.py`, `result.py`, `segmentation.py`. (`integrations/tunnel.py` moved in STATUS Phase 8.)
 >
 > **Estimated effort.** 1.5 days.
 
@@ -368,8 +370,8 @@ rg "from lattice.utils.validation|from lattice.utils.streaming_sketches" src/ te
 uv run pytest tests/ -q
 uv run pytest tests/contract/ -q
 
-uv run python benchmarks/evals/cli.py --suite all --providers ollama-cloud --provider-model ollama-cloud=kimi-k2.6:cloud --iterations 1 --warmup 0 --provider-warmup 0 --output-json benchmarks/results/phase-8.json
-python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-8.json --tolerance-pct 2
+uv run python benchmarks/evals/cli.py --suite all --providers ollama-cloud --provider-model ollama-cloud=kimi-k2.6:cloud --iterations 1 --warmup 0 --provider-warmup 0 --output-json benchmarks/results/phase-9-observability.json
+python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-9-observability.json --tolerance-pct 2
 ```
 
 ---
@@ -599,7 +601,7 @@ rg "from lattice.utils.(validation|streaming_sketches)" src/ tests/ benchmarks/
 - [ ] `src/lattice/state/` contains `__init__.py`, `session.py`, `store.py`, `segment_store.py`.
 - [ ] `src/lattice/cache/` exists with `__init__.py` + `semantic.py`.
 - [ ] `src/lattice/safety/` exists with `__init__.py` + `risk_scoring.py`.
-- [ ] `src/lattice/core/` contains exactly: `__init__.py`, `config.py`, `context.py`, `errors.py`, `result.py`, `segmentation.py`. (`tunnel_sidecar.py` already moved in Phase 7.)
+- [ ] `src/lattice/core/` contains exactly: `__init__.py`, `config.py`, `context.py`, `errors.py`, `result.py`, `segmentation.py`. (`tunnel_sidecar.py` moved to `integrations/tunnel.py` in STATUS Phase 8.)
 - [ ] `src/lattice/utils/` contains exactly: `__init__.py`, `token_count.py`.
 - [ ] `from lattice.telemetry import MetricsCollector, LatencyTracker, DowngradeCategory, DowngradeTelemetry, AgentStatsCollector, CostEstimator, MaintenanceCoordinator, CountMinSketch, HyperLogLog` works.
 - [ ] `from lattice.state import Session, SessionManager, SessionStore, MemorySessionStore, RedisSessionStore, SegmentStore` works.
@@ -613,7 +615,7 @@ rg "from lattice.utils.(validation|streaming_sketches)" src/ tests/ benchmarks/
 - [ ] `uv run mypy src/lattice/` clean.
 - [ ] `uv run pytest tests/ -q` passes.
 - [ ] `uv run pytest tests/contract/ -q` passes.
-- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-8.json --tolerance-pct 2` exits 0.
+- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-9-observability.json --tolerance-pct 2` exits 0.
 
 ---
 

@@ -19,7 +19,7 @@ uv run python benchmarks/evals/cli.py --suite feature
 
 ## Architecture
 
-LATTICE is a **unified optimization + transport system** with one canonical runtime (Phases 0–7 complete on `refactor/phase-7-proxy-sdk-cli`):
+LATTICE is a **unified optimization + transport system** with one canonical runtime (Phases 0–8 complete on `refactor/phase-8-integrations`):
 
 ```
 Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress/process → Provider
@@ -44,10 +44,13 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 | `providers/` | `adapters/` (17 providers), `transport/` (HTTP dispatch), **credentials** |
 | `proxy/` | FastAPI server, `register_health_routes`, `LatticeHeaderMiddleware` (`proxy/middleware.py`) |
 | `gateway/` | HTTP compatibility layer; routing headers stashed on `request.state` (middleware emits) |
+| `integrations/` | Agent wrap/lace/init; `tunnel.py` sidecar; `mutation_store` (durable + transient); per-agent `doctor()` |
+
+**CLI integrations:** `lattice doctor` (no args) runs health checks for all five primary agents (`claude`, `codex`, `cursor`, `opencode`, `copilot`). `lattice doctor <agent>` runs one. `lattice status` uses `mutation_store.list_all_active()` (init + in-flight lace). `JsonFileIntegration.patch()` raises `AgentNotInstalledError` when config is missing (non–dry-run).
 
 **Public Python surface:** `from lattice import LatticeClient, LatticeProxyClient, wrap_openai_client, CompressResult` (avoid `lattice.sdk.client` — deprecated, removed in v1.1).
 
-**Deleted / moved (do not import):** `core/scheduler.py`, `core/optimizer_scheduler.py`, `core/unified_planner.py`, `optimizer/` package, `runtime/router.py`, text `StructureOptimizer`, `proxy/compat_exports.py`.
+**Deleted / moved (do not import):** `core/scheduler.py`, `core/optimizer_scheduler.py`, `core/unified_planner.py`, `core/tunnel_sidecar.py` (→ `integrations/tunnel.py`), `optimizer/` package, `runtime/router.py`, text `StructureOptimizer`, `proxy/compat_exports.py`.
 
 ## Code Conventions
 
@@ -66,7 +69,8 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 
 ## Testing
 
-- Unit tests: `tests/unit/` — **1741 passed**, 196 skipped (Phase 11 full reorg pending)
+- Unit tests: `tests/unit/` — **1752 passed**, 196 skipped (Phase 11 full reorg pending)
+- Integrations unit tests: `tests/unit/integrations/` (tunnel, doctor, mutation_store, protocol)
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
 - Contract tests: `tests/contract/` — green (HTTP health + headers + Python API)
