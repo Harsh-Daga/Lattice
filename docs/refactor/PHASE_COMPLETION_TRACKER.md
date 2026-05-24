@@ -3,7 +3,7 @@
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `refactor/phase-8-integrations` — **1752 passed**, contract green.
+**Last verified:** `main` @ merge PR #13 — **1756 passed**, contract green.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
