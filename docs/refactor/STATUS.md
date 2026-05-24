@@ -37,16 +37,16 @@ The original Phase 2 (`docs/refactor/02-pipeline-runner.md`) was **one PR estima
 | Create `src/lattice/pipeline/` and move 8 files into it                                | ✅       |
 | `PipelineV2 → Pipeline`, `TransformRegistryV2 → PipelineTransformRegistry`             | ✅       |
 | Add `legacy_only` flag for `constraint_lifting` + `strategy_selector`                  | ✅       |
-| Delete `core/pipeline.py` (v1 `CompressorPipeline`, 1089 LoC)                          | ❌       |
-| Delete `core/pipeline_v2_wrapper.py` (113 LoC)                                         | ❌       |
-| Delete `process()` on the 10 IR-native transforms                                      | ❌       |
-| Drop `"pipeline_v2"` registry entry                                                    | ❌       |
-| Rewrite `pipeline/factory.py` (drop v1 builders)                                       | ❌       |
-| Rewire `src/lattice/client.py` to use `Pipeline` directly                              | ❌       |
-| Simplify `ReversibleSyncTransform` Protocol (drop `process()`)                         | ❌       |
-| Broaden `pipeline/__init__.py` (currently a stub)                                      | ❌       |
-| Update `tests/contract/test_python_api_contract.py` (remove `CompressorPipeline`)      | ❌       |
-| Run canonical bench vs phase-0 baseline                                                | ❌       |
+| Delete `core/pipeline.py` (v1 `CompressorPipeline`, 1089 LoC)                          | ✅ Phase 3 |
+| Delete `core/pipeline_v2_wrapper.py` (113 LoC)                                         | ✅ Phase 3 |
+| Delete `process()` on the 10 IR-native transforms                                      | ✅ Phase 3 |
+| Drop `"pipeline_v2"` registry entry                                                    | ✅ Phase 3 |
+| Rewrite `pipeline/factory.py` (drop v1 builders)                                       | ✅ Phase 3 |
+| Rewire `src/lattice/client.py` to use `Pipeline` directly                              | ✅ Phase 3 |
+| Simplify `ReversibleSyncTransform` Protocol (drop `process()` requirement)             | ✅ Phase 3 |
+| Broaden `pipeline/__init__.py` (was stub during v1 coexistence)                        | ✅ Phase 3 |
+| Update `tests/contract/test_python_api_contract.py` (remove `CompressorPipeline`)      | ✅ Phase 3 |
+| Run canonical bench vs phase-0 baseline                                                | ⏳ CI gate (needs `OLLAMA_CLOUD_API_KEY`) |
 
 ### Why the original Phase 2 underestimated scope
 
@@ -62,41 +62,58 @@ The plan doc treated the v2 path as **already complete and the v1 path as a thin
 8. **Rollback on failure** — `backup` snapshot before each transform; restore on `Err` if `graceful_degradation`.
 9. **Expansion guards** — transform output that bloats tokens beyond a threshold is rolled back.
 
-None of (1)–(9) lives in `Pipeline.process` today; they all live in `CompressorPipeline.process`. Killing v1 requires porting all of these — that's the **real** Phase 2 finishing work.
+None of (1)–(9) originally lived in `Pipeline.process`; they all lived in v1 `CompressorPipeline.process`. **Phase 3 ported these gates into `pipeline/gates.py` and `Pipeline.compress()`.**
 
-Additionally, the original plan missed: `src/lattice/optimizer/*.py` files (`structure_optimizer.py`, `context_optimizer.py`, `tool_optimizer.py`, `reference_optimizer.py`) register IR-native transforms as **constituents** and call `process()` on them, not `optimize()`. So `process()` deletion on the 10 IR-native transforms requires migrating those optimizer files too.
+Additionally, Phase 3 migrated `optimizer/*.py` constituents to `optimize()`. **Phase 4 dissolved the `optimizer/` package** — orchestrators now live in `transforms/optimizers/`.
 
 ---
 
-## 3. Current file inventory snapshot
+## 3. Current file inventory snapshot (after Phase 4)
 
-After Phase 2's structural moves:
-
-**`src/lattice/core/`** (25 files, was 36 pre-refactor) — still bloated, but transport types + most pipeline/execution-time concerns have left:
+Canonical runtime chain:
 
 ```
-agent_stats, config, context, cost_estimator, credentials, errors, maintenance,
-metrics, optimizer_scheduler, pipeline, pipeline_v2_wrapper, result, runtime_state,
-scheduler, segmentation, semantic_cache, session, store, task_classifier, telemetry,
-transform_registry, transform_reputation, tunnel_sidecar, unified_planner
+Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress/process → Provider
 ```
 
-**`src/lattice/pipeline/`** (8 files + `__init__.py` stub):
+**`src/lattice/core/`** (17 files) — leaf + observability until Phase 9:
 
 ```
-auto_continuation, batch_accumulator, factory, guardrails, milv, policy,
-representation_optimizer, runner
+agent_stats, config, context, cost_estimator, errors, maintenance, metrics, result,
+segmentation, semantic_cache, session, store, telemetry, transform_registry,
+transform_reputation, tunnel_sidecar
 ```
 
-`pipeline/__init__.py` is intentionally empty because `core/pipeline.py` (v1) still imports from `pipeline/policy.py`, which would create a circular import if the package eagerly re-exported submodules.
-
-**`src/lattice/transport/`** (5 files + `__init__.py`):
+**`src/lattice/planner/`** (10 files) — single scheduling layer:
 
 ```
-congestion, delta_wire, serialization, simulation, types
+execution_plan, execution_builder, unified_planner, task_classifier, runtime_state,
+request_classifier, provider_strategy, transport_planner, fallback_executor, __init__
 ```
 
-**`src/lattice/optimizer/`** (6 files) — `representation_optimizer.py` moved to `pipeline/`; the remaining 6 are constituent optimizers (`structure`, `reference`, `tool`, `context`, `diagnostic`, `ir_structure`).
+**`src/lattice/pipeline/`** (11 files):
+
+```
+runner, factory, policy, guardrails, gates, milv, auto_continuation, batch_accumulator,
+representation_optimizer, base, __init__
+```
+
+**`src/lattice/transforms/optimizers/`** (7 files) — was `optimizer/` (deleted):
+
+```
+__init__, _dispatch, ir_structure_optimizer, reference_optimizer, tool_optimizer,
+diagnostic_optimizer, context_optimizer
+```
+
+**`src/lattice/runtime/`** — `tier_classifier.py` (renamed from `router.py`; not a provider router)
+
+**`src/lattice/providers/`** — includes `credentials.py` (moved from `core/` in Phase 4)
+
+**Deleted in Phases 3–4:** `core/pipeline.py`, `core/pipeline_v2_wrapper.py`, `core/scheduler.py`, `core/optimizer_scheduler.py`, `core/unified_planner.py`, `core/task_classifier.py`, `core/runtime_state.py`, `core/credentials.py`, `optimizer/` (entire package), text `structure_optimizer.py`, `runtime/router.py`.
+
+**Public planner imports:** `from lattice.planner import UnifiedPlanner, ExecutionPlan, build_execution_plan, classify_task`  
+**Public runtime imports:** `from lattice.runtime import TierClassifier, Tier, TierDecision`  
+**Public optimizer imports:** `from lattice.transforms.optimizers import IRStructureOptimizer, ReferenceOptimizer, ...`
 
 ---
 
@@ -125,6 +142,8 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 ---
 
 ## 5. Phase 3 (new) — V1 Kill: detailed plan
+
+> **Status: ✅ SHIPPED** on `refactor/revised-plan`. Historical spec preserved below.
 
 > **Goal.** Delete `core/pipeline.py` (1089 LoC) + `core/pipeline_v2_wrapper.py` (113 LoC). Rewrite `pipeline/factory.py` to return a `Pipeline` directly. Rewire `src/lattice/client.py` to call `Pipeline.compress(req, ctx) → Result[Request]` (new convenience method). Port v1's safety machinery into `Pipeline`. Delete legacy `process()` on the 10 IR-native transforms. Migrate `optimizer/*.py` constituents to `optimize()`.
 >
@@ -343,23 +362,23 @@ Single PR titled `refactor(pipeline): kill v1 CompressorPipeline; one Pipeline r
 
 Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = original Phase 3 = `03-planner-collapse.md`). The original docs remain authoritative for those phases; only Phase 3 (v1 kill) needs the new doc above. Effort estimates are revised after the Phase 2 lessons.
 
-- **Phase 4 (Planner Collapse)** — `core/scheduler.py` + `core/optimizer_scheduler.py` + `core/unified_planner.py` + `core/task_classifier.py` + `core/runtime_state.py` → `planner/`. ~2–3 days.
-- **Phase 5 (Transforms cleanup)** — file splits (`format_conv.py` → `format_converter/`), delete dead files (`prefix_opt.py`, possibly `strategy_selector.py`), constituent optimizers (`optimizer/*.py`) move into `transforms/optimizers/`. ~2–3 days.
+- **Phase 4 (Planner Collapse)** — ✅ Shipped on `refactor/phase-4-planner-collapse`. Deleted RATS schedulers; `UnifiedPlanner` only; `planner/` + `transforms/optimizers/`; `TierClassifier`; credentials → `providers/`.
+- **Phase 5 (Transforms cleanup)** — file splits (`format_conv.py` → `format_converter/`), delete dead files (`prefix_opt.py`, possibly `strategy_selector.py`), move `transform_registry.py` → `transforms/registry.py`. ~2–3 days.
 - **Phase 6 (Providers + Transport)** — `providers/transport.py` (1539 LoC) split into `providers/transport/{dispatcher,pool,negotiation,...}.py`. ~1–2 days.
 - **Phase 7 (Proxy + SDK + CLI)** — `proxy/` cleanup, SDK wrappers consolidation, CLI restructure. ~2 days.
 - **Phase 8 (Integrations)** — MCP + agent wrappers consolidation. ~1 day.
-- **Phase 9 (Observability + State)** — `core/session.py`, `core/store.py`, `core/metrics.py`, `core/telemetry.py`, `core/cost_estimator.py`, `core/agent_stats.py`, `core/maintenance.py`, `core/semantic_cache.py`, `core/credentials.py` → `state/`, `telemetry/`, `cache/`, `credentials/`. ~1–2 days.
+- **Phase 9 (Observability + State)** — `core/session.py`, `core/store.py`, `core/metrics.py`, `core/telemetry.py`, `core/cost_estimator.py`, `core/agent_stats.py`, `core/maintenance.py`, `core/semantic_cache.py` → `state/`, `telemetry/`, `cache/`. (`providers/credentials.py` already moved in Phase 4.) ~1–2 days.
 - **Phase 10 (Benchmarks)** — bench framework cleanup, drop dead scenarios, doc bench surface. ~1 day.
 - **Phase 11 (Tests)** — reorg into `tests/unit/{ir,pipeline,transport,planner,...}/`; drop `--use-v2-pipeline` CLI flag (originally scoped here). ~1 day.
 - **Phase 12 (Docs + Release)** — README + CHANGELOG + MIGRATION.md + tag v1.0.0. ~1 day.
 
 ---
 
-## 7. Carryover items from Phase 2
+## 7. Carryover tracker
 
-These are explicitly tracked so they don't get lost:
+### Phase 2 → 3 (v1 kill) — all shipped
 
-| Item                                                                     | New target phase    |
+| Item                                                                     | Status              |
 | ------------------------------------------------------------------------ | ------------------- |
 | Delete `core/pipeline.py` (v1 `CompressorPipeline`)                      | ✅ Phase 3          |
 | Delete `core/pipeline_v2_wrapper.py`                                     | ✅ Phase 3          |
@@ -370,11 +389,27 @@ These are explicitly tracked so they don't get lost:
 | Delete `process()` on 10 IR-native transforms                            | ✅ Phase 3          |
 | Migrate `optimizer/*.py` constituents to `optimize()`                    | ✅ Phase 3          |
 | Simplify `ReversibleSyncTransform` Protocol                              | ✅ Phase 3          |
-| Broaden `pipeline/__init__.py` (currently a stub)                        | ✅ Phase 3          |
+| Broaden `pipeline/__init__.py`                                           | ✅ Phase 3          |
 | Update `tests/contract/test_python_api_contract.py` (drop CompressorPipeline) | ✅ Phase 3     |
-| Remove `--use-v2-pipeline` CLI flag                                      | Phase 11            |
 | Normalize `pipeline_v2` metric namespace → `pipeline`                    | ✅ Phase 3          |
-| Canonical bench vs phase-0 baseline (±2%)                                  | Run on reviewer CI with `OLLAMA_CLOUD_API_KEY` |
+
+### Phase 4 (planner collapse) — all shipped except benchmark gate
+
+| Item                                                                     | Status              |
+| ------------------------------------------------------------------------ | ------------------- |
+| Delete `core/scheduler.py`, `core/optimizer_scheduler.py`                | ✅ Phase 4          |
+| Move planner modules → `planner/`                                        | ✅ Phase 4          |
+| Move optimizers → `transforms/optimizers/`; delete `optimizer/`          | ✅ Phase 4          |
+| Rename `runtime/router.py` → `tier_classifier.py`                        | ✅ Phase 4          |
+| Move `credentials.py` → `providers/`                                     | ✅ Phase 4          |
+| Delete text `StructureOptimizer`                                         | ✅ Phase 4          |
+
+### Still pending (later phases)
+
+| Item                                                                     | Target phase        |
+| ------------------------------------------------------------------------ | ------------------- |
+| Remove `--use-v2-pipeline` CLI flag                                      | Phase 11            |
+| Canonical bench vs phase-0 baseline (±2%) → `phase-4.json`               | CI / local key      |
 
 ---
 

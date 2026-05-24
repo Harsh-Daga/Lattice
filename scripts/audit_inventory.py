@@ -63,63 +63,66 @@ DISPOSITION: dict[str, tuple[str, str, str]] = {
     "core/serialization.py":         ("2", "transport/serialization.py",   "MOVE"),
     "core/delta_wire.py":            ("2", "transport/delta_wire.py",      "MOVE"),
 
-    # ---- Phase 3: Planner collapse ----
-    "core/scheduler.py":             ("3", "(deleted)",                    "DELETE"),
-    "core/optimizer_scheduler.py":   ("3", "(deleted)",                    "DELETE"),
-    "core/unified_planner.py":       ("3", "planner/unified_planner.py",   "MOVE"),
-    "core/task_classifier.py":       ("3", "planner/task_classifier.py",   "MOVE"),
-    "core/runtime_state.py":         ("3", "planner/runtime_state.py",     "MOVE"),
-    "core/credentials.py":           ("3", "providers/credentials.py",     "MOVE"),
-    "optimizer/structure_optimizer.py":   ("3", "(deleted — text-based)", "DELETE"),
-    "optimizer/ir_structure_optimizer.py":("3", "transforms/optimizers/ir_structure_optimizer.py", "MOVE"),
-    "optimizer/reference_optimizer.py":   ("3", "transforms/optimizers/reference_optimizer.py",   "MOVE"),
-    "optimizer/tool_optimizer.py":        ("3", "transforms/optimizers/tool_optimizer.py",        "MOVE"),
-    "optimizer/diagnostic_optimizer.py":  ("3", "transforms/optimizers/diagnostic_optimizer.py",  "MOVE"),
-    "optimizer/context_optimizer.py":     ("3", "transforms/optimizers/context_optimizer.py",    "MOVE"),
-    "runtime/router.py":             ("3", "runtime/tier_classifier.py",   "RENAME"),
+    # ---- Phase 4: Planner collapse (refactor numbering) ----
+    "core/scheduler.py":             ("4", "(deleted)",                    "DELETE"),
+    "core/optimizer_scheduler.py":   ("4", "(deleted)",                    "DELETE"),
+    "core/unified_planner.py":       ("4", "planner/unified_planner.py",   "MOVE"),
+    "core/task_classifier.py":       ("4", "planner/task_classifier.py",   "MOVE"),
+    "core/runtime_state.py":         ("4", "planner/runtime_state.py",     "MOVE"),
+    "core/credentials.py":           ("4", "providers/credentials.py",     "MOVE"),
+    "optimizer/__init__.py":         ("4", "(deleted)",                    "DELETE"),
+    "optimizer/structure_optimizer.py":   ("4", "(deleted — text-based)", "DELETE"),
+    "optimizer/_dispatch.py":        ("4", "transforms/optimizers/_dispatch.py", "MOVE"),
+    "optimizer/ir_structure_optimizer.py":("4", "transforms/optimizers/ir_structure_optimizer.py", "MOVE"),
+    "optimizer/reference_optimizer.py":   ("4", "transforms/optimizers/reference_optimizer.py",   "MOVE"),
+    "optimizer/tool_optimizer.py":        ("4", "transforms/optimizers/tool_optimizer.py",        "MOVE"),
+    "optimizer/diagnostic_optimizer.py":  ("4", "transforms/optimizers/diagnostic_optimizer.py",  "MOVE"),
+    "optimizer/context_optimizer.py":     ("4", "transforms/optimizers/context_optimizer.py",    "MOVE"),
+    "runtime/router.py":             ("4", "runtime/tier_classifier.py",   "RENAME"),
 
-    # ---- Phase 4: Transforms ----
-    "core/transform_registry.py":    ("4a", "transforms/registry.py",      "MOVE"),
-    "core/transform_reputation.py":  ("4a", "transforms/reputation.py",    "MOVE"),
-    "utils/patterns.py":             ("4a", "transforms/patterns.py",      "MOVE"),
-    "transforms/content_profiler.py":("4b", "transforms/content_profiler/", "SPLIT"),
-    "transforms/format_conv.py":     ("4b", "transforms/format_converter/", "SPLIT"),
-    "transforms/prefix_opt.py":      ("4b", "(deleted — deprecated)",     "DELETE"),
-    "transforms/constraint_lifting.py": ("4b", "(deleted if no consumer)", "DELETE"),
-    "transforms/strategy_selector.py":  ("4c", "transforms/strategy_selector/ (gated)", "SPLIT"),
-    "transforms/context_selector.py":   ("4c", "transforms/context_selector.py (submodular-only)", "KEEP"),
+    # ---- Phase 5: Transforms (refactor numbering) ----
+    "core/transform_registry.py":    ("5", "transforms/registry.py",      "MOVE"),
+    "core/transform_reputation.py":  ("5", "transforms/reputation.py",    "MOVE"),
+    "utils/patterns.py":             ("5", "transforms/patterns.py",      "MOVE"),
+    "transforms/content_profiler.py":("5", "transforms/content_profiler/", "SPLIT"),
+    "transforms/format_conv.py":     ("5", "transforms/format_converter/", "SPLIT"),
+    "transforms/prefix_opt.py":      ("5", "(deleted — deprecated)",     "DELETE"),
+    "transforms/constraint_lifting.py": ("5", "(deleted if no consumer)", "DELETE"),
+    "transforms/strategy_selector.py":  ("5", "transforms/strategy_selector/ (gated)", "SPLIT"),
+    "transforms/context_selector.py":   ("5", "transforms/context_selector.py (submodular-only)", "KEEP"),
 
-    # ---- Phase 5: Providers & transport ----
-    "providers/openai.py":          ("5a", "providers/adapters/openai.py + openai_compatible.py", "SPLIT"),
-    "providers/anthropic.py":       ("5a", "providers/adapters/anthropic.py", "MOVE"),
-    "providers/azure.py":           ("5a", "providers/adapters/azure.py",     "MOVE"),
-    "providers/bedrock.py":         ("5a", "providers/adapters/bedrock.py",   "MOVE"),
-    "providers/gemini.py":          ("5a", "providers/adapters/gemini.py",    "MOVE"),
-    "providers/ollama.py":          ("5a", "providers/adapters/ollama.py",    "MOVE"),
-    "providers/stall_detector.py":  ("5b", "providers/transport/stall_detector.py", "MOVE"),
-    "providers/transport.py":       ("5c", "providers/transport/ (7-file pkg)",     "SPLIT"),
+    # ---- Phase 6: Providers & transport ----
+    "providers/openai.py":          ("6", "providers/adapters/openai.py + openai_compatible.py", "SPLIT"),
+    "providers/anthropic.py":       ("6", "providers/adapters/anthropic.py", "MOVE"),
+    "providers/azure.py":           ("6", "providers/adapters/azure.py",     "MOVE"),
+    "providers/bedrock.py":         ("6", "providers/adapters/bedrock.py",   "MOVE"),
+    "providers/gemini.py":          ("6", "providers/adapters/gemini.py",    "MOVE"),
+    "providers/ollama.py":          ("6", "providers/adapters/ollama.py",    "MOVE"),
+    "providers/stall_detector.py":  ("6", "providers/transport/stall_detector.py", "MOVE"),
+    "providers/transport.py":       ("6", "providers/transport/ (7-file pkg)",     "SPLIT"),
+    "providers/credentials.py":     ("4", "providers/credentials.py",     "KEEP"),
 
-    # ---- Phase 6: Proxy/SDK/CLI ----
-    "proxy/compat_exports.py":      ("6", "(deleted — already removed)",   "DELETE"),
-    "sdk/client.py":                ("6", "sdk/client.py (deprecation shim)", "MODIFY"),
+    # ---- Phase 7: Proxy/SDK/CLI ----
+    "proxy/compat_exports.py":      ("7", "(deleted — already removed)",   "DELETE"),
+    "sdk/client.py":                ("7", "sdk/client.py (deprecation shim)", "MODIFY"),
 
-    # ---- Phase 7: Integrations ----
-    "core/tunnel_sidecar.py":       ("7", "integrations/tunnel.py",        "MOVE"),
+    # ---- Phase 8: Integrations ----
+    "core/tunnel_sidecar.py":       ("8", "integrations/tunnel.py",        "MOVE"),
 
-    # ---- Phase 8: Observability / state ----
-    "core/metrics.py":              ("8", "telemetry/metrics.py",          "MOVE"),
-    "core/telemetry.py":            ("8", "telemetry/downgrade.py",        "RENAME"),
-    "core/agent_stats.py":          ("8", "telemetry/agent_stats.py",      "MOVE"),
-    "core/cost_estimator.py":       ("8", "telemetry/cost_estimator.py",   "MOVE"),
-    "core/maintenance.py":          ("8", "telemetry/maintenance.py",      "MOVE"),
-    "utils/streaming_sketches.py":  ("8", "telemetry/streaming_sketches.py", "MOVE"),
-    "core/session.py":              ("8", "transport/session.py",          "MOVE"),
-    "core/store.py":                ("8", "state/store.py",                "MOVE"),
-    "core/semantic_cache.py":       ("8", "cache/semantic.py",             "MOVE"),
-    "utils/validation.py":          ("8", "safety/risk_scoring.py",        "MOVE"),
+    # ---- Phase 9: Observability / state ----
+    "core/metrics.py":              ("9", "telemetry/metrics.py",          "MOVE"),
+    "core/telemetry.py":            ("9", "telemetry/downgrade.py",        "RENAME"),
+    "core/agent_stats.py":          ("9", "telemetry/agent_stats.py",      "MOVE"),
+    "core/cost_estimator.py":       ("9", "telemetry/cost_estimator.py",   "MOVE"),
+    "core/maintenance.py":          ("9", "telemetry/maintenance.py",      "MOVE"),
+    "utils/streaming_sketches.py":  ("9", "telemetry/streaming_sketches.py", "MOVE"),
+    "core/session.py":              ("9", "transport/session.py",          "MOVE"),
+    "core/store.py":                ("9", "state/store.py",                "MOVE"),
+    "core/semantic_cache.py":       ("9", "cache/semantic.py",             "MOVE"),
+    "utils/validation.py":          ("9", "safety/risk_scoring.py",        "MOVE"),
 
-    # ---- Phase 9: Benchmarks/evals ----
-    "evals/__init__.py":            ("9", "(deleted — empty placeholder)", "DELETE"),
+    # ---- Phase 10: Benchmarks/evals ----
+    "evals/__init__.py":            ("10", "(deleted — empty placeholder)", "DELETE"),
 }
 
 

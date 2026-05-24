@@ -1,6 +1,6 @@
-"""core/unified_planner.py — Single source of truth for execution planning.
+"""planner/unified_planner.py — Single source of truth for execution planning.
 
-Replaces:
+Replaces (deleted in Phase 4):
 - core/scheduler.py (RATS)
 - core/optimizer_scheduler.py
 - planner/execution_builder.py

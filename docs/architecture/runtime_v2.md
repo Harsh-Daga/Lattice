@@ -229,15 +229,16 @@ LatticeObject (abstract base, frozen)
 
 | Module | Owns | Must NOT reach into |
 |--------|------|---------------------|
-| `core/ir.py` | PromptIR, Section, Span | transforms, optimizers, providers |
-| `core/context.py` | TransformContext (mutable scratchpad) | IR internals, scoring logic |
-| `planner/` | ExecutionPlan, scheduling, search | transform implementations |
-| `optimizer/` | Candidate generation, IR optimization | raw text transforms, providers |
-| `transforms/` | Legacy text transforms (shim layer) | IR internals, planner |
-| `protocol/` | Wire formats, framing, manifests | IR internals, scoring |
-| `providers/` | Provider adapters, HTTP transport | IR internals, scoring |
-| `proxy/` | HTTP server, request routing | optimization logic |
-| `runtime/` | Router, execution, telemetry | transform internals |
+| `ir/` | PromptIRV2, Section, Span, quality, validation | transform implementations, providers |
+| `core/` | Config, context, errors, result (leaf primitives) | planner, pipeline orchestration |
+| `planner/` | UnifiedPlanner, ExecutionPlan, task classification | transform implementations |
+| `pipeline/` | Pipeline runner, safety gates, representation beam search | provider HTTP |
+| `transforms/optimizers/` | Per-domain optimizer orchestrators | providers |
+| `transforms/` | Legacy + IR-native transforms | planner scheduling |
+| `runtime/` | TierClassifier (workload complexity tiers) | provider selection |
+| `protocol/` | Wire formats, framing, manifests | IR scoring logic |
+| `providers/` | Provider adapters, transport, credentials | IR internals |
+| `proxy/` | HTTP server | optimization logic |
 
 ---
 
@@ -274,17 +275,17 @@ class IRTransform:
 
 ## The Scheduler Rule
 
-**Old Model (being replaced):**
-- RATS decides allowed transforms
-- OptimizerScheduler decides allowed optimizers
-- ExecutionBuilder reconciles them
-- Pipeline gates everything again
+**Old Model (removed in refactor Phase 4):**
+- RATS (`decide_schedule`) decided allowed transforms
+- OptimizerScheduler decided allowed optimizers
+- ExecutionBuilder reconciled them
+- Pipeline gated everything again
 
-**New Model (v2):**
-- **ONE** `Planner` produces **ONE** `ExecutionPlan`
-- The plan is derived from the `SemanticProfile` and the `CandidateGraph`
-- The pipeline executes the plan verbatim
-- No runtime re-decision. No committee. No nested gating.
+**Current model (Phases 3–4):**
+- **ONE** `UnifiedPlanner.plan()` produces **ONE** `ExecutionPlan`
+- `content_profiler` builds `SemanticProfile` and may call the planner if no plan is pre-set
+- `Pipeline.compress()` executes the plan verbatim via safety gates in `pipeline/gates.py`
+- No runtime re-decision. No parallel schedulers.
 
 ---
 
@@ -328,10 +329,11 @@ class IRTransform:
 - [x] Update validation to operate on candidates
 
 ### Phase 4: Unified Planner (Week 7-8) — DONE
-- [x] Replace RATS + OptimizerScheduler + ExecutionBuilder with one `Planner`
-- [x] Collapse `OptimizerScheduler` onto `UnifiedPlanner` as a compatibility adapter
+- [x] Replace RATS + OptimizerScheduler + ExecutionBuilder with one `UnifiedPlanner`
+- [x] Delete `core/scheduler.py` and `core/optimizer_scheduler.py` (refactor Phase 4)
+- [x] Move planner modules to `planner/`; optimizers to `transforms/optimizers/`
+- [x] Rename `runtime/router.py` → `runtime/tier_classifier.py` (`TierClassifier`)
 - [x] Implement utility-based scoring
-- [x] Remove pipeline gating on the canonical v2 path (legacy pipeline remains compatibility-only)
 - [x] Build provider cache simulator
 
 ### Phase 5: IR-Native Only (Week 9-10) — DONE
