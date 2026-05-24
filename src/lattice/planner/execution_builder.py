@@ -25,8 +25,6 @@ Usage::
 from __future__ import annotations
 
 from lattice.core.config import LatticeConfig
-from lattice.core.task_classifier import TaskClass
-from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.planner.execution_plan import (
     CachePlanEntry,
     ExecutionPlan,
@@ -38,7 +36,9 @@ from lattice.planner.provider_strategy import (
     simulate_provider_cache,
 )
 from lattice.planner.request_classifier import RequestClassifier
+from lattice.planner.task_classifier import TaskClass
 from lattice.planner.transport_planner import build_transport_plan
+from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.transport.types import Request
 
 

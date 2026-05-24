@@ -1,14 +1,8 @@
-"""Runtime router for LATTICE.
+"""Runtime workload-tier classification.
 
-Formalizes the cost-routing classifier (RouteLLM-style) into a reusable
-component that can be used by both the proxy and the SDK.
-
-The router scores requests across multiple features and assigns a tier:
-SIMPLE < MEDIUM < COMPLEX < REASONING
-
-This tier is used for:
-- Compute contract negotiation
-- Latency/quality tradeoff hints
+NOT a provider router — provider selection is external to LATTICE.
+This module classifies workload complexity (SIMPLE/MEDIUM/COMPLEX/REASONING)
+for setting optimisation budgets.
 """
 
 from __future__ import annotations
@@ -41,7 +35,7 @@ class Tier:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class RoutingDecision:
+class TierDecision:
     """Result of route classification."""
 
     tier: str
@@ -65,8 +59,8 @@ class RoutingDecision:
 # =============================================================================
 
 
-class RuntimeRouter:
-    """Classifies requests into tiers for compute/optimization decisions.
+class TierClassifier:
+    """Classifies requests into workload tiers for optimization decisions.
 
     Scoring model (0-100):
     - Length: 0-30 pts
@@ -145,7 +139,7 @@ class RuntimeRouter:
             "explain why",
         ]
 
-    def classify(self, request: Request) -> RoutingDecision:
+    def classify(self, request: Request) -> TierDecision:
         """Classify a request into a tier."""
         combined = " ".join(m.content for m in request.messages).lower()
         total_chars = len(combined)
@@ -288,7 +282,7 @@ class RuntimeRouter:
             "root_cause": root_cause_score,
             "depth": depth_score,
         }
-        return RoutingDecision(
+        return TierDecision(
             tier=tier,
             score=total_score,
             features=features,
@@ -353,6 +347,6 @@ class RuntimeRouter:
 
 __all__ = [
     "Tier",
-    "RoutingDecision",
-    "RuntimeRouter",
+    "TierDecision",
+    "TierClassifier",
 ]

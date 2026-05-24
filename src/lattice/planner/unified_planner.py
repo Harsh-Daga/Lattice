@@ -21,9 +21,38 @@ import dataclasses
 import enum
 from typing import Any
 
-from lattice.core.task_classifier import TaskClass
 from lattice.ir.primitives import ExecutionPlan
+from lattice.planner.task_classifier import TaskClass
 from lattice.transport.types import Request
+
+# Per-task transform gating policy (formerly core/scheduler.py).
+_TASK_TRANSFORM_MATRIX: dict[str, dict[str, bool | None]] = {
+    TaskClass.REASONING.value: {
+        "rate_distortion": False,
+        "message_dedup": False,
+        "context_selector": False,
+        "information_theoretic_selector": False,
+    },
+    TaskClass.DEBUGGING.value: {
+        "rate_distortion": False,
+        "message_dedup": False,
+        "context_selector": False,
+        "information_theoretic_selector": False,
+    },
+    TaskClass.STRUCTURED.value: {
+        "rate_distortion": False,
+    },
+    TaskClass.ANALYSIS.value: {
+        "rate_distortion": False,
+    },
+    TaskClass.RETRIEVAL.value: {
+        "rate_distortion": False,
+    },
+    TaskClass.SUMMARIZATION.value: {},
+    TaskClass.SIMPLE.value: {
+        "rate_distortion": False,
+    },
+}
 
 
 class Tier(enum.Enum):
@@ -95,8 +124,7 @@ class UnifiedPlanner:
         "diagnostic_optimizer",  # 17
         "strategy_selector",  # 19 (bandit arms)
         "representation_optimizer",  # 19 (beam search orchestrator)
-        "structure_optimizer",  # 20
-        "ir_structure_optimizer",  # 20 (IR-native pair)
+        "ir_structure_optimizer",  # 20 (IR-native structure)
         "reference_optimizer",  # 21
         "rate_distortion",  # 22
         "path_prefix",  # 23
@@ -119,7 +147,6 @@ class UnifiedPlanner:
             "cache_arbitrage",
             "prefix_optimizer",
             "reference_optimizer",
-            "structure_optimizer",
             "ir_structure_optimizer",
             "tool_optimizer",
             "reference_sub",
@@ -134,7 +161,6 @@ class UnifiedPlanner:
             "prefix_optimizer",
             "diagnostic_optimizer",
             "representation_optimizer",
-            "structure_optimizer",
             "ir_structure_optimizer",
             "reference_optimizer",
             "rate_distortion",
@@ -154,7 +180,6 @@ class UnifiedPlanner:
             "prefix_optimizer",
             "diagnostic_optimizer",
             "representation_optimizer",
-            "structure_optimizer",
             "ir_structure_optimizer",
             "reference_optimizer",
             "rate_distortion",
@@ -172,7 +197,6 @@ class UnifiedPlanner:
             "prefix_optimizer",
             "diagnostic_optimizer",
             "representation_optimizer",
-            "structure_optimizer",
             "ir_structure_optimizer",
             "reference_optimizer",
             "format_conversion",
@@ -290,7 +314,7 @@ class UnifiedPlanner:
 
         if "representation_optimizer" in transforms:
             utility += 0.15
-        if "structure_optimizer" in transforms or "ir_structure_optimizer" in transforms:
+        if "ir_structure_optimizer" in transforms:
             utility += 0.12
         if "reference_optimizer" in transforms:
             utility += 0.10

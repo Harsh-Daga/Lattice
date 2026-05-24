@@ -5,7 +5,7 @@ from __future__ import annotations
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok
-from lattice.core.unified_planner import (
+from lattice.planner.unified_planner import (
     SemanticProfile,
     TaskClass,
     UnifiedPlanner,

@@ -42,19 +42,11 @@ from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
-from lattice.core.optimizer_scheduler import OptimizerSchedule, schedule_to_dict
 from lattice.core.result import Ok, Result
-from lattice.core.runtime_state import (
-    get_canonical_request_value,
-    get_canonical_state_value,
-    persist_execution_plan_state,
-)
 from lattice.core.segmentation import (
     segment_request,
     segment_summary,
 )
-from lattice.core.task_classifier import TaskClassification, classify_task
-from lattice.core.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.ir.builder import build_ir
 from lattice.ir.normalizer import normalize_ir
 from lattice.ir.primitives import freeze_value, prompt_ir_v2_from_legacy
@@ -64,6 +56,13 @@ from lattice.planner.provider_strategy import (
     build_cache_plan_for_provider,
     simulate_provider_cache,
 )
+from lattice.planner.runtime_state import (
+    get_canonical_request_value,
+    get_canonical_state_value,
+    persist_execution_plan_state,
+)
+from lattice.planner.task_classifier import TaskClassification, classify_task
+from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.transport.serialization import message_to_dict
 from lattice.transport.types import Request, Response
 from lattice.utils.validation import SemanticRiskScore, compute_risk_score
@@ -275,7 +274,7 @@ class ContentProfiler(ReversibleSyncTransform):
         context.session_state["_lattice_plan_utility"] = getattr(plan, "utility_score", 0.0)
         # NEW: store optimizer-level schedule for Phase 1 cutover
         context.session_state["_lattice_optimizer_schedule"] = optimizer_schedule
-        request.metadata["_lattice_optimizer_schedule"] = schedule_to_dict(optimizer_schedule)
+        request.metadata["_lattice_optimizer_schedule"] = optimizer_schedule
 
         cache_plan = get_canonical_request_value(request, context, "_lattice_cache_plan")
         if not isinstance(cache_plan, list):
@@ -321,7 +320,7 @@ class ContentProfiler(ReversibleSyncTransform):
             _lattice_task_classification=task.to_dict(),
             _lattice_schedule=schedule,
             _lattice_plan_utility=getattr(plan, "utility_score", 0.0),
-            _lattice_optimizer_schedule=schedule_to_dict(optimizer_schedule),
+            _lattice_optimizer_schedule=optimizer_schedule,
             _lattice_cache_plan=freeze_value(cache_plan),
             _lattice_cache_simulation=freeze_value(
                 cache_simulation.to_dict() if cache_simulation is not None else {}
@@ -635,14 +634,13 @@ def _derive_optimizer_schedule_from_plan(
     risk_total: float,
     request: Request,
     plan: Any,
-) -> OptimizerSchedule:
+) -> dict[str, Any]:
     """Project the canonical plan into optimizer-level scheduling metadata."""
     allowed = [name for name in getattr(plan, "transforms", ()) if name.endswith("_optimizer")]
     blocked = {
         name: "plan_excludes"
         for name in (
             "representation_optimizer",
-            "structure_optimizer",
             "reference_optimizer",
             "tool_optimizer",
             "context_optimizer",
@@ -651,15 +649,15 @@ def _derive_optimizer_schedule_from_plan(
         )
         if name not in allowed
     }
-    return OptimizerSchedule(
-        tier=task.execution_tier.value,
-        latency_budget_ms=float(getattr(plan, "latency_budget_ms", task.budget_ms)),
-        quality_floor=float(getattr(plan, "quality_floor", 0.85)),
-        allowed_optimizers=allowed,
-        blocked_optimizers=blocked,
-        transport_enabled=request.stream or request.token_estimate > 2000,
-        cache_enabled=True,
-    )
+    return {
+        "tier": task.execution_tier.value,
+        "latency_budget_ms": float(getattr(plan, "latency_budget_ms", task.budget_ms)),
+        "quality_floor": float(getattr(plan, "quality_floor", 0.85)),
+        "allowed_optimizers": allowed,
+        "blocked_optimizers": blocked,
+        "transport_enabled": request.stream or request.token_estimate > 2000,
+        "cache_enabled": True,
+    }
 
 
 # =============================================================================

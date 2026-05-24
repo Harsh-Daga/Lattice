@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.unified_planner import Tier, UnifiedPlanner
+from lattice.planner.unified_planner import Tier, UnifiedPlanner
 
 _DELETED_TRANSFORMS = {
     "alias_manifest",

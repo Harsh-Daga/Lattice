@@ -16,12 +16,12 @@ import re
 from typing import Any
 
 from lattice.core.context import TransformContext
-from lattice.core.runtime_state import (
+from lattice.ir.primitives import Candidate
+from lattice.planner.runtime_state import (
     get_canonical_request_value,
     get_ir_metadata_value,
     thaw_value,
 )
-from lattice.ir.primitives import Candidate
 from lattice.transport.types import Request
 
 

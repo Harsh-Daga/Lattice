@@ -30,7 +30,7 @@ import httpx
 import structlog
 
 from lattice.core.errors import ProviderError, ProviderTimeoutError
-from lattice.core.runtime_state import get_canonical_request_value
+from lattice.planner.runtime_state import get_canonical_request_value
 from lattice.providers.anthropic import AnthropicAdapter
 from lattice.providers.azure import AzureAdapter
 from lattice.providers.base import ProviderAdapter
@@ -340,7 +340,7 @@ class DirectHTTPProvider:
         downgrade_telemetry: Any = None,
     ) -> None:
         if credentials is None:
-            from lattice.core.credentials import CredentialResolver
+            from lattice.providers.credentials import CredentialResolver
 
             credentials = CredentialResolver()
 
@@ -962,7 +962,7 @@ class DirectHTTPProvider:
             return ""
 
         # No key found — raise clear error
-        from lattice.core.credentials import _PROVIDER_ENV_VARS
+        from lattice.providers.credentials import _PROVIDER_ENV_VARS
 
         env_var = _PROVIDER_ENV_VARS.get(provider_name, {}).get(
             "api_key", f"{provider_name.upper().replace('-', '_')}_API_KEY"

@@ -9,13 +9,13 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_err, unwrap
-from lattice.core.runtime_state import (
+from lattice.core.session import SessionManager
+from lattice.pipeline.runner import Pipeline
+from lattice.planner.runtime_state import (
     get_canonical_request_value,
     persist_execution_plan_state,
     persist_session_plan_state,
 )
-from lattice.core.session import SessionManager
-from lattice.pipeline.runner import Pipeline
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType, MessageAssembler

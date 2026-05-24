@@ -15,8 +15,8 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Err, Ok, Result, is_err, is_ok, unwrap, unwrap_err
-from lattice.core.runtime_state import get_canonical_state_value
 from lattice.ir.primitives import PromptIRV2
+from lattice.planner.runtime_state import get_canonical_state_value
 from lattice.transport.types import Request
 
 # Constituents that own a native ``optimize(ir, req, ctx)`` entry point.

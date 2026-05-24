@@ -31,7 +31,7 @@ class TestOptimizerPipelineEndToEnd:
         names = [t.name for t in pipeline.transforms]
         assert "content_profiler" in names
         assert "runtime_contract" in names
-        assert "structure_optimizer" in names
+        assert "ir_structure_optimizer" in names
         assert "reference_optimizer" in names
 
         # Simple request with debug signal

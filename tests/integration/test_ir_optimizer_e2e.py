@@ -84,7 +84,11 @@ class TestIROptimizerEndToEnd:
         assert has_structure, "IR spans should contain `constant_fields` or `json_shape` structure"
 
         sched = ctx.session_state.get("_lattice_optimizer_schedule")
-        allowed = getattr(sched, "allowed_optimizers", []) if sched else []
+        allowed = (
+            sched.get("allowed_optimizers", [])
+            if isinstance(sched, dict)
+            else getattr(sched, "allowed_optimizers", [])
+        )
         assert "ir_structure_optimizer" in allowed, (
             f"`ir_structure_optimizer` not in allowed optimizers: {allowed}"
         )
@@ -117,12 +121,16 @@ class TestIROptimizerEndToEnd:
 
         sched = ctx.session_state.get("_lattice_optimizer_schedule")
         assert sched is not None
-        allowed = getattr(sched, "allowed_optimizers", [])
+        allowed = (
+            sched.get("allowed_optimizers", [])
+            if isinstance(sched, dict)
+            else getattr(sched, "allowed_optimizers", [])
+        )
         assert "ir_structure_optimizer" in allowed, (
             f"`ir_structure_optimizer` not in allowed optimizers: {allowed}"
         )
 
-        from lattice.optimizer.ir_structure_optimizer import IRStructureOptimizer
+        from lattice.transforms.optimizers.ir_structure_optimizer import IRStructureOptimizer
 
         ir_opt = IRStructureOptimizer()
         assert ir_opt.can_process(after_profiler, ctx), (

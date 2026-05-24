@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from benchmarks.scenarios.prompts import BenchmarkScenario, get_scenarios
-from lattice.core.credentials import CredentialResolver
 from lattice.providers.capabilities import CapabilityRegistry, get_capability_registry
+from lattice.providers.credentials import CredentialResolver
 
 _DEFAULT_PROVIDER_ORDER = [
     "openai",

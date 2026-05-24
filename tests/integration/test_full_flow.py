@@ -14,7 +14,7 @@ from lattice.providers.capabilities import (
     CapabilityRegistry,
 )
 from lattice.providers.transport import DirectHTTPProvider
-from lattice.runtime.router import RuntimeRouter
+from lattice.runtime.tier_classifier import TierClassifier
 from lattice.transforms.batching import BatchedRequest, BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor
 from lattice.transport.types import Message, Request
@@ -249,7 +249,7 @@ class TestCapabilityDrivenRouting:
 
 class TestRouterIntegration:
     def test_tier_classifier_routing(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         simple = Request(messages=[Message(role="user", content="hi")])
         complex_req = Request(
             messages=[Message(role="user", content="prove theorem step by step" * 100)],

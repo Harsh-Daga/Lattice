@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from lattice.core.context import TransformContext
-from lattice.core.runtime_state import persist_execution_plan_state
 from lattice.planner.execution_plan import CachePlanEntry, ExecutionPlan
 from lattice.planner.provider_strategy import (
     build_cache_plan_for_provider,
     simulate_provider_cache,
 )
+from lattice.planner.runtime_state import persist_execution_plan_state
 from lattice.transport.types import Request
 
 

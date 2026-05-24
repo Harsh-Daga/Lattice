@@ -9,12 +9,7 @@ from lattice.transport.types import Request
 
 
 def coerce_execution_plan(plan: Any) -> Any | None:
-    """Accept dict payloads and concrete plan objects.
-
-    The runtime still carries both legacy and v2 plan objects through
-    compatibility surfaces. This helper normalizes the common cases without
-    forcing callers to care which concrete implementation they received.
-    """
+    """Accept dict payloads and concrete plan objects."""
     if plan is None:
         return None
     if _is_core_execution_plan(plan):
@@ -28,15 +23,17 @@ def coerce_execution_plan(plan: Any) -> Any | None:
 
             if "transforms" in plan:
                 return CoreExecutionPlan.from_dict(plan)
-            return _normalize_legacy_execution_plan(plan)
         except Exception:
-            try:
-                from lattice.planner.execution_plan import ExecutionPlan as LegacyExecutionPlan
+            pass
+        try:
+            from lattice.planner.execution_plan import ExecutionPlan as LegacyExecutionPlan
 
-                legacy = LegacyExecutionPlan.from_dict(plan)
-                return _normalize_legacy_execution_plan(legacy)
-            except Exception:
-                return None
+            legacy = LegacyExecutionPlan.from_dict(plan)
+            return _normalize_legacy_execution_plan(legacy)
+        except Exception:
+            return None
+    if hasattr(plan, "representation_plan"):
+        return _normalize_legacy_execution_plan(plan)
     return plan
 
 

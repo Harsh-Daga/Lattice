@@ -11,7 +11,7 @@ from lattice.core.errors import TransformError
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
 from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
-from lattice.runtime.router import RuntimeRouter
+from lattice.runtime.tier_classifier import TierClassifier
 from lattice.transport.types import Request, Response
 
 
@@ -27,8 +27,8 @@ class RuntimeContractTransform(ReversibleSyncTransform):
     transform_class = TransformClass.OBSERVABILITY_ONLY
     priority = 2
 
-    def __init__(self, router: RuntimeRouter | None = None) -> None:
-        self.router = router or RuntimeRouter()
+    def __init__(self, router: TierClassifier | None = None) -> None:
+        self.router = router or TierClassifier()
 
     def optimize(
         self,

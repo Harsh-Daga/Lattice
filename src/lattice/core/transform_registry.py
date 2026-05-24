@@ -298,19 +298,12 @@ OPTIMIZER_SPECS: tuple[TransformSpec, ...] = (
         description="Global beam-search optimizer across all representation layers",
     ),
     TransformSpec(
-        canonical_name="structure_optimizer",
+        canonical_name="ir_structure_optimizer",
+        aliases=("structure_optimizer",),
         config_flag="transform_structure_optimizer",
         priority=20,
         safety_bucket=SAFE,
-        factory_path="lattice.optimizer.structure_optimizer.StructureOptimizer",
-        description="Unified structure compaction (JSON/table/grammar)",
-    ),
-    TransformSpec(
-        canonical_name="ir_structure_optimizer",
-        config_flag="transform_ir_structure_optimizer",
-        priority=20,
-        safety_bucket=SAFE,
-        factory_path="lattice.optimizer.ir_structure_optimizer.IRStructureOptimizer",
+        factory_path="lattice.transforms.optimizers.ir_structure_optimizer.IRStructureOptimizer",
         description="IR-native structure optimizer (JSON/table/log factoring)",
     ),
     TransformSpec(
@@ -318,7 +311,7 @@ OPTIMIZER_SPECS: tuple[TransformSpec, ...] = (
         config_flag="transform_reference_optimizer",
         priority=21,
         safety_bucket=SAFE,
-        factory_path="lattice.optimizer.reference_optimizer.ReferenceOptimizer",
+        factory_path="lattice.transforms.optimizers.reference_optimizer.ReferenceOptimizer",
         description="Unified reference/path/phrase substitution",
     ),
     TransformSpec(
@@ -326,7 +319,7 @@ OPTIMIZER_SPECS: tuple[TransformSpec, ...] = (
         config_flag="transform_tool_optimizer",
         priority=30,
         safety_bucket=SAFE,
-        factory_path="lattice.optimizer.tool_optimizer.ToolOptimizer",
+        factory_path="lattice.transforms.optimizers.tool_optimizer.ToolOptimizer",
         description="Unified tool output projection and cleanup",
     ),
     TransformSpec(
@@ -334,7 +327,7 @@ OPTIMIZER_SPECS: tuple[TransformSpec, ...] = (
         config_flag="transform_context_optimizer",
         priority=22,
         safety_bucket=CONDITIONAL,
-        factory_path="lattice.optimizer.context_optimizer.ContextOptimizer",
+        factory_path="lattice.transforms.optimizers.context_optimizer.ContextOptimizer",
         description="Long-context selection and compression (lossy, gated)",
     ),
     TransformSpec(
@@ -342,7 +335,7 @@ OPTIMIZER_SPECS: tuple[TransformSpec, ...] = (
         config_flag="transform_diagnostic_optimizer",
         priority=17,
         safety_bucket=SAFE,
-        factory_path="lattice.optimizer.diagnostic_optimizer.DiagnosticOptimizer",
+        factory_path="lattice.transforms.optimizers.diagnostic_optimizer.DiagnosticOptimizer",
         description="Diagnostic signal preservation (RLE)",
     ),
 )

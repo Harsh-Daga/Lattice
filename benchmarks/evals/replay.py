@@ -581,7 +581,7 @@ async def _transform_breakdown(
         transforms_to_measure.append(("cache_arbitrage", CacheArbitrageOptimizer()))
     if cfg.transform_message_dedup:
         transforms_to_measure.append(("message_dedup", MessageDeduplicator()))
-    from lattice.optimizer._dispatch import run_constituent
+    from lattice.transforms.optimizers._dispatch import run_constituent
 
     for name, transform in transforms_to_measure:
         request = Request(messages=[message_from_dict(m) for m in messages], model=model)

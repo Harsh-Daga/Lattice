@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after completing Phase 3 V1 Kill on `refactor/revised-plan` (2026-05-24).
+> Last updated after completing Phase 4 Planner Collapse on `refactor/phase-4-planner-collapse` (2026-05-24).
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
 > `11-docs-release.md`) is preserved as the historical reference. This
@@ -21,8 +21,9 @@
 | **2b-2a** | ✅ Done             | `67e98d5` (PR #6)    | `legacy_only` flag on `TransformSpec`; `constraint_lifting` + `strategy_selector` flagged; `Pipeline.process` skips them. |
 | **2b-2b-A** | ✅ Done           | `5613e5a` (PR #7)    | 4 hardening tests migrated from `transform.process()` to `transform.optimize()`. |
 | **3**       | ✅ Done           | `refactor/revised-plan` | V1 Kill: deleted `CompressorPipeline` + wrapper; `Pipeline.compress()` + gates; factory/client/proxy rewired; 10 IR-native `process()` deleted. |
+| **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
 
-**Current totals.** 1695 tests passing, 196 skipped (Phase 11 rewrites), 24 contract tests passing, ruff/format/mypy clean across Python 3.10/3.11/3.12.
+**Current totals.** 1702 tests passing, 196 skipped (Phase 11 rewrites), 27 contract tests passing, ruff/format/mypy clean across Python 3.10/3.11/3.12.
 
 ---
 
@@ -109,7 +110,7 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 1         | 1         | IR Primitives                              | ✅ Done     | —                |
 | 2         | 2         | Pipeline Package Structure                 | ✅ Done     | —                |
 | **3 (NEW)** | (split from 2) | **V1 Kill** — port safety machinery, rewire client/factory, delete `CompressorPipeline` + wrapper | ✅ Done     | —                |
-| 4         | 3         | Planner Collapse                           | ⏳ Pending  | 2–3 days         |
+| 4         | 3         | Planner Collapse                           | ✅ Done     | —                |
 | 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ⏳ Pending  | 2–3 days |
 | 6         | 5         | Providers + Transport split                | ⏳ Pending  | 1–2 days         |
 | 7         | 6         | Proxy + SDK + CLI                          | ⏳ Pending  | 2 days           |

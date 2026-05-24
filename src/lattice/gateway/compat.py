@@ -19,16 +19,16 @@ from lattice.core.agent_stats import identify_agent
 from lattice.core.context import TransformContext
 from lattice.core.cost_estimator import normalize_usage
 from lattice.core.result import is_err, unwrap
-from lattice.core.runtime_state import (
+from lattice.core.semantic_cache import assemble_cached_response, compute_cache_key
+from lattice.core.telemetry import TransportOutcome
+from lattice.gateway.server import LLMTPGateway
+from lattice.pipeline.factory import pipeline_summary
+from lattice.planner.runtime_state import (
     get_canonical_request_value,
     persist_execution_plan_state,
     persist_session_plan_state,
     sum_expected_cached_tokens,
 )
-from lattice.core.semantic_cache import assemble_cached_response, compute_cache_key
-from lattice.core.telemetry import TransportOutcome
-from lattice.gateway.server import LLMTPGateway
-from lattice.pipeline.factory import pipeline_summary
 from lattice.protocol.manifest import manifest_summary
 from lattice.providers.capabilities import Capability, get_capability_registry
 from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
@@ -1450,7 +1450,7 @@ async def chat_completions_websocket_passthrough(
     compressed_messages = [message_to_dict(m) for m in compressed.messages]
     provider_name = provider
 
-    from lattice.core.credentials import CredentialResolver
+    from lattice.providers.credentials import CredentialResolver
     from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
 
     registry = ProviderRegistry()

@@ -12,7 +12,6 @@ from __future__ import annotations
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.core.unified_planner import UnifiedPlanner, profile_from_legacy
 from lattice.ir.primitives import (
     Candidate,
     PromptIRV2,
@@ -21,6 +20,7 @@ from lattice.ir.primitives import (
 )
 from lattice.pipeline.factory import build_default_pipeline
 from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
+from lattice.planner.unified_planner import UnifiedPlanner, profile_from_legacy
 from lattice.transport.types import Message, Request
 
 

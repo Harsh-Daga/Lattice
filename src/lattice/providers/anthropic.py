@@ -41,7 +41,7 @@ import contextvars
 import json
 from typing import Any
 
-from lattice.core.runtime_state import get_canonical_request_value
+from lattice.planner.runtime_state import get_canonical_request_value
 from lattice.providers.base import _pop_system, _remap_tool_choice, _remap_tools
 from lattice.providers.mcp_to_anthropic import convert_mcp_to_anthropic, is_mcp_tool
 from lattice.providers.schema_filter import sanitize_json_schema, sanitize_tool_definitions

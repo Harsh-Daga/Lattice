@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lattice.core.runtime_state import get_canonical_request_value
+from lattice.planner.runtime_state import get_canonical_request_value
 from lattice.transport.types import Request, Response
 
 

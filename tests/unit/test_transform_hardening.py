@@ -44,7 +44,7 @@ class TestReferenceSubHardening:
         result = transform.optimize(_ir_v2_for(req), req, ctx)
         assert is_ok(result)
         # IR-native optimize mutates messages in place via the runner; check req.
-        from lattice.optimizer._dispatch import _serialize_ir_to_messages
+        from lattice.transforms.optimizers._dispatch import _serialize_ir_to_messages
 
         _serialize_ir_to_messages(unwrap(result), req)
         assert "<ref_" in req.messages[0].content

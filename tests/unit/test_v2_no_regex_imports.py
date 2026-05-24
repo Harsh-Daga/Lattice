@@ -23,11 +23,11 @@ class TestDeletedTransformsCannotBeImported:
         with pytest.raises(ModuleNotFoundError):
             __import__(mod_path)
 
-    def test_optimizer_modules_use_try_except_safely(self) -> None:
-        from lattice.optimizer.reference_optimizer import ReferenceOptimizer
-        from lattice.optimizer.structure_optimizer import StructureOptimizer
+    def test_optimizer_modules_importable(self) -> None:
+        from lattice.transforms.optimizers.ir_structure_optimizer import IRStructureOptimizer
+        from lattice.transforms.optimizers.reference_optimizer import ReferenceOptimizer
 
-        so = StructureOptimizer()
-        ro = ReferenceOptimizer()
-        assert so.name == "structure_optimizer"
-        assert ro.name == "reference_optimizer"
+        ir_opt = IRStructureOptimizer()
+        ref_opt = ReferenceOptimizer()
+        assert ir_opt.name == "ir_structure_optimizer"
+        assert ref_opt.name == "reference_optimizer"

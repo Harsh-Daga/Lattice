@@ -25,8 +25,19 @@ from dataclasses import dataclass
 from typing import Any
 
 from lattice.core.context import TransformContext
-from lattice.core.runtime_state import get_canonical_request_value
+from lattice.planner.runtime_state import get_canonical_request_value
 from lattice.transport.types import Request
+
+# Per-task compression limits (formerly core/scheduler.py).
+_TASK_COMPRESSION_LIMITS: dict[str, float] = {
+    "reasoning": 0.10,
+    "debugging": 0.40,
+    "analysis": 0.25,
+    "structured": 0.30,
+    "retrieval": 0.40,
+    "summarization": 0.35,
+    "simple": 0.50,
+}
 
 # Transform classification sets (lifted verbatim from v1 CompressorPipeline).
 QUALITY_ONLY_TRANSFORMS: frozenset[str] = frozenset(
@@ -270,8 +281,6 @@ def check_compression_limit(
     tier = task_data.get("execution_tier", "")
     task_class_value = task_data.get("task_class", "")
     compression_ratio = (tokens_before - tokens_after) / tokens_before
-
-    from lattice.core.scheduler import _TASK_COMPRESSION_LIMITS
 
     if tier in ("REASONING", "REASONING_SAFE"):
         max_compression = _TASK_COMPRESSION_LIMITS.get(task_class_value, 0.10)
