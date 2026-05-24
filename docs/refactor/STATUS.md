@@ -23,7 +23,7 @@
 | **2b-2b-A** | ✅ Done           | `5613e5a` (PR #7)    | 4 hardening tests migrated from `transform.process()` to `transform.optimize()`. |
 | **3**       | ✅ Done           | `refactor/revised-plan` | V1 Kill: deleted `CompressorPipeline` + wrapper; `Pipeline.compress()` + gates; factory/client/proxy rewired; 10 IR-native `process()` deleted. |
 | **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
-| **5**       | ✅ Code complete (branch) | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) | Transforms cleanup + gap closure; merge + `phase-5.json` benchmark pending. See `PHASE_COMPLETION_TRACKER.md`. |
+| **5**       | ✅ Done             | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) (`05dfd2f`) | Transforms cleanup merged to `main`. See `PHASE_COMPLETION_TRACKER.md`. |
 
 **Current totals.** 1706 passed, 196 skipped, 1903 collected, 27 contract tests; ruff/format/mypy clean on branch. **Benchmark gates** (`phase-2` … `phase-5.json`) remain operator-run when API key available.
 
@@ -138,8 +138,8 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 2         | 2         | Pipeline Package Structure                 | ✅ Done     | —                |
 | **3 (NEW)** | (split from 2) | **V1 Kill** — port safety machinery, rewire client/factory, delete `CompressorPipeline` + wrapper | ✅ Done     | —                |
 | 4         | 3         | Planner Collapse                           | ✅ Done     | —                |
-| 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ branch     | merge + bench    |
-| 6         | 5         | Providers + Transport split                | ⏳ Pending  | 1–2 days         |
+| 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ Done     | —                |
+| 6         | 5         | Providers + Transport split                | ⏳ Next     | 3 days (doc est.) |
 | 7         | 6         | Proxy + SDK + CLI                          | ⏳ Pending  | 2 days           |
 | 8         | 7         | Integrations (MCP, agent wrappers)         | ⏳ Pending  | 1 day            |
 | 9         | 8         | Observability + State                      | ⏳ Pending  | 1–2 days         |
