@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after completing Phase 4 Planner Collapse on `refactor/phase-4-planner-collapse` (2026-05-24).
+> Last updated after completing Phase 5 Transforms Cleanup on `refactor/phase-5-transforms-cleanup` (2026-05-24).
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
 > `11-docs-release.md`) is preserved as the historical reference. This
@@ -22,8 +22,9 @@
 | **2b-2b-A** | ✅ Done           | `5613e5a` (PR #7)    | 4 hardening tests migrated from `transform.process()` to `transform.optimize()`. |
 | **3**       | ✅ Done           | `refactor/revised-plan` | V1 Kill: deleted `CompressorPipeline` + wrapper; `Pipeline.compress()` + gates; factory/client/proxy rewired; 10 IR-native `process()` deleted. |
 | **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
+| **5**       | ✅ Done           | `refactor/phase-5-transforms-cleanup` | Transforms cleanup (5a–5c): `registry`/`reputation`/`patterns` → `transforms/`; split `content_profiler/` + `format_converter/`; deleted `prefix_opt`, `constraint_lifting`, `strategy_selector`, `information_theoretic_selector`; `is_response_side` dispatch; `transform_delta_encode` fix. See `phase-5-decisions.md`. |
 
-**Current totals.** 1702 tests passing, 196 skipped (Phase 11 rewrites), 27 contract tests passing, ruff/format/mypy clean across Python 3.10/3.11/3.12.
+**Current totals.** 1685 tests passing, 196 skipped (Phase 11 rewrites), 27 contract tests passing, ruff/format/mypy clean. Test count vs 1702 baseline reflects removal of deleted-transform unit suites (~26); net behavior covered by new `tests/unit/transforms/*` + planner integration tests. Canonical bench gate: run when `OLLAMA_CLOUD_API_KEY` is set (`phase-5.json` ±2% vs phase-0).
 
 ---
 
@@ -76,12 +77,20 @@ Canonical runtime chain:
 Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress/process → Provider
 ```
 
-**`src/lattice/core/`** (17 files) — leaf + observability until Phase 9:
+**`src/lattice/core/`** (15 files) — leaf + observability until Phase 9:
 
 ```
 agent_stats, config, context, cost_estimator, errors, maintenance, metrics, result,
-segmentation, semantic_cache, session, store, telemetry, transform_registry,
-transform_reputation, tunnel_sidecar
+segmentation, semantic_cache, session, store, telemetry, tunnel_sidecar
+```
+
+**`src/lattice/transforms/`** (registry + reputation + patterns moved from `core/` / `utils/` in Phase 5):
+
+```
+registry.py, reputation.py, patterns.py,
+content_profiler/{__init__,classifier,risk_scorer,task_classifier_bridge,planner_bridge}.py,
+format_converter/{__init__,table_converter,json_converter}.py,
+… (per-transform modules; deleted: prefix_opt, constraint_lifting, strategy_selector)
 ```
 
 **`src/lattice/planner/`** (10 files) — single scheduling layer:
@@ -128,7 +137,7 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 2         | 2         | Pipeline Package Structure                 | ✅ Done     | —                |
 | **3 (NEW)** | (split from 2) | **V1 Kill** — port safety machinery, rewire client/factory, delete `CompressorPipeline` + wrapper | ✅ Done     | —                |
 | 4         | 3         | Planner Collapse                           | ✅ Done     | —                |
-| 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ⏳ Pending  | 2–3 days |
+| 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ Done     | —                |
 | 6         | 5         | Providers + Transport split                | ⏳ Pending  | 1–2 days         |
 | 7         | 6         | Proxy + SDK + CLI                          | ⏳ Pending  | 2 days           |
 | 8         | 7         | Integrations (MCP, agent wrappers)         | ⏳ Pending  | 1 day            |
@@ -363,7 +372,7 @@ Single PR titled `refactor(pipeline): kill v1 CompressorPipeline; one Pipeline r
 Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = original Phase 3 = `03-planner-collapse.md`). The original docs remain authoritative for those phases; only Phase 3 (v1 kill) needs the new doc above. Effort estimates are revised after the Phase 2 lessons.
 
 - **Phase 4 (Planner Collapse)** — ✅ Shipped on `refactor/phase-4-planner-collapse`. Deleted RATS schedulers; `UnifiedPlanner` only; `planner/` + `transforms/optimizers/`; `TierClassifier`; credentials → `providers/`.
-- **Phase 5 (Transforms cleanup)** — file splits (`format_conv.py` → `format_converter/`), delete dead files (`prefix_opt.py`, possibly `strategy_selector.py`), move `transform_registry.py` → `transforms/registry.py`. ~2–3 days.
+- **Phase 5 (Transforms cleanup)** — ✅ Shipped (5a–5c on `refactor/phase-5-transforms-cleanup`). See `docs/refactor/phase-5-decisions.md` for benchmark-gated deletions (canonical bench skipped without API key; default DELETE applied).
 - **Phase 6 (Providers + Transport)** — `providers/transport.py` (1539 LoC) split into `providers/transport/{dispatcher,pool,negotiation,...}.py`. ~1–2 days.
 - **Phase 7 (Proxy + SDK + CLI)** — `proxy/` cleanup, SDK wrappers consolidation, CLI restructure. ~2 days.
 - **Phase 8 (Integrations)** — MCP + agent wrappers consolidation. ~1 day.
@@ -404,12 +413,25 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 | Move `credentials.py` → `providers/`                                     | ✅ Phase 4          |
 | Delete text `StructureOptimizer`                                         | ✅ Phase 4          |
 
+### Phase 5 (transforms cleanup) — shipped
+
+| Item                                                                     | Status              |
+| ------------------------------------------------------------------------ | ------------------- |
+| Move `transform_registry` / `transform_reputation` → `transforms/`       | ✅ Phase 5a         |
+| Move `utils/patterns.py` → `transforms/patterns.py`                      | ✅ Phase 5a         |
+| `TransformSpec.is_response_side` + `transform_delta_encode` fix          | ✅ Phase 5a         |
+| Split `content_profiler/` + `optimize()` on IR path                      | ✅ Phase 5b         |
+| Split `format_converter/`; delete `prefix_opt`, `constraint_lifting`     | ✅ Phase 5b         |
+| Delete `strategy_selector`, `information_theoretic_selector` (gated)   | ✅ Phase 5c         |
+| `transform_prefix_opt` / `transform_constraint_lifting` / `transform_strategy_selector` config no-ops | ✅ carryover until Phase 12 MIGRATION.md |
+| Canonical bench A/B/C + `phase-5.json` ±2%                               | ⏳ CI / local key   |
+
 ### Still pending (later phases)
 
 | Item                                                                     | Target phase        |
 | ------------------------------------------------------------------------ | ------------------- |
 | Remove `--use-v2-pipeline` CLI flag                                      | Phase 11            |
-| Canonical bench vs phase-0 baseline (±2%) → `phase-4.json`               | CI / local key      |
+| Canonical bench vs phase-0 baseline (±2%) → `phase-5.json`               | CI / local key      |
 
 ---
 

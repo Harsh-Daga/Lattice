@@ -44,7 +44,6 @@ QUALITY_ONLY_TRANSFORMS: frozenset[str] = frozenset(
     {
         "content_profiler",
         "runtime_contract",
-        "strategy_selector",
         "causal_chain",
     }
 )

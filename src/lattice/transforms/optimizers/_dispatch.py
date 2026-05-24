@@ -33,7 +33,6 @@ _IR_NATIVE_CONSTITUENTS = frozenset(
         "rate_distortion",
         "reference_sub",
         "runtime_contract",
-        "strategy_selector",
         "tool_filter",
         "tool_projection",
     }

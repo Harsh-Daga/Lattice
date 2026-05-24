@@ -120,7 +120,6 @@ class UnifiedPlanner:
         "causal_chain",  # 9
         "message_dedup",  # 15
         "diagnostic_optimizer",  # 17
-        "strategy_selector",  # 19 (bandit arms)
         "representation_optimizer",  # 19 (beam search orchestrator)
         "ir_structure_optimizer",  # 20 (IR-native structure)
         "reference_optimizer",  # 21
@@ -141,7 +140,6 @@ class UnifiedPlanner:
             "content_profiler",
             "runtime_contract",
             "message_dedup",
-            "strategy_selector",
             "cache_arbitrage",
             "reference_optimizer",
             "ir_structure_optimizer",
@@ -153,7 +151,6 @@ class UnifiedPlanner:
             "content_profiler",
             "runtime_contract",
             "message_dedup",
-            "strategy_selector",
             "cache_arbitrage",
             "diagnostic_optimizer",
             "representation_optimizer",
@@ -171,7 +168,6 @@ class UnifiedPlanner:
             "content_profiler",
             "runtime_contract",
             "message_dedup",
-            "strategy_selector",
             "cache_arbitrage",
             "diagnostic_optimizer",
             "representation_optimizer",
@@ -187,7 +183,6 @@ class UnifiedPlanner:
         Tier.REASONING: {
             "content_profiler",
             "runtime_contract",
-            "strategy_selector",
             "cache_arbitrage",
             "diagnostic_optimizer",
             "representation_optimizer",

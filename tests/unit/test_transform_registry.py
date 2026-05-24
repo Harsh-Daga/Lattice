@@ -54,13 +54,9 @@ class TestRegistryCompleteness:
         names = [s.canonical_name for s in BUILTIN_TRANSFORMS]
         assert len(names) == len(set(names))
 
-    def test_information_theoretic_selector_present(self) -> None:
-        spec = get_transform_spec("information_theoretic_selector")
-        assert spec is not None
-        assert spec.canonical_name == "information_theoretic_selector"
-        assert spec.config_flag == "transform_context_selector"
-        assert spec.priority == 19
-        assert spec.safety_bucket == "conditional"
+    def test_information_theoretic_selector_removed_in_phase_5c(self) -> None:
+        assert get_transform_spec("information_theoretic_selector") is None
+        assert get_transform_spec("strategy_selector") is None
 
 
 # =============================================================================
@@ -80,15 +76,13 @@ class TestConfigConsistency:
                 f"LatticeConfig missing field {spec.config_flag!r} for {name!r}"
             )
 
-    def test_information_theoretic_selector_enabled_with_context_selector(self) -> None:
-        cfg = LatticeConfig(transform_context_selector=True)
-        assert is_transform_enabled(cfg, "information_theoretic_selector") is True
-        assert is_transform_enabled(cfg, "context_selector") is True
-
-    def test_information_theoretic_selector_disabled_with_context_selector(self) -> None:
-        cfg = LatticeConfig(transform_context_selector=False)
-        assert is_transform_enabled(cfg, "information_theoretic_selector") is False
-        assert is_transform_enabled(cfg, "context_selector") is False
+    def test_context_selector_respects_config_flag(self) -> None:
+        assert is_transform_enabled(
+            LatticeConfig(transform_context_selector=True), "context_selector"
+        )
+        assert not is_transform_enabled(
+            LatticeConfig(transform_context_selector=False), "context_selector"
+        )
 
     def test_deleted_transforms_always_false(self) -> None:
         cfg = LatticeConfig(transform_context_selector=True)
@@ -222,10 +216,6 @@ class TestSafetyConsistency:
                     f"canonical {spec.canonical_name!r} bucket {canonical_bucket!r}"
                 )
 
-    def test_information_theoretic_selector_bucket(self) -> None:
-        bucket = get_transform_safety_bucket("information_theoretic_selector")
-        assert bucket == TransformSafetyBucket.CONDITIONAL
-
     def test_content_profiler_is_safe(self) -> None:
         bucket = get_transform_safety_bucket("content_profiler")
         assert bucket == TransformSafetyBucket.SAFE
@@ -250,9 +240,9 @@ class TestSafetyConsistency:
         # CONDITIONAL blocked at HIGH risk
         high = SemanticRiskScore(strict_instructions=45)
         assert high.level == "HIGH"
-        allowed, _ = transform_allowed_at_risk("information_theoretic_selector", low)
+        allowed, _ = transform_allowed_at_risk("reference_sub", low)
         assert allowed is True
-        allowed, _ = transform_allowed_at_risk("information_theoretic_selector", high)
+        allowed, _ = transform_allowed_at_risk("reference_sub", high)
         assert allowed is False
         # DANGEROUS allowed only at LOW risk
         allowed, _ = transform_allowed_at_risk("unknown_transform", low)

@@ -5,10 +5,7 @@ from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
 from lattice.transforms.causal_chain import CausalChainExtractor
 from lattice.transforms.columnar_pack import ColumnarTablePack
 from lattice.transforms.content_profiler import ContentProfiler
-from lattice.transforms.context_selector import (
-    InformationTheoreticSelector,
-    SubmodularContextSelector,
-)
+from lattice.transforms.context_selector import SubmodularContextSelector
 from lattice.transforms.delta_encode import DeltaEncoder
 from lattice.transforms.diagnostic_rle import DiagnosticRLE
 from lattice.transforms.extractive_compress import ExtractiveCompressor
@@ -21,7 +18,6 @@ from lattice.transforms.rate_distortion import RateDistortionCompressor
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.runtime_contract import RuntimeContractTransform
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform
-from lattice.transforms.strategy_selector import StrategySelector
 from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.transforms.tool_projection import QueryAwareProjection
 
@@ -36,7 +32,6 @@ __all__ = [
     "DiagnosticRLE",
     "ExtractiveCompressor",
     "FormatConverter",
-    "InformationTheoreticSelector",
     "JSONShapeFactor",
     "MessageDeduplicator",
     "OutputCleanup",
@@ -46,7 +41,6 @@ __all__ = [
     "RuntimeContractTransform",
     "SpeculativeTransform",
     "SpeculativeExecutor",
-    "StrategySelector",
     "SubmodularContextSelector",
     "ToolOutputFilter",
     "QueryAwareProjection",
