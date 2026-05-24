@@ -3,7 +3,7 @@
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `refactor/phase-6c-providers-transport-split` @ `f938d64`+ — **1712+ passed**, contract green, CI green on PR #11.
+**Last verified:** `main` @ `4798bfb` — **1712 passed**, contract green, PR #11 merged.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -96,11 +96,11 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | §9.1 test moves (`test_stall_detector`, `test_transport_resilience` → `providers/transport/`) | ✅ |
 | ruff / pytest / contract | ✅ |
 | Docs (`STATUS`, `providers.md`, `AGENTS.md`) | ✅ |
-| Benchmark `phase-6.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) or waiver below |
+| Benchmark `phase-6.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`; merged without artifact) |
+| PR #11 merged to `main` (`4798bfb`) | ✅ |
 
 ---
 
 ## Remaining operator actions (not code)
 
-1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`).
-2. Merge PR #11 to `main` and record merge SHA in `STATUS.md`.
+1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`); compare vs `phase-0-baseline.json` (±2%).
