@@ -60,7 +60,7 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 
 1. Extend `ReversibleSyncTransform` with `name` and `priority`
 2. Implement `optimize(PromptIRV2, Request, TransformContext) → Result[PromptIRV2, TransformError]` (canonical path)
-3. Register in `core/transform_registry.py` and `pipeline/runner.py` `PipelineTransformRegistry._FACTORIES`
+3. Register in `transforms/registry.py` and `pipeline/runner.py` `PipelineTransformRegistry._FACTORIES`
 
 ## Testing
 

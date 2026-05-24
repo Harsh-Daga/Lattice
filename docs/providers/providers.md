@@ -72,8 +72,9 @@ API keys are resolved in order:
 
 ## Adding a Provider
 
-1. Extend `ProviderAdapter` in `src/lattice/providers/base.py`
+1. Extend `ProviderAdapter` in `src/lattice/providers/adapters/base.py` (or a sibling adapter module)
 2. Implement `supports()`, `serialize_request()`, `deserialize_response()`
 3. Implement `deserialize_stream_chunk()` for streaming
-4. Register in `ProviderRegistry` in `src/lattice/providers/transport.py`
-5. Add capability entry in `CapabilityRegistry`
+4. Register the adapter in `ProviderRegistry` (`src/lattice/providers/transport/registry.py`)
+5. Export from `src/lattice/providers/adapters/__init__.py` and `src/lattice/providers/__init__.py`
+6. Add capability entry in `CapabilityRegistry`

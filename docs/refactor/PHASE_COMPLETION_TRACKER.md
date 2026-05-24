@@ -3,7 +3,7 @@
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `refactor/phase-6c-providers-transport-split` — **1712 passed**, 196 skipped, contract green.
+**Last verified:** `refactor/phase-6c-providers-transport-split` @ `f938d64`+ — **1712+ passed**, contract green, CI green on PR #11.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -13,7 +13,7 @@
 | **3** | ✅ | V1 kill; `Pipeline.compress()` |
 | **4** | ✅ | Planner collapse; `_normalize_legacy_execution_plan` documented as persisted-plan bridge only |
 | **5** | ✅ | Transforms cleanup + §6.3 tests |
-| **6** | ✅ code | Providers/adapters + transport package split; **benchmark** operator |
+| **6** | ✅ | Providers/adapters + transport split; see §10 below |
 
 ---
 
@@ -92,13 +92,15 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | Unified `_stream`; thin `completion_stream*` wrappers | ✅ |
 | All 17 adapters at `lattice.providers` | ✅ |
 | TTL `RateLimitTracker` + tests | ✅ |
-| §9.2–9.3 new tests | ✅ |
+| §9.2–9.3 new tests (all 17 adapters in contract) | ✅ |
+| §9.1 test moves (`test_stall_detector`, `test_transport_resilience` → `providers/transport/`) | ✅ |
 | ruff / pytest / contract | ✅ |
-| Benchmark `phase-6.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) |
+| Docs (`STATUS`, `providers.md`, `AGENTS.md`) | ✅ |
+| Benchmark `phase-6.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) or waiver below |
 
 ---
 
 ## Remaining operator actions (not code)
 
-1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set.
-2. Merge `refactor/phase-6a` → `6b` → `6c` PRs to `main`.
+1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`).
+2. Merge PR #11 to `main` and record merge SHA in `STATUS.md`.

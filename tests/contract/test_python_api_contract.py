@@ -112,21 +112,63 @@ def test_transforms_registry_public_api() -> None:
 
 def test_all_adapters_importable_at_top_level() -> None:
     from lattice.providers import (
+        AI21Adapter,
         AnthropicAdapter,
+        AzureAdapter,
+        BedrockAdapter,
+        CohereAdapter,
+        ConnectionPoolManager,
+        DeepSeekAdapter,
+        DirectHTTPProvider,
+        FireworksAdapter,
+        GeminiAdapter,
+        GroqAdapter,
+        MistralAdapter,
+        OllamaAdapter,
+        OllamaCloudAdapter,
         OpenAIAdapter,
+        OpenRouterAdapter,
+        PerplexityAdapter,
+        ProviderRegistry,
+        TogetherAdapter,
+        VertexAdapter,
     )
 
-    assert OpenAIAdapter is not None
-    assert AnthropicAdapter is not None
+    assert DirectHTTPProvider is not None
+    assert ProviderRegistry is not None
+    assert ConnectionPoolManager is not None
+    assert (
+        len(
+            {
+                OpenAIAdapter,
+                AnthropicAdapter,
+                AzureAdapter,
+                BedrockAdapter,
+                GeminiAdapter,
+                VertexAdapter,
+                GroqAdapter,
+                TogetherAdapter,
+                DeepSeekAdapter,
+                PerplexityAdapter,
+                MistralAdapter,
+                FireworksAdapter,
+                OpenRouterAdapter,
+                CohereAdapter,
+                AI21Adapter,
+                OllamaAdapter,
+                OllamaCloudAdapter,
+            }
+        )
+        == 17
+    )
 
 
-# --- Phase 6 placeholder tests ---------------------------------------------
-# These will become PASSING tests after Phase 6 hoists symbols to top level.
-# Until then they xfail to document the target surface without blocking CI.
+# --- Phase 7 placeholder tests ---------------------------------------------
+# Top-level lattice.* client exports land in Phase 7 (proxy/sdk/cli).
 
 
 @pytest.mark.xfail(
-    reason="Phase 6 hoists LatticeClient et al. to top-level lattice.*", strict=False
+    reason="Phase 7 hoists LatticeClient et al. to top-level lattice.*", strict=False
 )
 def test_lattice_toplevel_target_imports() -> None:
     from lattice import (  # noqa: F401
