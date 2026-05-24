@@ -29,13 +29,13 @@ from lattice.core.errors import TransformError
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
 from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
-from lattice.transport.types import Request, Response
-from lattice.utils.patterns import (
+from lattice.transforms.patterns import (
     HEX_PATTERN,
     LONG_IDENTIFIER_PATTERN,
     URL_PATTERN,
     UUID_PATTERN,
 )
+from lattice.transport.types import Request, Response
 
 # =============================================================================
 # Code-block aware text scanner

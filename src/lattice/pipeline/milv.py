@@ -63,7 +63,7 @@ def should_trigger_milv(
     if tool_output_filtered and task.task_class == TaskClass.DEBUGGING:
         return True
 
-    from lattice.core.transform_reputation import get_reputation_registry
+    from lattice.transforms.reputation import get_reputation_registry
 
     rep = get_reputation_registry()
     if rep.is_high_risk(transform_name):

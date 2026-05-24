@@ -57,7 +57,9 @@ class TestV2ProxyPipeline:
 
         # Run content_profiler first (produces ExecutionPlan)
         profiler = next(t for t in pipeline.transforms if t.name == "content_profiler")
-        profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        profiler.optimize(PromptIRV2(), request, ctx)
 
         # Verify plan exists
         plan = ctx.session_state.get("_lattice_execution_plan")

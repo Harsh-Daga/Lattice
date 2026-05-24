@@ -594,7 +594,9 @@ def test_cache_arbitrage_prefers_ir_protocol_manifest_over_side_channel() -> Non
         ]
     )
     context = TransformContext(provider="openai", model="gpt-4")
-    profiler_result = ContentProfiler().process(request, context)
+    from lattice.ir.primitives import PromptIRV2
+
+    profiler_result = ContentProfiler().optimize(PromptIRV2(), request, context)
     assert is_ok(profiler_result)
 
     injected = build_manifest(

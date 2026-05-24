@@ -9,7 +9,7 @@
   <a href="https://pypi.org/project/lattice-transport/"><img src="https://img.shields.io/pypi/v/lattice-transport" alt="PyPI"></a>
   <a href="https://github.com/Harsh-Daga/lattice/actions"><img src="https://img.shields.io/github/actions/workflow/status/Harsh-Daga/lattice/ci.yml?branch=main&label=CI" alt="CI"></a>
   <a href="https://github.com/Harsh-Daga/lattice/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
-  <a href="https://github.com/Harsh-Daga/lattice"><img src="https://img.shields.io/badge/tests-1702%20passed-brightgreen" alt="Tests"></a>
+  <a href="https://github.com/Harsh-Daga/lattice"><img src="https://img.shields.io/badge/tests-1903%20collected-brightgreen" alt="Tests"></a>
   <a href="#"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue" alt="Python"></a>
 </p>
 
@@ -315,7 +315,7 @@ For permanent configuration: `lattice init` patches agent config files. `lattice
 git clone https://github.com/Harsh-Daga/lattice
 cd lattice
 uv sync          # Install all deps
-uv run pytest    # 1702 passed, 196 skipped; 27 contract tests
+uv run pytest    # see pytest output for passed/skipped; includes contract tests
 
 # Lint + typecheck
 uv run ruff check src/

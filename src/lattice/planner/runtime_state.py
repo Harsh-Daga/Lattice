@@ -119,7 +119,11 @@ def _is_core_execution_plan(plan: Any) -> bool:
 
 
 def _normalize_legacy_execution_plan(plan: Any) -> Any | None:
-    """Convert the legacy planner execution plan into the core immutable plan."""
+    """Convert persisted planner-shaped plans (``representation_plan`` field) to core ``ExecutionPlan``.
+
+    Not the deleted v1 ``CompressorPipeline`` scheduler — only normalizes historical
+    ``lattice.planner.execution_plan`` objects and session payloads after Phase 3.
+    """
     if not hasattr(plan, "representation_plan"):
         return None
     try:

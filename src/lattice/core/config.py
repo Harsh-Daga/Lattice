@@ -18,8 +18,6 @@ import pathlib
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from lattice.core.transform_registry import is_transform_enabled as _registry_is_enabled
-
 
 class _ConfigFileSources:
     """Encapsulates config file discovery."""
@@ -242,6 +240,7 @@ class LatticeConfig(BaseSettings):
     # Execution transforms (proxy-only features)
     # ------------------------------------------------------------------
     transform_batching: bool = True
+    transform_delta_encode: bool = True
     transform_speculation: bool = True
 
     # ------------------------------------------------------------------
@@ -418,7 +417,7 @@ class LatticeConfig(BaseSettings):
     def is_transform_enabled(self, name: str) -> bool:
         """Check if a named transform is enabled.
 
-        Delegates to :func:`~lattice.core.transform_registry.is_transform_enabled`
+        Delegates to :func:`~lattice.transforms.registry.is_transform_enabled`
         so that config, pipeline, and safety metadata all share one registry.
         """
         # Hard-deleted transforms from Phase 0 cleanup — never enable
@@ -429,6 +428,8 @@ class LatticeConfig(BaseSettings):
             "convex_selector",
         ):
             return False
+        from lattice.transforms.registry import is_transform_enabled as _registry_is_enabled
+
         return _registry_is_enabled(self, name)
 
     # ------------------------------------------------------------------

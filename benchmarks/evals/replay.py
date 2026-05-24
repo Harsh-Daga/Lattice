@@ -26,10 +26,9 @@ from lattice.core.result import unwrap
 from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.transforms.batching import BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
-from lattice.transforms.format_conv import FormatConverter
+from lattice.transforms.format_converter import FormatConverter
 from lattice.transforms.message_dedup import MessageDeduplicator
 from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.speculative import SpeculativeTransform
 from lattice.transforms.tool_filter import ToolOutputFilter
@@ -571,7 +570,6 @@ async def _transform_breakdown(
     breakdown: dict[str, dict[str, Any]] = {}
     cfg = config or LatticeConfig(graceful_degradation=True)
     transforms_to_measure: list[tuple[str, Any]] = [
-        ("prefix_opt", PrefixOptimizer()),
         ("reference_sub", ReferenceSubstitution()),
         ("tool_filter", ToolOutputFilter()),
         ("output_cleanup", OutputCleanup()),
@@ -586,28 +584,7 @@ async def _transform_breakdown(
     for name, transform in transforms_to_measure:
         request = Request(messages=[message_from_dict(m) for m in messages], model=model)
         ctx = TransformContext(model=model, provider="openai")
-        # PrefixOptimizer requires two-pass to show cache-hit savings.
-        # Simulate multi-turn session: first pass stores prefix hash.
         compressed = unwrap(run_constituent(name, transform, request, ctx))
-        # Second pass: reuse same context to get cache-hit reduction
-        if name == "prefix_opt":
-            request2 = Request(messages=[message_from_dict(m) for m in messages], model=model)
-            compressed2 = unwrap(run_constituent(name, transform, request2, ctx))
-            compressed = compressed2
-            # For prefix optimization, we compute virtual savings by removing
-            # the prefix tokens from the count (simulating provider-side cache hit)
-            prefix_tokens = compressed.metadata.get("_prefix_tokens", 0)
-            _baseline = baseline_tokens
-            _optimized = max(0, _baseline - prefix_tokens)
-            optimized_tokens = _optimized
-            breakdown[name] = {
-                "before": baseline_tokens,
-                "after": optimized_tokens,
-                "saved": max(0, baseline_tokens - optimized_tokens),
-                "prefix_tokens": prefix_tokens,
-                "cache_hit": compressed.metadata.get("_cache_hit", False),
-            }
-            continue
         optimized_tokens = count_message_tokens(
             [{"role": str(m.role), "content": m.content} for m in compressed.messages],
             model=model,

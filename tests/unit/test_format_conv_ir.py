@@ -5,7 +5,7 @@ from __future__ import annotations
 from lattice.core.context import TransformContext
 from lattice.core.result import Ok
 from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
-from lattice.transforms.format_conv import FormatConverter
+from lattice.transforms.format_converter import FormatConverter
 from lattice.transport.types import Request
 
 

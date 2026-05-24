@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.transforms.context_selector import (
-    InformationTheoreticSelector,
-    SubmodularContextSelector,
-)
+from lattice.transforms.context_selector import SubmodularContextSelector
 from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
@@ -115,41 +112,3 @@ def test_selector_reverse_is_noop() -> None:
     response = Response(content="hello world")
     restored = transform.reverse(response, TransformContext())
     assert restored.content == "hello world"
-
-
-# =============================================================================
-# InformationTheoreticSelector
-# =============================================================================
-
-
-def test_information_selector_extends_base() -> None:
-    transform = InformationTheoreticSelector(token_budget=50)
-    request = Request(
-        messages=[
-            Message(role="system", content="Helpful assistant."),
-            Message(role="assistant", content="Paris is beautiful in spring."),
-            Message(role="user", content="Tell me about Paris."),
-        ]
-    )
-    result = transform.process(request, TransformContext())
-    modified = unwrap(result)
-    contents = [m.content for m in modified.messages]
-    assert any("Paris" in c for c in contents)
-
-
-def test_mutual_information_proxy() -> None:
-    transform = InformationTheoreticSelector(token_budget=50)
-    mi = transform._mutual_information(
-        "Paris is the capital of France with the Eiffel Tower.",
-        "Tell me about Paris landmarks.",
-    )
-    assert mi > 0.0
-    mi_unrelated = transform._mutual_information(
-        "Quantum computing uses qubits.",
-        "Bake a chocolate cake.",
-    )
-    assert mi > mi_unrelated
-
-
-def test_information_selector_priority() -> None:
-    assert InformationTheoreticSelector.priority == 19

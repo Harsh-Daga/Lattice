@@ -92,42 +92,42 @@ class TestDeletedTransforms:
     """Deleted transforms are no longer known in the registry."""
 
     def test_structural_fingerprint_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("structural_fingerprint") is False
 
     def test_hierarchical_summary_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("hierarchical_summary") is False
 
     def test_arithmetic_sequence_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("arithmetic_sequence") is False
 
     def test_code_factoring_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("code_factoring") is False
 
     def test_stack_interning_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("stack_interning") is False
 
     def test_stable_prefix_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("stable_prefix") is False
 
     def test_instruction_context_sep_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("instruction_context_sep") is False
 
     def test_self_information_removed(self) -> None:
-        from lattice.core.transform_registry import is_transform_name_known
+        from lattice.transforms.registry import is_transform_name_known
 
         assert is_transform_name_known("self_information") is False
 
@@ -150,7 +150,7 @@ class TestFormatConvHardening:
     """format_conversion preserves table/JSON structure."""
 
     def test_converts_table_content(self) -> None:
-        from lattice.transforms.format_conv import FormatConverter
+        from lattice.transforms.format_converter import FormatConverter
 
         transform = FormatConverter()
         req = Request(

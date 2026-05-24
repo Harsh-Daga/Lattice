@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.transform_reputation import get_reputation_registry
 from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.pipeline.guardrails import (
     GuardAction,
@@ -20,6 +19,7 @@ from lattice.planner.task_classifier import (
     classify_task,
 )
 from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
+from lattice.transforms.reputation import get_reputation_registry
 from lattice.transport.types import Message, Request
 
 
@@ -276,13 +276,15 @@ class TestSIGIntegration:
         )
         ctx = TransformContext()
         from lattice.core.result import is_ok
+        from lattice.ir.primitives import PromptIRV2
 
-        result = profiler.process(req, ctx)
+        result = profiler.optimize(PromptIRV2(), req, ctx)
         assert is_ok(result)
 
         from lattice.core.result import unwrap
 
-        modified = unwrap(result)
+        unwrap(result)
+        modified = req
         assert METADATA_KEY_RISK_SCORE in modified.metadata
         assert METADATA_KEY_TASK_CLASSIFICATION in modified.metadata
         assert METADATA_KEY_PROTECTED_SPANS in modified.metadata

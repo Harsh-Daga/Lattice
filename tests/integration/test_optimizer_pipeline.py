@@ -65,7 +65,9 @@ class TestOptimizerPipelineEndToEnd:
         ctx = TransformContext()
 
         # Step 1: content_profiler
-        result1 = profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        result1 = profiler.optimize(PromptIRV2(), request, ctx)
         assert is_ok(result1)
 
         # Step 2: verify schedule is in context.session_state

@@ -7,15 +7,10 @@ sys.path.insert(0, "src")
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
-from lattice.transport.types import Message, Request
+from lattice.pipeline.factory import build_default_pipeline
+from lattice.transport.types import Message, Request, Response
 from lattice.providers.transport import DirectHTTPProvider
-from lattice.transforms.format_conv import FormatConverter
-from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.transforms.prefix_opt import PrefixOptimizer
-from lattice.transforms.reference_sub import ReferenceSubstitution
-from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.utils.token_count import TiktokenCounter
 
 MODEL = "ollama/glm-5.1:cloud"
@@ -61,30 +56,22 @@ async def run_single(content, label):
     print("")
     print("[" + label + "] LATTICE call")
     config = LatticeConfig(graceful_degradation=True)
-    pipeline = CompressorPipeline(config=config)
-    pipeline.register(PrefixOptimizer())
-    pipeline.register(ReferenceSubstitution())
-    pipeline.register(FormatConverter())
-    pipeline.register(ToolOutputFilter())
-    pipeline.register(OutputCleanup())
+    pipeline = build_default_pipeline(config)
 
     req = Request(messages=[Message(role="user", content=content)])
     ctx = TransformContext(request_id="bench-" + label, provider="ollama", model=MODEL)
 
-    result = await pipeline.process(req, ctx)
+    result = pipeline.compress(req, ctx)
     compressed = unwrap(result)
     compressed_text = compressed.messages[0].content
     compressed_tokens = count_tokens(compressed_text)
-
-    from lattice.transport.types import Response
 
     t0 = time.perf_counter()
     r2 = await provider.completion(model=MODEL, messages=[{"role": "user", "content": compressed_text}], max_tokens=MAX_TOKENS)
     lattice_latency = (time.perf_counter() - t0) * 1000
 
-    # Reverse transforms on response
     resp = Response(content=r2.content)
-    reversed_resp = await pipeline.reverse(resp, ctx)
+    reversed_resp = pipeline.reverse(resp, ctx)
 
     savings = baseline_tokens - compressed_tokens
     ratio = savings / max(baseline_tokens, 1)
@@ -100,7 +87,6 @@ async def run_single(content, label):
     quality = "PASS" if (has_4_base == has_4_lat) else "CHECK"
     print("Quality: " + quality)
 
-    # Cleanup pool
     await provider.pool.close()
 
 

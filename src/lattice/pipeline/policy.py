@@ -287,9 +287,7 @@ class OptimizationPolicy:
         overrides: dict[str, bool] = {}
 
         if "claude" in model_lower:
-            # Anthropic models use different caching headers
-            overrides["prefix_opt"] = True  # still beneficial
-            # Reference substitution still works
+            # Anthropic models use different caching headers (prefix work is in content_profiler)
             overrides["reference_sub"] = True
 
         if model_lower.startswith("o1") or model_lower.startswith("o3"):

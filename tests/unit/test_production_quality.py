@@ -62,6 +62,7 @@ class TestCausalChain:
         assert "CAUSAL GRAPH" not in out.messages[0].content
 
 
+@pytest.mark.skip(reason="constraint_lifting removed in Phase 5b")
 class TestConstraintLifting:
     def test_constraint_lifting_extracts_json_requirement(self) -> None:
         from lattice.transforms.constraint_lifting import ConstraintLiftingTransform
@@ -220,7 +221,7 @@ class TestPlaceholderSafety:
 
 class TestTransformReputationRuntime:
     def test_reputation_records_and_queries(self) -> None:
-        from lattice.core.transform_reputation import get_reputation_registry
+        from lattice.transforms.reputation import get_reputation_registry
 
         rep = get_reputation_registry()
         rep.record("test_transform", quality=0.95, compression=0.20, rolled_back=False)
@@ -229,7 +230,7 @@ class TestTransformReputationRuntime:
         assert stats.sample_count >= 1
 
     def test_reputation_tracks_rollback(self) -> None:
-        from lattice.core.transform_reputation import get_reputation_registry
+        from lattice.transforms.reputation import get_reputation_registry
 
         rep = get_reputation_registry()
         for _ in range(5):
@@ -239,7 +240,7 @@ class TestTransformReputationRuntime:
         assert stats.risk == "HIGH"
 
     def test_reputation_unknown_is_safe(self) -> None:
-        from lattice.core.transform_reputation import get_reputation_registry
+        from lattice.transforms.reputation import get_reputation_registry
 
         rep = get_reputation_registry()
         stats = rep.stats("never_seen_before")

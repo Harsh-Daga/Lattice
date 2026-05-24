@@ -41,9 +41,12 @@ class TestRefoundationEndToEnd:
         )
         ctx = TransformContext()
 
-        result = profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        result = profiler.optimize(PromptIRV2(), request, ctx)
         assert is_ok(result)
-        modified = unwrap(result)
+        unwrap(result)
+        modified = request
 
         # Canonical IRV2 must have been compiled and stored
         assert "_lattice_ir_v2" in modified.metadata, (
@@ -65,7 +68,9 @@ class TestRefoundationEndToEnd:
         )
 
         profiler = ContentProfiler()
-        profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        profiler.optimize(PromptIRV2(), request, ctx)
 
         legacy = ctx.session_state.get("_lattice_schedule", {}).get("task_class")
         profile = profile_from_legacy(legacy)
@@ -87,7 +92,9 @@ class TestRefoundationEndToEnd:
         )
 
         profiler = ContentProfiler()
-        profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        profiler.optimize(PromptIRV2(), request, ctx)
 
         legacy = ctx.session_state.get("_lattice_schedule", {}).get("task_class")
         profile = profile_from_legacy(legacy)
@@ -152,7 +159,9 @@ class TestRefoundationEndToEnd:
         )
 
         profiler = ContentProfiler()
-        result1 = profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        result1 = profiler.optimize(PromptIRV2(), request, ctx)
         assert is_ok(result1)
 
         legacy = ctx.session_state.get("_lattice_schedule", {}).get("task_class")

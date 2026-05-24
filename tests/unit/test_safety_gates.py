@@ -151,7 +151,7 @@ class TestTransformSafetyBuckets:
     def test_safe_transforms(self) -> None:
         for name in (
             "tool_filter",
-            "prefix_optimizer",
+            "path_prefix",
             "output_cleanup",
             "content_profiler",
             "cache_arbitrage",
@@ -171,8 +171,9 @@ class TestTransformSafetyBuckets:
             get_transform_safety_bucket("nonexistent_transform") == TransformSafetyBucket.DANGEROUS
         )
 
-    def test_alias_prefix_opt_maps_to_safe(self) -> None:
-        assert get_transform_safety_bucket("prefix_opt") == TransformSafetyBucket.SAFE
+    def test_deleted_prefix_aliases_default_to_dangerous(self) -> None:
+        assert get_transform_safety_bucket("prefix_opt") == TransformSafetyBucket.DANGEROUS
+        assert get_transform_safety_bucket("prefix_optimizer") == TransformSafetyBucket.DANGEROUS
 
     def test_alias_tool_output_filter_maps_to_safe(self) -> None:
         assert get_transform_safety_bucket("tool_output_filter") == TransformSafetyBucket.SAFE

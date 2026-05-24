@@ -52,6 +52,8 @@ class TransformSpec:
     # Pipeline.compress skips these; they run only via legacy process() callers.
     # Phase 2b-2b decides keep-or-delete per transform.
     legacy_only: bool = False
+    # Response-side transforms run on Response (reverse/process), not IR optimize().
+    is_response_side: bool = False
     factory_path: str = ""
     factory_kwargs: dict[str, str] = dataclasses.field(default_factory=dict)
     description: str = ""
@@ -95,16 +97,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         description="Reorders messages for KV-cache alignment",
     ),
     TransformSpec(
-        canonical_name="prefix_optimizer",
-        aliases=("prefix_opt",),
-        config_flag="transform_prefix_opt",
-        priority=10,
-        safety_bucket=SAFE,
-        default_pipeline=True,
-        factory_path="lattice.transforms.prefix_opt.PrefixOptimizer",
-        description="Deduplicates common prefixes across messages",
-    ),
-    TransformSpec(
         canonical_name="reference_sub",
         aliases=("reference_substitution",),
         config_flag="transform_reference_sub",
@@ -130,6 +122,7 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         priority=40,
         safety_bucket=SAFE,
         default_pipeline=True,
+        is_response_side=True,
         factory_path="lattice.transforms.output_cleanup.OutputCleanup",
         description="Whitespace normalization and JSON repair",
     ),
@@ -154,22 +147,14 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
     ),
     TransformSpec(
         canonical_name="delta_encoder",
-        config_flag="transform_batching",
+        config_flag="transform_delta_encode",
         priority=5,
         safety_bucket=SAFE,
         execution_only=True,
+        factory_path="lattice.transforms.delta_encode.DeltaEncoder",
         description="Session-based delta encoding (needs session_manager)",
     ),
     # ── Experimental / kept for direct use ──────────────────────
-    TransformSpec(
-        canonical_name="constraint_lifting",
-        config_flag="transform_constraint_lifting",
-        priority=6,
-        safety_bucket=SAFE,
-        legacy_only=True,
-        factory_path="lattice.transforms.constraint_lifting.ConstraintLiftingTransform",
-        description="Extracts buried constraints and format requirements",
-    ),
     TransformSpec(
         canonical_name="causal_chain",
         config_flag="transform_causal_chain",
@@ -195,25 +180,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         factory_path="lattice.transforms.context_selector.SubmodularContextSelector",
         factory_kwargs={"submodular_token_budget": "token_budget"},
         description="Submodular context selection with token budget",
-    ),
-    TransformSpec(
-        canonical_name="information_theoretic_selector",
-        aliases=("info_theoretic_selector",),
-        config_flag="transform_context_selector",
-        priority=19,
-        safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.context_selector.InformationTheoreticSelector",
-        factory_kwargs={"submodular_token_budget": "token_budget"},
-        description="Information-theoretic context selection",
-    ),
-    TransformSpec(
-        canonical_name="strategy_selector",
-        config_flag="transform_strategy_selector",
-        priority=19,
-        safety_bucket=SAFE,
-        legacy_only=True,
-        factory_path="lattice.transforms.strategy_selector.StrategySelector",
-        description="Bandit-based strategy selection",
     ),
     TransformSpec(
         canonical_name="diagnostic_rle",
@@ -270,7 +236,7 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         config_flag="transform_format_conversion",
         priority=25,
         safety_bucket=CONDITIONAL,
-        factory_path="lattice.transforms.format_conv.FormatConverter",
+        factory_path="lattice.transforms.format_converter.FormatConverter",
         description="OpenAI ↔ Anthropic message format conversion",
     ),
     TransformSpec(
@@ -420,6 +386,12 @@ def is_legacy_only(name: str) -> bool:
     return bool(spec and spec.legacy_only)
 
 
+def is_response_side(name: str) -> bool:
+    """Return True if *name* runs on the response path, not request IR optimize()."""
+    spec = get_transform_spec(name)
+    return bool(spec and spec.is_response_side)
+
+
 # ---------------------------------------------------------------------------
 # Config helpers
 # ---------------------------------------------------------------------------
@@ -493,6 +465,7 @@ __all__ = [
     "list_default_pipeline_names",
     "list_execution_only_names",
     "is_legacy_only",
+    "is_response_side",
     "resolve_config_flag",
     "is_transform_enabled",
     "build_transform_instance",

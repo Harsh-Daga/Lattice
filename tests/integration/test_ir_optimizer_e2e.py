@@ -115,9 +115,12 @@ class TestIROptimizerEndToEnd:
         ctx = TransformContext()
 
         profiler = next(t for t in pipeline.transforms if t.name == "content_profiler")
-        result = profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        result = profiler.optimize(PromptIRV2(), request, ctx)
         assert is_ok(result)
-        after_profiler = unwrap(result)
+        unwrap(result)
+        after_profiler = request
 
         sched = ctx.session_state.get("_lattice_optimizer_schedule")
         assert sched is not None

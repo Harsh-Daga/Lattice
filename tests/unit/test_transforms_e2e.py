@@ -17,7 +17,6 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import unwrap
 from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.transforms.prefix_opt import PrefixOptimizer
 from lattice.transforms.rate_distortion import RateDistortionCompressor
 from lattice.transforms.reference_sub import ReferenceSubstitution
 from lattice.transforms.tool_filter import ToolOutputFilter
@@ -37,7 +36,6 @@ def pipeline() -> Any:
     """Build a pipeline with all Phase 0 transforms."""
     _ = LatticeConfig()
     p = None  # placeholder; tests skipped
-    p.register(PrefixOptimizer())
     p.register(ReferenceSubstitution())
     p.register(ToolOutputFilter())
     p.register(OutputCleanup())
@@ -282,9 +280,6 @@ class TestPrefixOptimizer:
                 Message(role="user", content="Hello"),
             ]
         )
-        from lattice.transforms.prefix_opt import PrefixOptimizer
-
-        PrefixOptimizer()
         ctx1 = TransformContext(session_id="sess_2")
         r1 = await pipeline.process(req1, ctx1)
         m1 = unwrap(r1)
@@ -392,22 +387,19 @@ class TestPipeline:
         """Transforms apply in priority order (ascending)."""
         _ = LatticeConfig()
         p = None  # placeholder; tests skipped
-        p.register(PrefixOptimizer())  # priority 10
         p.register(ReferenceSubstitution())  # priority 20
         p.register(ToolOutputFilter())  # priority 30
 
         order = [t.priority for t in p.transforms]
         assert order == sorted(order)
-        assert p.transforms[0].name == "prefix_optimizer"
-        assert p.transforms[1].name == "reference_sub"
-        assert p.transforms[2].name == "tool_filter"
+        assert p.transforms[0].name == "reference_sub"
+        assert p.transforms[1].name == "tool_filter"
 
     @pytest.mark.asyncio
     async def test_disable_transform_via_config(self) -> None:
         """Config can disable specific transforms."""
         _ = LatticeConfig(transform_reference_sub=False)
         p = None  # placeholder; tests skipped
-        p.register(PrefixOptimizer())
         p.register(ReferenceSubstitution())
 
         request = Request(

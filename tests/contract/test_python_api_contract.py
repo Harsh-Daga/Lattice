@@ -95,6 +95,21 @@ def test_transforms_optimizers_public_api() -> None:
     assert ContextOptimizer is not None
 
 
+def test_transforms_registry_public_api() -> None:
+    from lattice.transforms.registry import (
+        TransformSpec,
+        get_transform_spec,
+        is_response_side,
+        list_transform_names,
+    )
+
+    assert TransformSpec is not None
+    assert callable(get_transform_spec)
+    assert callable(list_transform_names)
+    assert callable(is_response_side)
+    assert get_transform_spec("output_cleanup") is not None
+
+
 # --- Phase 6 placeholder tests ---------------------------------------------
 # These will become PASSING tests after Phase 6 hoists symbols to top level.
 # Until then they xfail to document the target surface without blocking CI.

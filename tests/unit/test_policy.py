@@ -184,13 +184,12 @@ class TestModelSpecificRules:
 
     def test_claude_model(self, policy: OptimizationPolicy) -> None:
         rules = policy.model_transform_rules("claude-3-opus-20240229")
-        assert "prefix_opt" in rules
-        assert rules["prefix_opt"] is True
+        assert rules.get("reference_sub") is True
 
     def test_openai_model(self, policy: OptimizationPolicy) -> None:
         rules = policy.model_transform_rules("gpt-4-turbo")
-        # No special overrides for GPT-4 Turbo
-        assert "prefix_opt" not in rules or rules.get("prefix_opt", True)
+        assert "prefix_opt" not in rules
+        assert "prefix_optimizer" not in rules
 
     def test_reasoning_model(self, policy: OptimizationPolicy) -> None:
         rules = policy.model_transform_rules("o1-preview")

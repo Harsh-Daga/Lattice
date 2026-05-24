@@ -48,8 +48,6 @@ from lattice.transport.types import Request, Response
 
 _logger = structlog.get_logger()
 
-_RESPONSE_ONLY_TRANSFORMS = {"output_cleanup"}
-
 
 def _serialize_ir_to_messages(ir: PromptIRV2, working: Request) -> None:
     """Map serialized IR sections back to working Request.messages.
@@ -89,16 +87,10 @@ class PipelineTransformRegistry:
     _FACTORIES: dict[str, tuple[str, str]] = {
         "content_profiler": ("lattice.transforms.content_profiler", "ContentProfiler"),
         "runtime_contract": ("lattice.transforms.runtime_contract", "RuntimeContractTransform"),
-        "constraint_lifting": (
-            "lattice.transforms.constraint_lifting",
-            "ConstraintLiftingTransform",
-        ),
         "message_dedup": ("lattice.transforms.message_dedup", "MessageDeduplicator"),
         "cache_arbitrage": ("lattice.transforms.cache_arbitrage", "CacheArbitrageOptimizer"),
         "causal_chain": ("lattice.transforms.causal_chain", "CausalChainExtractor"),
-        "prefix_optimizer": ("lattice.transforms.prefix_opt", "PrefixOptimizer"),
-        "strategy_selector": ("lattice.transforms.strategy_selector", "StrategySelector"),
-        "format_conversion": ("lattice.transforms.format_conv", "FormatConverter"),
+        "format_conversion": ("lattice.transforms.format_converter", "FormatConverter"),
         "rate_distortion": ("lattice.transforms.rate_distortion", "RateDistortionCompressor"),
         "path_prefix": ("lattice.transforms.path_prefix", "PathPrefixCompressor"),
         "tool_projection": ("lattice.transforms.tool_projection", "QueryAwareProjection"),
@@ -176,12 +168,10 @@ class Pipeline:
     # Response-only transforms (output_cleanup) and optimizers without native
     # IR support go through the legacy adapter.
     _IR_NATIVE_TRANSFORMS = {
+        "content_profiler",
         "runtime_contract",
-        "prefix_optimizer",
         "message_dedup",
-        "strategy_selector",
         "cache_arbitrage",
-        "constraint_lifting",
         "causal_chain",
         "format_conversion",
         "rate_distortion",
@@ -233,12 +223,12 @@ class Pipeline:
         )
 
         # Split: core transforms (verbatim) vs optimizers (beam search)
-        from lattice.core.transform_registry import is_legacy_only
+        from lattice.transforms.registry import is_legacy_only, is_response_side
 
         core_transforms: list[str] = []
         optimizer_transforms: list[str] = []
         for tx_name in plan.transforms:
-            if tx_name in _RESPONSE_ONLY_TRANSFORMS:
+            if is_response_side(tx_name):
                 continue
             if is_legacy_only(tx_name):
                 continue
@@ -377,7 +367,7 @@ class Pipeline:
 
         Algorithm:
           1. Global policy check_request_limits — Reject aborts pipeline.
-          2. Run content_profiler.process(req, ctx) to populate context with
+          2. Run content_profiler.optimize(ir, req, ctx) to populate context with
              task classification, risk score, and ExecutionPlan.
           3. Read plan from context; if absent, fall back to a default plan
              (all default_pipeline transforms in priority order).
@@ -413,7 +403,7 @@ class Pipeline:
             )
 
         # ---- Seed context: run content_profiler if available + not already applied ----
-        from lattice.core.transform_registry import is_legacy_only
+        from lattice.transforms.registry import is_legacy_only, is_response_side
 
         profiler = self.registry.get("content_profiler")
         profiler_present = profiler is not None
@@ -423,9 +413,13 @@ class Pipeline:
             and "content_profiler" not in context.transforms_applied
         ):
             try:
-                result = profiler.process(working, context)
+                ir_seed = get_canonical_state_value(context, "_lattice_ir_v2") or PromptIRV2()
+                result = profiler.optimize(ir_seed, working, context)
                 if is_ok(result):
-                    working = unwrap(result)
+                    ir_v2 = unwrap(result)
+                    working.metadata["_lattice_ir_v2"] = ir_v2
+                    context.session_state["_lattice_ir_v2"] = ir_v2
+                if is_ok(result):
                     context.mark_transform_applied("content_profiler")
             except Exception as exc:
                 log.warning("content_profiler_failed", error=str(exc))
@@ -433,7 +427,7 @@ class Pipeline:
         # ---- Read plan from context; fallback to a synthetic default plan ----
         plan = coerce_execution_plan(get_canonical_state_value(context, "_lattice_execution_plan"))
         if plan is None:
-            from lattice.core.transform_registry import BUILTIN_TRANSFORMS
+            from lattice.transforms.registry import BUILTIN_TRANSFORMS
 
             names = [
                 spec.canonical_name
@@ -456,7 +450,7 @@ class Pipeline:
         for tx_name in plan.transforms:
             if tx_name in context.transforms_applied:
                 continue
-            if tx_name in _RESPONSE_ONLY_TRANSFORMS:
+            if is_response_side(tx_name):
                 continue
             if is_legacy_only(tx_name):
                 continue
@@ -580,7 +574,7 @@ class Pipeline:
                 working = backup.copy()
                 working.metadata["_lattice_rollback_reason"] = reason
                 rollback_reasons[tx_name] = reason
-                from lattice.core.transform_reputation import get_reputation_registry
+                from lattice.transforms.reputation import get_reputation_registry
 
                 get_reputation_registry().record(
                     tx_name, quality=0.0, compression=0.0, rolled_back=True
@@ -683,7 +677,7 @@ class Pipeline:
 
             if tokens_before > 0:
                 compression = (tokens_before - tokens_after) / tokens_before
-                from lattice.core.transform_reputation import get_reputation_registry
+                from lattice.transforms.reputation import get_reputation_registry
 
                 get_reputation_registry().record(
                     tx_name, quality=1.0, compression=compression, rolled_back=False
@@ -757,8 +751,10 @@ class Pipeline:
           2. ``context.session_state["_lattice_execution_plan"]`` (coerced);
           3. ``context.transforms_applied`` (what compress actually ran).
 
-        ``output_cleanup`` is response-only and runs on every reverse.
+        Response-side transforms (``is_response_side`` in the registry) run here.
         """
+        from lattice.transforms.registry import is_response_side
+
         if plan is None:
             plan = coerce_execution_plan(
                 get_canonical_state_value(context, "_lattice_execution_plan")
@@ -770,6 +766,8 @@ class Pipeline:
             tx_names = list(context.transforms_applied)
 
         for tx_name in reversed(tx_names):
+            if is_response_side(tx_name):
+                continue
             inst = self.registry.get(tx_name)
             if inst is None or not hasattr(inst, "reverse"):
                 continue
@@ -778,10 +776,26 @@ class Pipeline:
             except Exception:
                 pass
 
-        oc = self.registry.get("output_cleanup")
-        if oc is not None:
+        for tx_name in reversed(tx_names):
+            if not is_response_side(tx_name):
+                continue
+            inst = self.registry.get(tx_name)
+            if inst is None or not hasattr(inst, "reverse"):
+                continue
             try:
-                response = oc.reverse(response, context)
+                response = inst.reverse(response, context)
+            except Exception:
+                pass
+
+        # Ensure response-side transforms run even if omitted from plan/applied list.
+        for tx_name in self.registry.get_transform_names():
+            if not is_response_side(tx_name) or tx_name in tx_names:
+                continue
+            inst = self.registry.get(tx_name)
+            if inst is None or not hasattr(inst, "reverse"):
+                continue
+            try:
+                response = inst.reverse(response, context)
             except Exception:
                 pass
 

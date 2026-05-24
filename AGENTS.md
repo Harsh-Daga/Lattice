@@ -64,7 +64,7 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 
 ## Testing
 
-- Unit tests: `tests/unit/` — **1702 passed**, 196 skipped (Phase 11 full reorg pending)
+- Unit tests: `tests/unit/` — **1706 passed**, 196 skipped, 1903 collected (Phase 11 full reorg pending)
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
 - Contract tests: `tests/contract/` — **27 passed**
@@ -95,7 +95,7 @@ Suites: `all`, `feature`, `feature-matrix`, `provider`, `protocol`, `transport`,
 
 | Metric | Value |
 |--------|-------|
-| Tests passed | **1702/1702** (+ 196 skipped) |
+| Tests passed | **1706/1706** executable (+ 196 skipped, 1903 collected) |
 | Contract tests | **27/27** |
 | ruff / format / mypy | **0 errors** |
 

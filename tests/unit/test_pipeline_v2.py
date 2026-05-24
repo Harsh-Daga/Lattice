@@ -14,7 +14,7 @@ class TestTransformRegistryV2:
         registry = PipelineTransformRegistry()
         inst = registry.get("content_profiler")
         assert inst is not None
-        assert hasattr(inst, "process")
+        assert hasattr(inst, "optimize")
 
     def test_registry_missing_returns_none(self) -> None:
         registry = PipelineTransformRegistry()
@@ -24,7 +24,7 @@ class TestTransformRegistryV2:
         registry = PipelineTransformRegistry()
         names = registry.get_transform_names()
         assert "content_profiler" in names
-        assert "prefix_optimizer" in names
+        assert "prefix_optimizer" not in names
         assert "output_cleanup" in names
 
 
