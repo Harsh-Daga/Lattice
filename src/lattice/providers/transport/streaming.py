@@ -23,13 +23,27 @@ from lattice.providers.transport.helpers import (
     stream_chunk_text,
     stream_retry_policy,
 )
-from lattice.providers.transport.registry import _resolve_provider_name
+from lattice.providers.transport.pool import ConnectionPoolManager
+from lattice.providers.transport.rate_limits import RateLimitTracker
+from lattice.providers.transport.registry import ProviderRegistry, _resolve_provider_name
+from lattice.providers.transport.stall_detector import StreamStallDetector
+from lattice.transport.congestion import TACCController
 
 logger = structlog.get_logger()
 
 
 class StreamingMixin:
     """Streaming completion paths (merged single ``_stream`` implementation)."""
+
+    # Declared for mypy — provided by ``DirectHTTPProvider.__init__``.
+    registry: ProviderRegistry
+    pool: ConnectionPoolManager
+    _rate_limits: RateLimitTracker
+    stall_detector: StreamStallDetector
+    tacc: TACCController
+    _stall_timeout: float
+    timeout: float
+    _log: Any
 
     async def _stream(
         self,

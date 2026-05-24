@@ -33,7 +33,7 @@ from lattice.providers.transport.registry import (
 from lattice.providers.transport.stall_detector import StreamStallDetector
 from lattice.providers.transport.streaming import StreamingMixin
 from lattice.transport.congestion import TACCController
-from lattice.transport.types import Response
+from lattice.transport.types import Request, Response
 
 logger = structlog.get_logger()
 
