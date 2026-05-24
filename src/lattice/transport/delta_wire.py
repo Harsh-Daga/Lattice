@@ -54,7 +54,7 @@ from typing import Any
 
 import structlog
 
-from lattice.core.session import SessionStore
+from lattice.state.session import SessionStore
 from lattice.transport.types import Message, Request
 
 logger = structlog.get_logger()
@@ -123,7 +123,7 @@ class DeltaWireDecoder:
                 DeltaWireDecoder._delta_fallback_reasons.get("no_session_id", 0) + 1
             )
             if self._downgrade_telemetry is not None:
-                from lattice.core.telemetry import DowngradeCategory
+                from lattice.telemetry.downgrade import DowngradeCategory
 
                 self._downgrade_telemetry.record(
                     DowngradeCategory.DELTA_TO_FULL_PROMPT,
@@ -139,7 +139,7 @@ class DeltaWireDecoder:
                 DeltaWireDecoder._delta_fallback_reasons.get("session_not_found", 0) + 1
             )
             if self._downgrade_telemetry is not None:
-                from lattice.core.telemetry import DowngradeCategory
+                from lattice.telemetry.downgrade import DowngradeCategory
 
                 self._downgrade_telemetry.record(
                     DowngradeCategory.DELTA_TO_FULL_PROMPT,
@@ -163,7 +163,7 @@ class DeltaWireDecoder:
                     DeltaWireDecoder._delta_fallback_reasons.get("version_mismatch", 0) + 1
                 )
                 if self._downgrade_telemetry is not None:
-                    from lattice.core.telemetry import DowngradeCategory
+                    from lattice.telemetry.downgrade import DowngradeCategory
 
                     self._downgrade_telemetry.record(
                         DowngradeCategory.DELTA_TO_FULL_PROMPT,
@@ -187,7 +187,7 @@ class DeltaWireDecoder:
                 DeltaWireDecoder._delta_fallback_reasons.get("sequence_mismatch", 0) + 1
             )
             if self._downgrade_telemetry is not None:
-                from lattice.core.telemetry import DowngradeCategory
+                from lattice.telemetry.downgrade import DowngradeCategory
 
                 self._downgrade_telemetry.record(
                     DowngradeCategory.DELTA_TO_FULL_PROMPT,

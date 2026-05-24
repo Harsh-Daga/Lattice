@@ -43,7 +43,7 @@ class ConnectionPoolManager:
                 self._http2_fallback_reason[key] = "h2_unavailable"
                 self._log.warning("http2_unavailable", provider=provider, fallback="http1.1")
                 if self._downgrade_telemetry is not None:
-                    from lattice.core.telemetry import DowngradeCategory
+                    from lattice.telemetry.downgrade import DowngradeCategory
 
                     self._downgrade_telemetry.record(
                         DowngradeCategory.HTTP2_TO_HTTP11,

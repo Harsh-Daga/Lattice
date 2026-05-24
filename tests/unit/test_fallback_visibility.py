@@ -9,10 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lattice.core.config import LatticeConfig
-from lattice.core.session import MemorySessionStore, Session
 from lattice.gateway.compat import build_routing_headers
 from lattice.providers.transport import ConnectionPoolManager
 from lattice.proxy.server import create_app
+from lattice.state.session import MemorySessionStore, Session
 from lattice.transport.delta_wire import DeltaWireDecoder
 from lattice.transport.types import Message, Request
 
@@ -48,7 +48,7 @@ class TestBuildRoutingHeadersFallbackFields:
         assert "x-lattice-fallback-reason" not in headers
 
     def test_build_routing_headers_uses_transport_outcome(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(
             framing="native",
@@ -79,7 +79,7 @@ class TestBuildRoutingHeadersFallbackFields:
 
     def test_build_routing_headers_legacy_params_override_canonical_object(self) -> None:
         """Explicit legacy args must win over TransportOutcome defaults."""
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(
             framing="native",
@@ -98,7 +98,7 @@ class TestBuildRoutingHeadersFallbackFields:
         assert headers["x-lattice-http-version"] == "http/1.1"
 
     def test_stream_resume_fallback_reason_header(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(
             stream_resumed=True,
@@ -114,7 +114,7 @@ class TestBuildRoutingHeadersFallbackFields:
         when used_speculative=True, while the canonical header comes from
         TransportOutcome.to_headers().
         """
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         # Legacy path
         headers = build_routing_headers("gpt-4", used_speculative=True, prediction_hit=True)
@@ -297,7 +297,7 @@ class TestTriStateOverrideSemantics:
     """Phase 0: Explicit tri-state overrides for fallback visibility."""
 
     def test_tri_state_none_preserves_canonical(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(
             speculative_status="bypassed",
@@ -313,7 +313,7 @@ class TestTriStateOverrideSemantics:
         assert headers["x-lattice-batching"] == "bypassed"
 
     def test_tri_state_false_suppresses_speculative(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(speculative_status="hit")
         headers = build_routing_headers(
@@ -325,7 +325,7 @@ class TestTriStateOverrideSemantics:
         assert "x-lattice-speculative-status" not in headers
 
     def test_tri_state_cache_hit_false_suppresses(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(semantic_cache_status="exact-hit")
         headers = build_routing_headers(
@@ -337,7 +337,7 @@ class TestTriStateOverrideSemantics:
         assert headers["x-lattice-semantic-cache"] == "exact-hit"
 
     def test_tri_state_stream_resumed_false_suppresses(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(
             stream_resumed=True,

@@ -13,7 +13,7 @@ import pytest
 
 from lattice.core.context import TransformContext
 from lattice.core.result import unwrap
-from lattice.core.session import MemorySessionStore, SessionManager
+from lattice.state.session import MemorySessionStore, SessionManager
 from lattice.transforms.delta_encode import DeltaEncoder, DeltaType
 from lattice.transport.types import Message, Request
 

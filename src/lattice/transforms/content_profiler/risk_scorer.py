@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from lattice.safety.risk_scoring import SemanticRiskScore, compute_risk_score
 from lattice.transport.types import Request
-from lattice.utils.validation import SemanticRiskScore, compute_risk_score
 
 
 def score_request_risk(request: Request) -> SemanticRiskScore:

@@ -23,7 +23,7 @@ import dataclasses
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Safety buckets (mirror lattice.utils.validation.TransformSafetyBucket values)
+# Safety buckets (mirror lattice.safety.risk_scoring.TransformSafetyBucket values)
 # ---------------------------------------------------------------------------
 
 

@@ -97,7 +97,7 @@ class HealthManager:
         """Prometheus metrics exposition."""
         if self._ops is not None:
             return str(self._ops.metrics.prometheus_output())
-        from lattice.core.metrics import get_metrics
+        from lattice.telemetry.metrics import get_metrics
 
         return get_metrics().prometheus_output()
 

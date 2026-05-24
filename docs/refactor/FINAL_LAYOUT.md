@@ -171,8 +171,9 @@ src/lattice/
 │
 ├── state/                              # all stateful persistence
 │   ├── __init__.py
-│   ├── store.py                        # was core/store.py — RedisSessionStore, MemorySessionStore
-│   └── segment_store.py                # already here — cross-session segment dedup
+│   ├── session.py                      # was core/session.py — Session, SessionManager, MemorySessionStore
+│   ├── store.py                        # was core/store.py — RedisSessionStore
+│   └── segment_store.py                # cross-session segment dedup
 │
 ├── cache/                              # NEW top-level domain
 │   ├── __init__.py
@@ -181,7 +182,7 @@ src/lattice/
 ├── telemetry/                          # was empty observability/ — now THE telemetry surface
 │   ├── __init__.py                     # exports all telemetry primitives
 │   ├── metrics.py                      # was core/metrics.py — LatencyTracker, MetricsCollector
-│   ├── telemetry.py                    # was core/telemetry.py — DowngradeCategory, DowngradeTelemetry, TransportOutcome
+│   ├── downgrade.py                    # was core/telemetry.py — DowngradeCategory, DowngradeTelemetry, TransportOutcome
 │   ├── agent_stats.py                  # was core/agent_stats.py
 │   ├── cost_estimator.py               # was core/cost_estimator.py
 │   ├── streaming_sketches.py           # was utils/streaming_sketches.py — CountMinSketch, HyperLogLog

@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import Any
 
 from lattice.planner.task_classifier import TaskClass, classify_task
+from lattice.safety.risk_scoring import SemanticRiskScore
 from lattice.transport.types import Request
-from lattice.utils.validation import SemanticRiskScore
 
 
 class RequestClassifier:
@@ -31,7 +31,7 @@ class RequestClassifier:
         task = classify_task(request)
 
         # Compute semantic risk from text
-        from lattice.utils.validation import compute_risk_score
+        from lattice.safety.risk_scoring import compute_risk_score
 
         risk = compute_risk_score(request)
 

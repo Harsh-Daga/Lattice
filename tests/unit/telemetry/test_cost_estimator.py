@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.cost_estimator import (
+from lattice.telemetry.cost_estimator import (
     CostEstimate,
     CostEstimator,
     extract_cached_tokens,

@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from lattice.core.maintenance import MaintenanceCoordinator, MaintenanceResult
+from lattice.telemetry.maintenance import MaintenanceCoordinator, MaintenanceResult
 
 
 @pytest.mark.asyncio

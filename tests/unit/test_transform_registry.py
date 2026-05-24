@@ -10,6 +10,11 @@ import pytest
 
 from lattice.core.config import LatticeConfig
 from lattice.pipeline.factory import build_default_pipeline, pipeline_summary
+from lattice.safety.risk_scoring import (
+    TransformSafetyBucket,
+    get_transform_safety_bucket,
+    transform_allowed_at_risk,
+)
 from lattice.transforms.registry import (
     BUILTIN_TRANSFORMS,
     get_transform_spec,
@@ -17,11 +22,6 @@ from lattice.transforms.registry import (
     is_transform_name_known,
     list_default_pipeline_names,
     list_transform_names,
-)
-from lattice.utils.validation import (
-    TransformSafetyBucket,
-    get_transform_safety_bucket,
-    transform_allowed_at_risk,
 )
 
 # =============================================================================
@@ -171,7 +171,7 @@ class TestPipelineConstruction:
 
     def test_delta_encoder_with_session_manager(self) -> None:
         cfg = LatticeConfig()
-        from lattice.core.session import MemorySessionStore, SessionManager
+        from lattice.state.session import MemorySessionStore, SessionManager
 
         store = MemorySessionStore()
         sm = SessionManager(store)
@@ -225,7 +225,7 @@ class TestSafetyConsistency:
         assert bucket == TransformSafetyBucket.DANGEROUS
 
     def test_transform_allowed_at_risk_respects_buckets(self) -> None:
-        from lattice.utils.validation import SemanticRiskScore
+        from lattice.safety.risk_scoring import SemanticRiskScore
 
         # LOW risk (total <= 20)
         low = SemanticRiskScore()

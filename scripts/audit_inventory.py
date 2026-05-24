@@ -116,7 +116,7 @@ DISPOSITION: dict[str, tuple[str, str, str]] = {
     "core/cost_estimator.py":       ("9", "telemetry/cost_estimator.py",   "MOVE"),
     "core/maintenance.py":          ("9", "telemetry/maintenance.py",      "MOVE"),
     "utils/streaming_sketches.py":  ("9", "telemetry/streaming_sketches.py", "MOVE"),
-    "core/session.py":              ("9", "transport/session.py",          "MOVE"),
+    "core/session.py":              ("9", "state/session.py",              "MOVE"),
     "core/store.py":                ("9", "state/store.py",                "MOVE"),
     "core/semantic_cache.py":       ("9", "cache/semantic.py",             "MOVE"),
     "utils/validation.py":          ("9", "safety/risk_scoring.py",        "MOVE"),

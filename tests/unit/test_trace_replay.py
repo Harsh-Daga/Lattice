@@ -347,7 +347,7 @@ async def test_replay_hardening_report_exposes_determinism(tmp_path: Path) -> No
 
 @pytest.mark.asyncio
 async def test_semantic_cache_exact_vs_approximate_hit() -> None:
-    from lattice.core.semantic_cache import (
+    from lattice.cache.semantic import (
         CachedResponse,
         SemanticCache,
         compute_cache_key,
@@ -565,7 +565,7 @@ def test_cache_arbitrage_manifest_provenance() -> None:
 
 
 def test_transport_negotiation_downgrade_visible() -> None:
-    from lattice.core.telemetry import DowngradeCategory, TransportOutcome
+    from lattice.telemetry.downgrade import DowngradeCategory, TransportOutcome
     from lattice.transport.delta_wire import DeltaWireEncoder
 
     # Delta fallback
@@ -586,7 +586,7 @@ def test_transport_negotiation_downgrade_visible() -> None:
 
 
 def test_batching_speculation_tacc_telemetry() -> None:
-    from lattice.core.telemetry import DowngradeCategory, TransportOutcome
+    from lattice.telemetry.downgrade import DowngradeCategory, TransportOutcome
 
     # Batching bypassed (no fallback_reason required)
     to = TransportOutcome(
@@ -616,7 +616,7 @@ def test_batching_speculation_tacc_telemetry() -> None:
 
 @pytest.mark.asyncio
 async def test_semantic_cache_maintenance_tracked_in_stats() -> None:
-    from lattice.core.semantic_cache import CachedResponse, SemanticCache
+    from lattice.cache.semantic import CachedResponse, SemanticCache
 
     cache = SemanticCache(ttl_seconds=0, enabled=True)
     await cache.set("a", CachedResponse(content="x"))
@@ -631,7 +631,7 @@ async def test_semantic_cache_maintenance_tracked_in_stats() -> None:
 
 def test_transport_outcome_headers_and_categories_consistent() -> None:
     """Headers and downgrade categories should agree on the same state."""
-    from lattice.core.telemetry import TransportOutcome
+    from lattice.telemetry.downgrade import TransportOutcome
 
     to = TransportOutcome(
         framing="json",
@@ -672,8 +672,8 @@ def test_transport_outcome_headers_and_categories_consistent() -> None:
 
 def test_transport_outcome_precedence_over_canonical() -> None:
     """Legacy params should override TransportOutcome values in headers."""
-    from lattice.core.telemetry import TransportOutcome
     from lattice.gateway.compat import build_routing_headers
+    from lattice.telemetry.downgrade import TransportOutcome
 
     outcome = TransportOutcome(
         framing="native",
@@ -694,7 +694,7 @@ def test_transport_outcome_precedence_over_canonical() -> None:
 
 def test_stream_resume_fallback_reason_visible_in_headers() -> None:
     """stream_resume_fallback_reason should appear as its own header."""
-    from lattice.core.telemetry import TransportOutcome
+    from lattice.telemetry.downgrade import TransportOutcome
 
     to = TransportOutcome(
         stream_resumed=True,
@@ -722,7 +722,7 @@ def test_ignored_chunk_updates_observable() -> None:
 @pytest.mark.asyncio
 async def test_maintenance_coordinator_throttling() -> None:
     """MaintenanceCoordinator should not run more than once per interval."""
-    from lattice.core.maintenance import MaintenanceCoordinator, MaintenanceResult
+    from lattice.telemetry.maintenance import MaintenanceCoordinator, MaintenanceResult
 
     coordinator = MaintenanceCoordinator(interval_seconds=60.0)
     call_count = 0

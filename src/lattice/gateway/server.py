@@ -9,7 +9,6 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_err, unwrap
-from lattice.core.session import SessionManager
 from lattice.pipeline.runner import Pipeline
 from lattice.planner.runtime_state import (
     get_canonical_request_value,
@@ -22,6 +21,7 @@ from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType, Messag
 from lattice.protocol.manifest import manifest_summary
 from lattice.protocol.resume import StreamManager
 from lattice.providers.transport import DirectHTTPProvider
+from lattice.state.session import SessionManager
 from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.transport.types import Response
 

@@ -131,7 +131,7 @@ def risk_gate_blocks(
     if not profiler_present:
         return GateDecision()
 
-    from lattice.utils.validation import (
+    from lattice.safety.risk_scoring import (
         SemanticRiskScore,
         TransformSafetyBucket,
         get_transform_safety_bucket,
@@ -167,7 +167,7 @@ def risk_gate_blocks(
 
 
 def protected_span_veto(name: str, request: Request, context: TransformContext) -> GateDecision:
-    from lattice.utils.validation import TransformSafetyBucket, get_transform_safety_bucket
+    from lattice.safety.risk_scoring import TransformSafetyBucket, get_transform_safety_bucket
 
     bucket = get_transform_safety_bucket(name)
     if bucket != TransformSafetyBucket.DANGEROUS:

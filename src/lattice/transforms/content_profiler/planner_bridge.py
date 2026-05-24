@@ -31,11 +31,11 @@ from lattice.planner.runtime_state import (
     persist_execution_plan_state,
 )
 from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
+from lattice.safety.risk_scoring import SemanticRiskScore
 from lattice.transforms.content_profiler.classifier import ContentProfile
 from lattice.transforms.content_profiler.task_classifier_bridge import TaskClassification
 from lattice.transport.serialization import message_to_dict
 from lattice.transport.types import Request
-from lattice.utils.validation import SemanticRiskScore
 
 if TYPE_CHECKING:
     from lattice.transforms.content_profiler import ContentProfiler
