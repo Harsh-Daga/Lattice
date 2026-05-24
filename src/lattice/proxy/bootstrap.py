@@ -53,6 +53,7 @@ class ProxyRuntime:
     agent_stats: AgentStatsCollector
     metrics: Any
     downgrade_telemetry: DowngradeTelemetry
+    health_manager: Any
 
 
 def configure_lifecycle(
@@ -291,4 +292,5 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
         agent_stats=agent_stats,
         metrics=metrics,
         downgrade_telemetry=downgrade_telemetry,
+        health_manager=None,
     )

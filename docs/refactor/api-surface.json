@@ -262,7 +262,15 @@
     ],
     "today": {
       "from_lattice": [
-        "__version__"
+        "__version__",
+        "LatticeClient",
+        "LatticeProxyClient",
+        "CompressResult",
+        "wrap_openai_client",
+        "PromptIR",
+        "PromptIRV2",
+        "build_ir",
+        "serialize_ir_to_text"
       ],
       "from_lattice_client": [
         "LatticeClient",
@@ -271,7 +279,9 @@
       "from_lattice_sdk": [
         "LatticeClient",
         "LatticeProxyClient",
+        "CompressResult",
         "wrap_openai",
+        "wrap_openai_client",
         "wrap_anthropic"
       ],
       "from_lattice_core": [
@@ -315,9 +325,9 @@
     ]
   },
   "notes": [
-    "wrap_openai_client (plan \u00a72.4) is named wrap_openai today; Phase 6/11 reconciles the name.",
+    "wrap_openai_client is exported at lattice top-level; lattice.sdk also exposes wrap_openai and wrap_openai_client alias.",
     "Phase 6 (providers): all 17 adapters + DirectHTTPProvider/ProviderRegistry exportable from lattice.providers.",
-    "Top-level LatticeClient/LatticeProxyClient/CompressResult imports are Phase 7 (06-proxy-sdk-cli.md).",
+    "Phase 7 (proxy/sdk/cli): top-level LatticeClient, LatticeProxyClient, CompressResult, wrap_openai_client shipped (06-proxy-sdk-cli.md).",
     "Many additional x-lattice-* headers are emitted today (cost/runtime/cached-tokens/etc.); only the \u00a72.3 set is contract-required."
   ]
 }

@@ -19,7 +19,7 @@ uv run python benchmarks/evals/cli.py --suite feature
 
 ## Architecture
 
-LATTICE is a **unified optimization + transport system** with one canonical runtime (Phases 0–6 complete on `refactor/phase-6c-providers-transport-split`):
+LATTICE is a **unified optimization + transport system** with one canonical runtime (Phases 0–7 complete on `refactor/phase-7-proxy-sdk-cli`):
 
 ```
 Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress/process → Provider
@@ -42,10 +42,12 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 | `transport/` | Request/Response types, serialization, delta wire, congestion |
 | `protocol/` | Prefix canonicalization, cache planners, binary framing, manifest |
 | `providers/` | `adapters/` (17 providers), `transport/` (HTTP dispatch), **credentials** |
-| `proxy/` | FastAPI server with OpenAI-compatible endpoints |
-| `gateway/` | HTTP compatibility layer, routing headers |
+| `proxy/` | FastAPI server, `register_health_routes`, `LatticeHeaderMiddleware` (`proxy/middleware.py`) |
+| `gateway/` | HTTP compatibility layer; routing headers stashed on `request.state` (middleware emits) |
 
-**Deleted / moved (do not import):** `core/scheduler.py`, `core/optimizer_scheduler.py`, `core/unified_planner.py`, `optimizer/` package, `runtime/router.py`, text `StructureOptimizer`.
+**Public Python surface:** `from lattice import LatticeClient, LatticeProxyClient, wrap_openai_client, CompressResult` (avoid `lattice.sdk.client` — deprecated, removed in v1.1).
+
+**Deleted / moved (do not import):** `core/scheduler.py`, `core/optimizer_scheduler.py`, `core/unified_planner.py`, `optimizer/` package, `runtime/router.py`, text `StructureOptimizer`, `proxy/compat_exports.py`.
 
 ## Code Conventions
 
@@ -64,10 +66,10 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 
 ## Testing
 
-- Unit tests: `tests/unit/` — **1712 passed**, 196 skipped (Phase 11 full reorg pending)
+- Unit tests: `tests/unit/` — **1741 passed**, 196 skipped (Phase 11 full reorg pending)
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
-- Contract tests: `tests/contract/` — **27 passed**
+- Contract tests: `tests/contract/` — green (HTTP health + headers + Python API)
 - Run with `uv run pytest tests/ -q`
 
 ## Key Environment Variables

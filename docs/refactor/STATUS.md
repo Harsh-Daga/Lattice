@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after Phase 6 merge to `main` @ `4798bfb` (2026-05-24).
+> Last updated after Phase 7 on `refactor/phase-7-proxy-sdk-cli` (2026-05-24).
 > See **[PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md)** for line-by-line acceptance vs each phase doc.
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
@@ -25,8 +25,9 @@
 | **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
 | **5**       | ✅ Done             | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) (`05dfd2f`) | Transforms cleanup merged to `main`. See `PHASE_COMPLETION_TRACKER.md`. |
 | **6**       | ✅ Done             | `4798bfb` — PR [#11](https://github.com/Harsh-Daga/Lattice/pull/11) merged | Adapters under `providers/adapters/`; `providers/transport/` package; unified `_stream`. Benchmark `phase-6.json` operator-run. |
+| **7**       | ✅ Done (merge PR #12) | `refactor/phase-7-proxy-sdk-cli` | HealthManager + middleware; top-level imports; sdk deprecation shim; doc/MIGRATION slice. |
 
-**Current totals.** 1712 passed, 196 skipped, contract green on `main`. **Benchmark gates** (`phase-6.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** 1741 passed, 196 skipped, contract green. **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 
@@ -141,8 +142,8 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 4         | 3         | Planner Collapse                           | ✅ Done     | —                |
 | 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ Done     | —                |
 | 6         | 5         | Providers + Transport split                | ✅ Done     | PR #11           |
-| 7         | 6         | Proxy + SDK + CLI                          | ⏳ Next     | 2 days           |
-| 8         | 7         | Integrations (MCP, agent wrappers)         | ⏳ Pending  | 1 day            |
+| 7         | 6         | Proxy + SDK + CLI                          | ✅ Done     | branch `refactor/phase-7-proxy-sdk-cli` |
+| 8         | 7         | Integrations (MCP, agent wrappers)         | ⏳ Next     | 1 day            |
 | 9         | 8         | Observability + State                      | ⏳ Pending  | 1–2 days         |
 | 10        | 9         | Benchmarks                                 | ⏳ Pending  | 1 day            |
 | 11        | 10        | Tests reorg                                | ⏳ Pending  | 1 day            |
@@ -376,8 +377,8 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 - **Phase 4 (Planner Collapse)** — ✅ Shipped on `refactor/phase-4-planner-collapse`. Deleted RATS schedulers; `UnifiedPlanner` only; `planner/` + `transforms/optimizers/`; `TierClassifier`; credentials → `providers/`.
 - **Phase 5 (Transforms cleanup)** — ✅ Shipped (5a–5c on `refactor/phase-5-transforms-cleanup`). See `docs/refactor/phase-5-decisions.md` for benchmark-gated deletions (canonical bench skipped without API key; default DELETE applied).
 - **Phase 6 (Providers + Transport)** — ✅ Shipped on PR #11. Monolith `providers/transport.py` → `providers/transport/` package + `providers/adapters/`.
-- **Phase 7 (Proxy + SDK + CLI)** — `06-proxy-sdk-cli.md`. Wire health routes, header middleware, top-level SDK surface. ~1–2 days.
-- **Phase 8 (Integrations)** — MCP + agent wrappers consolidation. ~1 day.
+- **Phase 7 (Proxy + SDK + CLI)** — ✅ Shipped on `refactor/phase-7-proxy-sdk-cli`. Health routes, `proxy/middleware.py`, top-level SDK exports, `sdk/client.py` deprecation shim.
+- **Phase 8 (Integrations)** — MCP + agent wrappers consolidation. ~1 day. **Next.**
 - **Phase 9 (Observability + State)** — `core/session.py`, `core/store.py`, `core/metrics.py`, `core/telemetry.py`, `core/cost_estimator.py`, `core/agent_stats.py`, `core/maintenance.py`, `core/semantic_cache.py` → `state/`, `telemetry/`, `cache/`. (`providers/credentials.py` already moved in Phase 4.) ~1–2 days.
 - **Phase 10 (Benchmarks)** — bench framework cleanup, drop dead scenarios, doc bench surface. ~1 day.
 - **Phase 11 (Tests)** — reorg into `tests/unit/{ir,pipeline,transport,planner,...}/`; drop `--use-v2-pipeline` CLI flag (originally scoped here). ~1 day.

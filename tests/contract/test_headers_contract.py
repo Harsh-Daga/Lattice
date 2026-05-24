@@ -14,28 +14,42 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COMPAT_SRC = REPO_ROOT / "src" / "lattice" / "gateway" / "compat.py"
+MIDDLEWARE_SRC = REPO_ROOT / "src" / "lattice" / "proxy" / "middleware.py"
 
 
 # Known header gaps — each closes in the named phase.
-_KNOWN_HEADER_GAPS = {
-    "x-lattice-transforms-applied": "Phase 6 introduces LatticeHeaderMiddleware and adds transforms-applied",
-}
+_KNOWN_HEADER_GAPS: dict[str, str] = {}
 
 
 def test_every_required_header_is_referenced_in_compat(api_surface) -> None:
-    """Each contract header must appear by name in gateway/compat.py, except
-    headers in the known-gap list (each annotated with the phase that closes
-    the gap)."""
-    src = COMPAT_SRC.read_text()
+    """Each contract header must appear in compat or proxy middleware."""
+    compat_src = COMPAT_SRC.read_text()
+    middleware_src = MIDDLEWARE_SRC.read_text()
+    combined = compat_src + middleware_src
     missing = [
         h
         for h in api_surface["http"]["headers_required"]
-        if h not in src and h not in _KNOWN_HEADER_GAPS
+        if h not in combined and h not in _KNOWN_HEADER_GAPS
     ]
     assert not missing, (
-        f"Headers in api-surface.json#headers_required not found in {COMPAT_SRC.relative_to(REPO_ROOT)}:\n"
-        f"  {missing}"
+        "Headers in api-surface.json#headers_required not found in gateway/compat.py "
+        f"or proxy/middleware.py:\n  {missing}"
     )
+
+
+def test_gateway_handlers_do_not_assign_x_lattice_headers() -> None:
+    """Per-handler response.headers x-lattice-* assignment is forbidden."""
+    import re
+
+    src = COMPAT_SRC.read_text()
+    assert not re.search(r'response\.headers\["x-lattice-', src)
+
+
+def test_middleware_defines_six_canonical_headers() -> None:
+    from lattice.proxy.middleware import _HEADER_KEYS
+
+    assert len(_HEADER_KEYS) == 6
+    assert len({v for v in _HEADER_KEYS.values()}) == 6
 
 
 def test_passthrough_ratelimit_prefix_is_respected() -> None:

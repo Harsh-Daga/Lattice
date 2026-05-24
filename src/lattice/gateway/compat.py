@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 from fastapi import status
-from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.responses import Response as StarletteResponse
 
 from lattice.core.agent_stats import identify_agent
@@ -31,6 +31,7 @@ from lattice.planner.runtime_state import (
 )
 from lattice.protocol.manifest import manifest_summary
 from lattice.providers.capabilities import Capability, get_capability_registry
+from lattice.proxy.middleware import attach_routing_headers, stash_lattice_response_headers
 from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.transport.types import Message, Request, Response
 
@@ -985,16 +986,20 @@ async def responses_passthrough(
         transport_outcome = TransportOutcome(
             http_version=http_version,
         )
-        return StreamingResponse(
-            _stream_relay(),
-            media_type="text/event-stream",
-            headers=build_routing_headers(
+        attach_routing_headers(
+            fastapi_request,
+            None,
+            build_routing_headers(
                 model_used=model_used,
                 compressed_tokens=compressed_tokens,
                 original_tokens=original_tokens,
                 session_id=session_id or "",
                 transport_outcome=transport_outcome,
             ),
+        )
+        return StreamingResponse(
+            _stream_relay(),
+            media_type="text/event-stream",
         )
 
     # ------------------------------------------------------------------
@@ -1035,14 +1040,16 @@ async def responses_passthrough(
     transport_outcome = TransportOutcome(
         http_version=http_version,
     )
-    response_headers.update(
+    attach_routing_headers(
+        fastapi_request,
+        None,
         build_routing_headers(
             model_used=model_used,
             compressed_tokens=compressed_tokens,
             original_tokens=original_tokens,
             session_id=session_id or "",
             transport_outcome=transport_outcome,
-        )
+        ),
     )
     return StarletteResponse(
         content=http_resp.content,
@@ -1278,16 +1285,20 @@ async def anthropic_passthrough(
         transport_outcome = TransportOutcome(
             http_version=http_version,
         )
-        return StreamingResponse(
-            _stream_relay(),
-            media_type="text/event-stream",
-            headers=build_routing_headers(
+        attach_routing_headers(
+            fastapi_request,
+            None,
+            build_routing_headers(
                 model_used=model_used,
                 compressed_tokens=compressed_tokens,
                 original_tokens=original_tokens,
                 session_id=session_id or "",
                 transport_outcome=transport_outcome,
             ),
+        )
+        return StreamingResponse(
+            _stream_relay(),
+            media_type="text/event-stream",
         )
 
     # ------------------------------------------------------------------
@@ -1340,14 +1351,16 @@ async def anthropic_passthrough(
     transport_outcome = TransportOutcome(
         http_version=http_version,
     )
-    response_headers.update(
+    attach_routing_headers(
+        fastapi_request,
+        None,
         build_routing_headers(
             model_used=model_used,
             compressed_tokens=compressed_tokens,
             original_tokens=original_tokens,
             session_id=session_id or "",
             transport_outcome=transport_outcome,
-        )
+        ),
     )
     return StarletteResponse(
         content=http_resp.content,
@@ -1481,6 +1494,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
     """Create OpenAI-compatible chat completions handler."""
 
     async def _handle_chat_completion(
+        fastapi_request: Any,
         body: dict[str, Any],
         x_lattice_session_id: str | None = None,
         x_lattice_disable_transforms: str | None = None,
@@ -1628,6 +1642,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             provider=provider_name,
             model=request.model or body.get("model", "gpt-4"),
         )
+        fastapi_request.state.transform_context = ctx
         ctx.session_state["client_profile"] = x_lattice_client_profile or "default"
         persist_execution_plan_state(
             request,
@@ -1826,10 +1841,10 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         delta_mode=delta_mode,
                         http_version=http_version,
                     )
-                    return StreamingResponse(
-                        _cached_stream(),
-                        media_type="text/event-stream",
-                        headers=deps.build_routing_headers(
+                    attach_routing_headers(
+                        fastapi_request,
+                        ctx,
+                        deps.build_routing_headers(
                             cached.model,
                             session_id=session.session_id,
                             cache_hit=True,
@@ -1839,6 +1854,10 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                             transport_outcome=transport_outcome,
                             **_runtime_header_values(compressed_request),
                         ),
+                    )
+                    return StreamingResponse(
+                        _cached_stream(),
+                        media_type="text/event-stream",
                     )
                 else:
                     # Rebuild a Response-like object for serialization
@@ -1879,19 +1898,22 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         delta_mode=delta_mode,
                         http_version=http_version,
                     )
-                    for k, v in deps.build_routing_headers(
-                        cached.model,
-                        session_id=session.session_id,
-                        compressed_tokens=compressed_request.token_estimate,
-                        original_tokens=request.token_estimate,
-                        cache_hit=True,
-                        cached_tokens=cached_tokens,
-                        delta_savings_bytes=delta_savings_bytes,
-                        cache_savings_usd=cache_savings_usd,
-                        transport_outcome=transport_outcome,
-                        **_runtime_header_values(compressed_request),
-                    ).items():
-                        response.headers[k] = v
+                    attach_routing_headers(
+                        fastapi_request,
+                        ctx,
+                        deps.build_routing_headers(
+                            cached.model,
+                            session_id=session.session_id,
+                            compressed_tokens=compressed_request.token_estimate,
+                            original_tokens=request.token_estimate,
+                            cache_hit=True,
+                            cached_tokens=cached_tokens,
+                            delta_savings_bytes=delta_savings_bytes,
+                            cache_savings_usd=cache_savings_usd,
+                            transport_outcome=transport_outcome,
+                            **_runtime_header_values(compressed_request),
+                        ),
+                    )
                     # Update session with cached assistant message
                     if cached.content or cached.tool_calls:
                         msg = deps.message_cls(
@@ -2108,10 +2130,10 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     delta_mode=delta_mode,
                     http_version=http_version,
                 )
-                return StreamingResponse(
-                    _stream_response(),
-                    media_type="text/event-stream",
-                    headers=deps.build_routing_headers(
+                attach_routing_headers(
+                    fastapi_request,
+                    ctx,
+                    deps.build_routing_headers(
                         model_used,
                         session_id=session.session_id,
                         delta_savings_bytes=delta_savings_bytes,
@@ -2119,6 +2141,10 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                         transport_outcome=transport_outcome,
                         **_runtime_header_values(compressed_request),
                     ),
+                )
+                return StreamingResponse(
+                    _stream_response(),
+                    media_type="text/event-stream",
                 )
 
             used_speculative = False
@@ -2437,23 +2463,26 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             delta_mode=delta_mode,
             http_version=http_version,
         )
-        for k, v in deps.build_routing_headers(
-            model_used,
-            session_id=session.session_id,
-            compressed_tokens=compressed_request.token_estimate,
-            original_tokens=request.token_estimate,
-            used_speculative=used_speculative,
-            prediction_hit=prediction_hit,
-            batched=batching_eligible,
-            delta_savings_bytes=delta_savings_bytes,
-            cache_hit=cached_tokens > 0,
-            cached_tokens=cached_tokens,
-            cost_usd=cost_usd,
-            cache_savings_usd=cache_savings_usd,
-            transport_outcome=transport_outcome,
-            **_runtime_header_values(compressed_request),
-        ).items():
-            response.headers[k] = v
+        attach_routing_headers(
+            fastapi_request,
+            ctx,
+            deps.build_routing_headers(
+                model_used,
+                session_id=session.session_id,
+                compressed_tokens=compressed_request.token_estimate,
+                original_tokens=request.token_estimate,
+                used_speculative=used_speculative,
+                prediction_hit=prediction_hit,
+                batched=batching_eligible,
+                delta_savings_bytes=delta_savings_bytes,
+                cache_hit=cached_tokens > 0,
+                cached_tokens=cached_tokens,
+                cost_usd=cost_usd,
+                cache_savings_usd=cache_savings_usd,
+                transport_outcome=transport_outcome,
+                **_runtime_header_values(compressed_request),
+            ),
+        )
         return response
 
     return _handle_chat_completion
@@ -2626,16 +2655,20 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
                     yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
 
             transport_outcome = TransportOutcome(http_version=http_version)
-            return StreamingResponse(
-                _stream_relay(),
-                media_type="text/event-stream",
-                headers=build_routing_headers(
+            attach_routing_headers(
+                fastapi_request,
+                ctx,
+                build_routing_headers(
                     model_used=model_used,
                     compressed_tokens=compressed_tokens,
                     original_tokens=original_tokens,
                     session_id=x_lattice_session_id or "",
                     transport_outcome=transport_outcome,
                 ),
+            )
+            return StreamingResponse(
+                _stream_relay(),
+                media_type="text/event-stream",
             )
         else:
             http_resp = await client.request(
@@ -2667,14 +2700,16 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
                 )
             }
             transport_outcome = TransportOutcome(http_version=http_version)
-            response_headers.update(
+            attach_routing_headers(
+                fastapi_request,
+                ctx,
                 build_routing_headers(
                     model_used=model_used,
                     compressed_tokens=compressed_tokens,
                     original_tokens=original_tokens,
                     session_id=x_lattice_session_id or "",
                     transport_outcome=transport_outcome,
-                )
+                ),
             )
             return StarletteResponse(
                 content=response_body,
@@ -2942,6 +2977,126 @@ class OperationalRouteDeps:
         self.maintenance = maintenance
 
 
+async def build_proxy_stats_payload(deps: OperationalRouteDeps) -> dict[str, Any]:
+    """Async wrapper for stats payload (store/cache/batching need await)."""
+    from lattice.transport.delta_wire import DeltaWireDecoder
+
+    capability_registry = get_capability_registry()
+    cache_stats: dict[str, Any] = {}
+    if deps.semantic_cache is not None:
+        cache_stats = await deps.semantic_cache.stats
+
+    result: dict[str, Any] = {
+        "version": deps.version,
+        "transforms": deps.pipeline.registry.get_transform_names(),
+        "pipeline": pipeline_summary(deps.pipeline),
+        "sessions": deps.store.session_count if hasattr(deps.store, "session_count") else 0,
+        "provider": "direct_http",
+        "adapters": deps.provider.registry.list_adapters(),
+        "capabilities": {
+            provider: {
+                "cache_mode": capability_registry.cache_mode(provider).value,
+                "supports_prompt_caching": capability_registry.supports(
+                    provider, Capability.PROMPT_CACHING
+                ),
+                "default_base_url": capability_registry.get(provider).default_base_url  # type: ignore[union-attr]
+                if capability_registry.get(provider)
+                else "",
+            }
+            for provider in capability_registry.list_providers()
+        },
+        "pools": deps.provider.pool.pool_count,
+        "batching": await deps.batching_engine.stats(),
+        "speculation": deps.speculative_executor.stats,
+        "tacc": deps.provider.tacc.all_stats() if hasattr(deps.provider, "tacc") else {},
+    }
+    manifest_stats: dict[str, Any] = {
+        "sessions_with_manifest": 0,
+        "anchor_version_max": 0,
+        "token_estimate_total": 0,
+        "segment_counts": {},
+    }
+    if hasattr(deps.store, "keys"):
+        try:
+            session_ids = await deps.store.keys()
+            for session_id in session_ids:
+                session = await deps.store.get(session_id)
+                if session is None or session.manifest is None:
+                    continue
+                summary = manifest_summary(session.manifest)
+                manifest_stats["sessions_with_manifest"] += 1
+                manifest_stats["anchor_version_max"] = max(
+                    int(manifest_stats["anchor_version_max"]),
+                    int(summary["anchor_version"]),
+                )
+                manifest_stats["token_estimate_total"] += int(summary["token_estimate"])
+                segment_counts = manifest_stats["segment_counts"]
+                if isinstance(segment_counts, dict):
+                    for seg_type, count in summary["segment_counts"].items():
+                        segment_counts[seg_type] = segment_counts.get(seg_type, 0) + int(count)
+        except (TypeError, AttributeError, KeyError) as exc:
+            deps.logger.warning("maintenance_manifest_summary_failed", error=str(exc))
+            manifest_stats = {
+                "sessions_with_manifest": 0,
+                "anchor_version_max": 0,
+                "token_estimate_total": 0,
+                "segment_counts": {},
+            }
+    result["manifest"] = manifest_stats
+    if deps.agent_stats:
+        result["agents"] = deps.agent_stats.global_summary()
+
+    delta_fallback_stats = DeltaWireDecoder.get_fallback_stats()
+    result["fallbacks"] = {
+        "http2_to_http11_count": len(
+            {
+                k
+                for k, v in (deps.provider.pool._http2_fallback_reason.items())
+                if v == "h2_unavailable"
+            }
+        ),
+        "delta_to_full_prompt_count": delta_fallback_stats.get("fallback_count", 0),
+        "native_framing_to_json_count": 0,
+        "stream_resume_fallback_reason_count": (
+            deps.downgrade_telemetry._counts.get("stream_resume_to_full", 0)
+            if deps.downgrade_telemetry is not None
+            else 0
+        ),
+        "semantic_cache_approximate_hits": cache_stats.get("semantic_hits", 0),
+        "semantic_cache_misses": cache_stats.get("misses", 0)
+        + cache_stats.get("semantic_misses", 0),
+    }
+    if deps.downgrade_telemetry is not None:
+        result["downgrades"] = deps.downgrade_telemetry.snapshot()
+        result["transport_outcome_rollup"] = {
+            k: v
+            for k, v in deps.downgrade_telemetry._counts.items()
+            if k
+            in (
+                "binary_to_json",
+                "delta_to_full_prompt",
+                "http2_to_http11",
+                "stream_resume_to_full",
+                "batching_bypassed",
+                "speculation_bypassed",
+            )
+        }
+    result["transport"] = {
+        "pools": {
+            f"{provider}:{base_url}": {
+                "http_version": deps.provider.pool.get_http_version(provider, base_url),
+                "fallback_reason": deps.provider.pool.get_fallback_reason(provider, base_url),
+            }
+            for (provider, base_url) in deps.provider.pool._clients
+        }
+    }
+    if hasattr(deps.provider, "stall_detector"):
+        result["ignored_chunks"] = deps.provider.stall_detector.get_ignored_chunk_stats()
+    if deps.maintenance is not None:
+        result["maintenance"] = deps.maintenance.stats()
+    return result
+
+
 def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
     """Register request middleware and operational health/stats routes."""
 
@@ -2969,7 +3124,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         response.headers["x-request-id"] = request_id
-        response.headers["x-lattice-version"] = deps.version
+        stash_lattice_response_headers(request, {"x-lattice-version": deps.version})
         deps.metrics.increment("lattice_requests_total")
         deps.metrics.record_latency("lattice_request_latency_ms", elapsed_ms)
         if hasattr(deps.provider, "tacc"):
@@ -2983,154 +3138,6 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
             elapsed_ms=round(elapsed_ms, 3),
         )
         return response
-
-    @app.get("/healthz", tags=["health"])
-    async def healthz() -> dict[str, str]:
-        return {
-            "status": "healthy",
-            "version": deps.version,
-            "provider": "direct_http",
-            "adapters": ", ".join(deps.provider.registry.list_adapters()),
-        }
-
-    @app.get("/readyz", tags=["health"])
-    async def readyz() -> dict[str, Any]:
-        live, detail = deps.provider.health_check()
-        return {
-            "status": "ready" if live else "not_ready",
-            "checks": {
-                "config": True,
-                "pipeline": len(deps.pipeline.registry.get_transform_names()) > 0,
-                "provider": live,
-                "provider_detail": detail,
-                "http2_pools": deps.provider.pool.pool_count,
-                "sessions": deps.store.session_count if hasattr(deps.store, "session_count") else 0,
-            },
-        }
-
-    @app.get("/metrics", response_class=PlainTextResponse)
-    async def _metrics() -> str:
-        return str(deps.metrics.prometheus_output())
-
-    @app.get("/stats")
-    async def _stats() -> dict[str, Any]:
-        from lattice.transport.delta_wire import DeltaWireDecoder
-
-        capability_registry = get_capability_registry()
-        cache_stats: dict[str, Any] = {}
-        if deps.semantic_cache is not None:
-            cache_stats = await deps.semantic_cache.stats
-
-        result: dict[str, Any] = {
-            "version": deps.version,
-            "transforms": deps.pipeline.registry.get_transform_names(),
-            "pipeline": pipeline_summary(deps.pipeline),
-            "sessions": deps.store.session_count if hasattr(deps.store, "session_count") else 0,
-            "provider": "direct_http",
-            "adapters": deps.provider.registry.list_adapters(),
-            "capabilities": {
-                provider: {
-                    "cache_mode": capability_registry.cache_mode(provider).value,
-                    "supports_prompt_caching": capability_registry.supports(
-                        provider, Capability.PROMPT_CACHING
-                    ),
-                    "default_base_url": capability_registry.get(provider).default_base_url  # type: ignore[union-attr]
-                    if capability_registry.get(provider)
-                    else "",
-                }
-                for provider in capability_registry.list_providers()
-            },
-            "pools": deps.provider.pool.pool_count,
-            "batching": await deps.batching_engine.stats(),
-            "speculation": deps.speculative_executor.stats,
-            "tacc": deps.provider.tacc.all_stats() if hasattr(deps.provider, "tacc") else {},
-        }
-        manifest_stats: dict[str, Any] = {
-            "sessions_with_manifest": 0,
-            "anchor_version_max": 0,
-            "token_estimate_total": 0,
-            "segment_counts": {},
-        }
-        if hasattr(deps.store, "keys"):
-            try:
-                session_ids = await deps.store.keys()
-                for session_id in session_ids:
-                    session = await deps.store.get(session_id)
-                    if session is None or session.manifest is None:
-                        continue
-                    summary = manifest_summary(session.manifest)
-                    manifest_stats["sessions_with_manifest"] += 1
-                    manifest_stats["anchor_version_max"] = max(
-                        int(manifest_stats["anchor_version_max"]),
-                        int(summary["anchor_version"]),
-                    )
-                    manifest_stats["token_estimate_total"] += int(summary["token_estimate"])
-                    segment_counts = manifest_stats["segment_counts"]
-                    if isinstance(segment_counts, dict):
-                        for seg_type, count in summary["segment_counts"].items():
-                            segment_counts[seg_type] = segment_counts.get(seg_type, 0) + int(count)
-            except (TypeError, AttributeError, KeyError) as exc:
-                deps.logger.warning("maintenance_manifest_summary_failed", error=str(exc))
-                manifest_stats = {
-                    "sessions_with_manifest": 0,
-                    "anchor_version_max": 0,
-                    "token_estimate_total": 0,
-                    "segment_counts": {},
-                }
-        result["manifest"] = manifest_stats
-        if deps.agent_stats:
-            result["agents"] = deps.agent_stats.global_summary()
-
-        delta_fallback_stats = DeltaWireDecoder.get_fallback_stats()
-        result["fallbacks"] = {
-            "http2_to_http11_count": len(
-                {
-                    k
-                    for k, v in (deps.provider.pool._http2_fallback_reason.items())
-                    if v == "h2_unavailable"
-                }
-            ),
-            "delta_to_full_prompt_count": delta_fallback_stats.get("fallback_count", 0),
-            "native_framing_to_json_count": 0,
-            "stream_resume_fallback_reason_count": (
-                deps.downgrade_telemetry._counts.get("stream_resume_to_full", 0)
-                if deps.downgrade_telemetry is not None
-                else 0
-            ),
-            "semantic_cache_approximate_hits": cache_stats.get("semantic_hits", 0),
-            "semantic_cache_misses": cache_stats.get("misses", 0)
-            + cache_stats.get("semantic_misses", 0),
-        }
-        if deps.downgrade_telemetry is not None:
-            result["downgrades"] = deps.downgrade_telemetry.snapshot()
-            # Transport outcome rollup derived from canonical telemetry
-            result["transport_outcome_rollup"] = {
-                k: v
-                for k, v in deps.downgrade_telemetry._counts.items()
-                if k
-                in (
-                    "binary_to_json",
-                    "delta_to_full_prompt",
-                    "http2_to_http11",
-                    "stream_resume_to_full",
-                    "batching_bypassed",
-                    "speculation_bypassed",
-                )
-            }
-        result["transport"] = {
-            "pools": {
-                f"{provider}:{base_url}": {
-                    "http_version": deps.provider.pool.get_http_version(provider, base_url),
-                    "fallback_reason": deps.provider.pool.get_fallback_reason(provider, base_url),
-                }
-                for (provider, base_url) in deps.provider.pool._clients
-            }
-        }
-        if hasattr(deps.provider, "stall_detector"):
-            result["ignored_chunks"] = deps.provider.stall_detector.get_ignored_chunk_stats()
-        if deps.maintenance is not None:
-            result["maintenance"] = deps.maintenance.stats()
-        return result
 
     @app.get("/providers/capabilities")
     async def _provider_capabilities() -> dict[str, Any]:

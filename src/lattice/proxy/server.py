@@ -117,8 +117,11 @@ from lattice.gateway.compat import serialize_messages as _serialize_messages
 from lattice.gateway.compat import serialize_openai_response as _serialize_openai_response
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.proxy.bootstrap import build_proxy_runtime, configure_cors, configure_lifecycle
+from lattice.proxy.health import HealthManager
+from lattice.proxy.middleware import install_middleware
 from lattice.proxy.routes import (
     ProviderCompatRouteDeps,
+    register_health_routes,
     register_native_lattice_routes,
     register_provider_compat_routes,
 )
@@ -203,37 +206,46 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
         maintenance=maintenance,
     )
     configure_cors(app, config)
+    install_middleware(app)
+
+    operational_deps = OperationalRouteDeps(
+        config=config,
+        metrics=metrics,
+        provider=provider,
+        pipeline=pipeline,
+        store=store,
+        batching_engine=batching_engine,
+        speculative_executor=speculative_executor,
+        agent_stats=runtime.agent_stats,
+        semantic_cache=runtime.semantic_cache,
+        cost_estimator=runtime.cost_estimator,
+        logger=logger,
+        version=__version__,
+        downgrade_telemetry=runtime.downgrade_telemetry,
+        maintenance=maintenance,
+    )
+
+    health_manager = HealthManager.from_operational(operational_deps)
+    register_health_routes(app, health_manager)
 
     # ------------------------------------------------------------------
     # Request middleware + operational routes
     # ------------------------------------------------------------------
-    register_operational_routes(
-        app,
-        OperationalRouteDeps(
-            config=config,
-            metrics=metrics,
-            provider=provider,
-            pipeline=pipeline,
-            store=store,
-            batching_engine=batching_engine,
-            speculative_executor=speculative_executor,
-            agent_stats=runtime.agent_stats,
-            semantic_cache=runtime.semantic_cache,
-            cost_estimator=runtime.cost_estimator,
-            logger=logger,
-            version=__version__,
-            downgrade_telemetry=runtime.downgrade_telemetry,
-            maintenance=maintenance,
-        ),
-    )
+    register_operational_routes(app, operational_deps)
 
     @app.middleware("http")
     async def _transport_metadata_middleware(request: Any, call_next: Any) -> Any:
-        response = await call_next(request)
-        response.headers.setdefault("x-lattice-framing", "json")
-        response.headers.setdefault("x-lattice-delta", "bypassed")
-        response.headers.setdefault("x-lattice-http-version", "2")
-        return response
+        from lattice.proxy.middleware import stash_lattice_response_headers
+
+        stash_lattice_response_headers(
+            request,
+            {
+                "x-lattice-framing": "json",
+                "x-lattice-delta": "bypassed",
+                "x-lattice-http-version": "2",
+            },
+        )
+        return await call_next(request)
 
     register_native_lattice_routes(app, gateway)
 

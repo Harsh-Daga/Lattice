@@ -26,8 +26,6 @@ def test_classify_short_below_threshold() -> None:
 def test_classify_table_heavy_from_markdown_table() -> None:
     row = "| col_a | col_b | col_c |\n|-------|-------|-------|\n| 1 | 2 | 3 |\n"
     table = row * 12
-    request = Request(
-        messages=[Message(role="user", content="Summarize this dataset:\n" + table)]
-    )
+    request = Request(messages=[Message(role="user", content="Summarize this dataset:\n" + table)])
     profile = classify_by_signals(request)
     assert profile in (ContentProfile.TABLE_HEAVY, ContentProfile.MIXED)
