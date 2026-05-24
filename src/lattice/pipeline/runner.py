@@ -367,7 +367,7 @@ class Pipeline:
 
         Algorithm:
           1. Global policy check_request_limits — Reject aborts pipeline.
-          2. Run content_profiler.process(req, ctx) to populate context with
+          2. Run content_profiler.optimize(ir, req, ctx) to populate context with
              task classification, risk score, and ExecutionPlan.
           3. Read plan from context; if absent, fall back to a default plan
              (all default_pipeline transforms in priority order).
@@ -414,18 +414,11 @@ class Pipeline:
         ):
             try:
                 ir_seed = get_canonical_state_value(context, "_lattice_ir_v2") or PromptIRV2()
-                if "content_profiler" in self._IR_NATIVE_TRANSFORMS and hasattr(
-                    profiler, "optimize"
-                ):
-                    result = profiler.optimize(ir_seed, working, context)
-                    if is_ok(result):
-                        ir_v2 = unwrap(result)
-                        working.metadata["_lattice_ir_v2"] = ir_v2
-                        context.session_state["_lattice_ir_v2"] = ir_v2
-                else:
-                    result = profiler.process(working, context)
-                    if is_ok(result):
-                        working = unwrap(result)
+                result = profiler.optimize(ir_seed, working, context)
+                if is_ok(result):
+                    ir_v2 = unwrap(result)
+                    working.metadata["_lattice_ir_v2"] = ir_v2
+                    context.session_state["_lattice_ir_v2"] = ir_v2
                 if is_ok(result):
                     context.mark_transform_applied("content_profiler")
             except Exception as exc:

@@ -10,13 +10,9 @@ import httpx
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import unwrap
+from lattice.pipeline.factory import build_default_pipeline
 from lattice.transport.types import Message, Request
-from lattice.transforms.format_converter import FormatConverter
-from lattice.transforms.output_cleanup import OutputCleanup
-from lattice.transforms.reference_sub import ReferenceSubstitution
-from lattice.transforms.tool_filter import ToolOutputFilter
 from lattice.utils.token_count import TiktokenCounter
 
 PROXY = "http://127.0.0.1:8787"
@@ -91,16 +87,11 @@ def benchmark_prompt(name, messages, expected_keyword=""):
 
     # Compress the message ourselves to show savings
     config = LatticeConfig(graceful_degradation=True)
-    pipeline = CompressorPipeline(config=config)
-    pipeline.register(ReferenceSubstitution())
-    pipeline.register(FormatConverter())
-    pipeline.register(ToolOutputFilter())
-    pipeline.register(OutputCleanup())
+    pipeline = build_default_pipeline(config)
 
-    import asyncio
     req = Request(messages=[Message(role=m["role"], content=m.get("content", "")) for m in messages])
     ctx = TransformContext(request_id="test", provider="ollama", model=MODEL)
-    result = asyncio.run(pipeline.process(req, ctx))
+    result = pipeline.compress(req, ctx)
     compressed = unwrap(result)
     tokens_after = sum(count_tokens(m.content) for m in compressed.messages)
     savings = tokens_before - tokens_after

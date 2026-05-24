@@ -104,7 +104,9 @@ class TestRepresentationOptimizerLayer:
         )
         ctx = TransformContext()
 
-        result = profiler.process(request, ctx)
+        from lattice.ir.primitives import PromptIRV2
+
+        result = profiler.optimize(PromptIRV2(), request, ctx)
         assert is_ok(result)
 
         # Schedule is stored in BOTH metadata and session_state

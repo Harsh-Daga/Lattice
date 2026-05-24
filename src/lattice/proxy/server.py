@@ -21,7 +21,7 @@ Architecture
 │  3. Run compression pipeline
 │     • reference_sub      (deduplicate repeated content)
 │     • tool_filter        (strip unused tool output)
-│     • prefix_opt         (deduplicate common prefixes)
+│     • content_profiler   (profile + prefix canonicalization)
 │     • output_cleanup     (trim whitespace, normalize JSON)
 │     • semantic_dict      (HPACK-style shared dictionary)
 │     • delta_encoder      (session-based delta reconstruction)

@@ -276,13 +276,15 @@ class TestSIGIntegration:
         )
         ctx = TransformContext()
         from lattice.core.result import is_ok
+        from lattice.ir.primitives import PromptIRV2
 
-        result = profiler.process(req, ctx)
+        result = profiler.optimize(PromptIRV2(), req, ctx)
         assert is_ok(result)
 
         from lattice.core.result import unwrap
 
-        modified = unwrap(result)
+        unwrap(result)
+        modified = req
         assert METADATA_KEY_RISK_SCORE in modified.metadata
         assert METADATA_KEY_TASK_CLASSIFICATION in modified.metadata
         assert METADATA_KEY_PROTECTED_SPANS in modified.metadata

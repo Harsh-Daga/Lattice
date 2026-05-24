@@ -1,6 +1,7 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after completing Phase 5 Transforms Cleanup on `refactor/phase-5-transforms-cleanup` (2026-05-24).
+> Last updated after Phase 0–5 doc-compliance audit on `refactor/phase-5-transforms-cleanup` (2026-05-24).
+> See **[PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md)** for line-by-line acceptance vs each phase doc.
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
 > `11-docs-release.md`) is preserved as the historical reference. This
@@ -14,7 +15,7 @@
 
 | Phase     | Status              | Merged in            | Notes                                                                                            |
 | --------- | ------------------- | -------------------- | ------------------------------------------------------------------------------------------------ |
-| **0**     | ✅ Done             | `bd32c0b` (PR #2)    | Inventory, contract tests, canonical bench baseline. 1845 tests.                                 |
+| **0**     | ✅ Done             | `bd32c0b` (PR #2)    | Inventory, contract tests, `FEATURE_PARITY.md` scaffold, `refactor-gate.yml`.                 |
 | **1**     | ✅ Done             | `e5ff6d6`            | IR primitives collapsed into `lattice.ir`; `compile_request_ir` split from `build_ir`; xfail flipped on top-level `lattice.*` imports. |
 | **2a**    | ✅ Done             | `ce06872` (PR #4)    | `core/transport.py` → `transport/types.py`; `serialization.py`, `delta_wire.py` move; 138 import sites rewritten. |
 | **2b-1**  | ✅ Done             | `5d9bffb` (PR #5)    | 8 files moved into `pipeline/`; `PipelineV2` → `Pipeline`, `TransformRegistryV2` → `PipelineTransformRegistry`; stub `pipeline/__init__.py` due to circular-import with v1. |
@@ -22,9 +23,9 @@
 | **2b-2b-A** | ✅ Done           | `5613e5a` (PR #7)    | 4 hardening tests migrated from `transform.process()` to `transform.optimize()`. |
 | **3**       | ✅ Done           | `refactor/revised-plan` | V1 Kill: deleted `CompressorPipeline` + wrapper; `Pipeline.compress()` + gates; factory/client/proxy rewired; 10 IR-native `process()` deleted. |
 | **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
-| **5**       | ✅ Done           | `refactor/phase-5-transforms-cleanup` | Transforms cleanup (5a–5c): `registry`/`reputation`/`patterns` → `transforms/`; split `content_profiler/` + `format_converter/`; deleted `prefix_opt`, `constraint_lifting`, `strategy_selector`, `information_theoretic_selector`; `is_response_side` dispatch; `transform_delta_encode` fix. See `phase-5-decisions.md`. |
+| **5**       | ✅ Code complete (branch) | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) | Transforms cleanup + gap closure; merge + `phase-5.json` benchmark pending. See `PHASE_COMPLETION_TRACKER.md`. |
 
-**Current totals.** 1685 tests passing, 196 skipped (Phase 11 rewrites), 27 contract tests passing, ruff/format/mypy clean. Test count vs 1702 baseline reflects removal of deleted-transform unit suites (~26); net behavior covered by new `tests/unit/transforms/*` + planner integration tests. Canonical bench gate: run when `OLLAMA_CLOUD_API_KEY` is set (`phase-5.json` ±2% vs phase-0).
+**Current totals.** 1706 passed, 196 skipped, 1903 collected, 27 contract tests; ruff/format/mypy clean on branch. **Benchmark gates** (`phase-2` … `phase-5.json`) remain operator-run when API key available.
 
 ---
 
@@ -137,7 +138,7 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 2         | 2         | Pipeline Package Structure                 | ✅ Done     | —                |
 | **3 (NEW)** | (split from 2) | **V1 Kill** — port safety machinery, rewire client/factory, delete `CompressorPipeline` + wrapper | ✅ Done     | —                |
 | 4         | 3         | Planner Collapse                           | ✅ Done     | —                |
-| 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ Done     | —                |
+| 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ branch     | merge + bench    |
 | 6         | 5         | Providers + Transport split                | ⏳ Pending  | 1–2 days         |
 | 7         | 6         | Proxy + SDK + CLI                          | ⏳ Pending  | 2 days           |
 | 8         | 7         | Integrations (MCP, agent wrappers)         | ⏳ Pending  | 1 day            |

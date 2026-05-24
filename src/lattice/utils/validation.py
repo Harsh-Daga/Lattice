@@ -281,24 +281,20 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "tool_filter": TransformSafetyBucket.SAFE,
     "tool_output_filter": TransformSafetyBucket.SAFE,  # alias
     "context_selector": TransformSafetyBucket.SAFE,
-    "prefix_optimizer": TransformSafetyBucket.SAFE,
-    "prefix_opt": TransformSafetyBucket.SAFE,  # alias
+    "path_prefix": TransformSafetyBucket.SAFE,
     "output_cleanup": TransformSafetyBucket.SAFE,
     "delta_encoder": TransformSafetyBucket.SAFE,
     "batching": TransformSafetyBucket.SAFE,
     "speculative": TransformSafetyBucket.SAFE,
     "cache_arbitrage": TransformSafetyBucket.SAFE,
-    "strategy_selector": TransformSafetyBucket.SAFE,
     "runtime_contract": TransformSafetyBucket.SAFE,
     "runtime_contractor": TransformSafetyBucket.SAFE,  # alias
     "diagnostic_rle": TransformSafetyBucket.SAFE,
     "columnar_pack": TransformSafetyBucket.SAFE,
     "json_shape": TransformSafetyBucket.SAFE,
-    "path_prefix": TransformSafetyBucket.SAFE,
     "extractive_compress": TransformSafetyBucket.SAFE,
     "extractive_compressor": TransformSafetyBucket.SAFE,  # alias
     "tool_projection": TransformSafetyBucket.SAFE,
-    "constraint_lifting": TransformSafetyBucket.SAFE,
     "causal_chain": TransformSafetyBucket.SAFE,
     # CONDITIONAL — lossy but recoverable; risk-gated
     "reference_sub": TransformSafetyBucket.CONDITIONAL,

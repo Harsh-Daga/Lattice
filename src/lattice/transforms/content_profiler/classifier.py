@@ -134,7 +134,7 @@ def select_compression_strategy(
     base: dict[str, Any] = {
         "reference_sub": True,
         "tool_filter": True,
-        "prefix_opt": True,
+        "path_prefix": True,
         "output_cleanup": True,
         "format_conversion": True,
         "message_dedup": True,

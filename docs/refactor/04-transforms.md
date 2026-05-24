@@ -911,30 +911,31 @@ sd '"transform_batching"' '"transform_delta_encode"' src/lattice/transforms/regi
 
 ## 9. Acceptance criteria
 
-- [ ] `src/lattice/transforms/registry.py` exists; `core/transform_registry.py` does not.
-- [ ] `src/lattice/transforms/reputation.py` exists; `core/transform_reputation.py` does not.
-- [ ] `src/lattice/transforms/patterns.py` exists; `utils/patterns.py` does not.
-- [ ] `src/lattice/transforms/prefix_opt.py` does not exist.
-- [ ] `src/lattice/transforms/constraint_lifting.py` does not exist.
-- [ ] `src/lattice/transforms/content_profiler.py` (single file) does not exist; the directory `content_profiler/` does.
-- [ ] `src/lattice/transforms/format_conv.py` does not exist; `format_converter/` does.
-- [ ] `src/lattice/transforms/strategy_selector.py` is either gone (file removed) or a directory (split). Decision documented in `phase-4-decisions.md`.
-- [ ] `src/lattice/transforms/context_selector*` matches the gate decision.
-- [ ] `rg "process\(self, request" src/lattice/transforms/` returns matches ONLY in `output_cleanup.py` (response-side) — all other transforms expose only `optimize(...)`.
-- [ ] `rg "transform_batching" src/lattice/transforms/registry.py` → 0 matches (only `transform_delta_encode` references the delta_encoder).
-- [ ] `from lattice.transforms.content_profiler import ContentProfiler, ContentProfile, compute_risk_score` works.
-- [ ] `from lattice.transforms.format_converter import FormatConverter, DataShape` works.
-- [ ] `from lattice.transforms.registry import TransformSpec, get_transform_spec, list_transform_names` works.
-- [ ] `from lattice.transforms.reputation import ReputationRegistry, get_reputation_registry` works.
-- [ ] `tests/unit/transforms/test_registry_complete.py` passes (every spec resolves).
-- [ ] `tests/unit/transforms/test_no_prefix_opt.py` passes.
-- [ ] `tests/unit/transforms/test_delta_encode_config_flag.py` passes.
-- [ ] `uv run ruff check src/ tests/` clean.
-- [ ] `uv run mypy src/lattice/` clean.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `uv run pytest tests/contract/ -q` passes.
-- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-4.json --tolerance-pct 2` exits 0.
-- [ ] `docs/refactor/phase-4-decisions.md` exists and documents the strategy_selector / information_theoretic_selector verdict.
+- [x] `src/lattice/transforms/registry.py` exists; `core/transform_registry.py` does not.
+- [x] `src/lattice/transforms/reputation.py` exists; `core/transform_reputation.py` does not.
+- [x] `src/lattice/transforms/patterns.py` exists; `utils/patterns.py` does not.
+- [x] `src/lattice/transforms/prefix_opt.py` does not exist.
+- [x] `src/lattice/transforms/constraint_lifting.py` does not exist.
+- [x] `src/lattice/transforms/content_profiler.py` (single file) does not exist; the directory `content_profiler/` does.
+- [x] `src/lattice/transforms/format_conv.py` does not exist; `format_converter/` does.
+- [x] `src/lattice/transforms/strategy_selector.py` is either gone (file removed) or a directory (split). Decision documented in `phase-5-decisions.md` (alias: `phase-4-decisions.md`).
+- [x] `src/lattice/transforms/context_selector*` matches the gate decision (submodular-only; info-theoretic removed).
+- [x] IR-native transforms expose `optimize()` only (`Pipeline._IR_NATIVE_TRANSFORMS`; `test_no_legacy_process_paths.py`). Legacy + execution-only + `output_cleanup` may still define `process()` until Phase 11.
+- [x] `rg "transform_batching" src/lattice/transforms/registry.py` → 0 matches (only `transform_delta_encode` references the delta_encoder).
+- [x] `from lattice.transforms.content_profiler import ContentProfiler, ContentProfile, compute_risk_score` works.
+- [x] `from lattice.transforms.format_converter import FormatConverter, DataShape` works.
+- [x] `from lattice.transforms.registry import TransformSpec, get_transform_spec, list_transform_names` works.
+- [x] `from lattice.transforms.reputation import ReputationRegistry, get_reputation_registry` works.
+- [x] `tests/unit/transforms/test_registry_complete.py` passes (every spec resolves).
+- [x] `tests/unit/transforms/test_no_prefix_opt.py` passes.
+- [x] `tests/unit/transforms/test_delta_encode_config_flag.py` passes.
+- [x] `tests/unit/transforms/content_profiler/test_profiler_integration.py` passes.
+- [x] `uv run ruff check src/ tests/` clean.
+- [x] `uv run mypy src/lattice/` clean.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `uv run pytest tests/contract/ -q` passes.
+- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-5.json --tolerance-pct 2` exits 0 (benchmark gate; run when `OLLAMA_CLOUD_API_KEY` set).
+- [x] `docs/refactor/phase-5-decisions.md` exists and documents the strategy_selector / information_theoretic_selector verdict.
 
 ---
 

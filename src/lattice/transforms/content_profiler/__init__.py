@@ -74,7 +74,7 @@ class ContentProfiler(ReversibleSyncTransform):
         request: Request,
         context: TransformContext,
     ) -> PromptIRV2 | None:
-        """Shared metadata + IR seeding used by process() and optimize()."""
+        """Shared metadata + IR seeding for optimize()."""
         if not self.enable_adaptive:
             return None
 
@@ -91,15 +91,6 @@ class ContentProfiler(ReversibleSyncTransform):
             strategy=strategy,
             risk_score=risk_score,
         )
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        """Profile request content, compute risk, build SIG, and set strategy."""
-        if not self.enable_adaptive:
-            return Ok(request)
-        self._run_profiling(request, context)
-        return Ok(request)
 
     def optimize(
         self,

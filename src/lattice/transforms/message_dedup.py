@@ -69,7 +69,7 @@ class MessageDeduplicator(ReversibleSyncTransform):
 
     name = "message_dedup"
     transform_class = TransformClass.STRUCTURAL_RISKY
-    priority = 15  # After prefix_opt (10), before reference_sub (20)
+    priority = 15  # After content_profiler (1), before reference_sub (20)
 
     def __init__(
         self,

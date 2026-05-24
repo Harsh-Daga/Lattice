@@ -749,8 +749,6 @@ def _enabled_transforms(config) -> list[str]:
     transforms: list[str] = []
     if config.transform_content_profiler:
         transforms.append("content_profiler")
-    if config.transform_prefix_opt:
-        transforms.append("prefix_opt")
     if config.transform_message_dedup:
         transforms.append("message_dedup")
     if config.transform_reference_sub:
