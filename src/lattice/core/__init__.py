@@ -5,10 +5,9 @@ context, errors, result, transport (types — moves to ``transport/`` in
 Phase 2), pipeline (moves to ``pipeline/`` in Phase 2), and the
 relocated ``segmentation`` module.
 
-The IR types have moved to ``lattice.ir``. The transport types and
-``CompressorPipeline``/``ReversibleSyncTransform`` continue to be
-re-exported here so the public Python surface remains stable across
-phases — Phase 2 will update the underlying paths transparently.
+The IR types have moved to ``lattice.ir``. ``ReversibleSyncTransform`` is
+re-exported from ``lattice.pipeline.base`` so the public Python surface
+remains stable across phases.
 """
 
 from lattice.core.config import LatticeConfig

@@ -19,6 +19,9 @@ from lattice.core.config import LatticeConfig
 from lattice.pipeline.policy import OptimizationPolicy
 from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
 
+# Session-scoped transforms registered post-build via ``register_instance``.
+_EXECUTION_ONLY_TRANSFORMS = frozenset({"delta_encoder", "batching", "speculative"})
+
 
 def build_default_pipeline(config: LatticeConfig) -> Pipeline:
     """Build the standard LATTICE pipeline.
@@ -46,15 +49,18 @@ def build_benchmark_pipeline(config: LatticeConfig) -> Pipeline:
 def pipeline_summary(pipeline: Pipeline) -> dict[str, Any]:
     """Return a stable operational summary for a pipeline."""
     names = pipeline.registry.get_transform_names()
-    optimizers = [n for n in names if n.endswith("_optimizer")]
-    core = [n for n in names if n not in optimizers]
+    instance_names = pipeline.registry.get_instance_names()
+    all_names = sorted(set(names) | set(instance_names))
+    optimizers = [n for n in all_names if n.endswith("_optimizer")]
+    execution = [n for n in instance_names if n in _EXECUTION_ONLY_TRANSFORMS]
+    core = [n for n in all_names if n not in optimizers and n not in _EXECUTION_ONLY_TRANSFORMS]
     return {
-        "count": len(names),
-        "transforms": names,
+        "count": len(all_names),
+        "transforms": all_names,
         "core_transforms": core,
         "optimizers": optimizers,
-        "execution_transforms": [],
-        "runtime_contract_enabled": "runtime_contract" in names,
+        "execution_transforms": execution,
+        "runtime_contract_enabled": "runtime_contract" in all_names,
         "optimizer_pipeline": len(optimizers) > 0,
     }
 

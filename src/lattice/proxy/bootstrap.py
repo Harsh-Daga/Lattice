@@ -218,6 +218,11 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
         tacc=provider.tacc,
     )
 
+    if config.is_transform_enabled("batching"):
+        from lattice.transforms.batching import BatchingTransform
+
+        pipeline.registry.register_instance("batching", BatchingTransform())
+
     async def _speculative_provider_call(req: Request) -> Response:
         messages = serialize_messages(req)
         from lattice.providers.transport import _resolve_provider_name

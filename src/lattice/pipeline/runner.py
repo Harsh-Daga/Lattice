@@ -146,6 +146,10 @@ class PipelineTransformRegistry:
         """Return all registered canonical names."""
         return sorted(self._FACTORIES.keys())
 
+    def get_instance_names(self) -> list[str]:
+        """Return names with materialized instances from :meth:`register_instance`."""
+        return sorted(self._instances.keys())
+
     def register_instance(self, name: str, instance: Any) -> None:
         """Inject a pre-built instance under ``name``.
 
@@ -230,19 +234,17 @@ class Pipeline:
                 continue
             if is_legacy_only(tx_name):
                 continue
-            if tx_name.endswith("_optimizer") and tx_name != "pipeline_v2":
+            if tx_name.endswith("_optimizer"):
                 optimizer_transforms.append(tx_name)
             else:
                 core_transforms.append(tx_name)
 
         # Phase 1: Execute core transforms verbatim (skip already-applied + self)
         for tx_name in core_transforms:
-            if tx_name == "pipeline_v2":
-                continue
             if tx_name in context.transforms_applied:
                 continue
             if total_latency_ms > plan.latency_budget_ms:
-                context.record_metric("pipeline_v2", "budget_exceeded", True)
+                context.record_metric("pipeline", "budget_exceeded", True)
                 break
 
             inst = self.registry.get(tx_name)
@@ -323,30 +325,38 @@ class Pipeline:
                     if ir_changed and best_candidate.applied and best_candidate.ir.sections:
                         _serialize_ir_to_messages(best_candidate.ir, working)
 
+                    context.record_metric("pipeline", "beam_search_latency_ms", round(search_ms, 3))
+                    context.record_metric("pipeline", "beam_candidates", len(search.transforms))
                     context.record_metric(
-                        "pipeline_v2", "beam_search_latency_ms", round(search_ms, 3)
-                    )
-                    context.record_metric("pipeline_v2", "beam_candidates", len(search.transforms))
-                    context.record_metric(
-                        "pipeline_v2",
+                        "pipeline",
                         "ir_sections",
                         len(best_candidate.ir.sections),
                     )
                 except Exception:
-                    context.record_metric("pipeline_v2", "beam_search_error", True)
+                    context.record_metric("pipeline", "beam_search_error", True)
 
         # Phase 3: Execute any remaining non-optimizer transforms verbatim
         # (already handled in core_transforms)
 
         final_tokens = sum(len(str(m.content or "")) for m in working.messages)
-        context.record_metric("pipeline_v2", "tokens_before", tokens_before)
-        context.record_metric("pipeline_v2", "tokens_after", final_tokens)
-        context.record_metric("pipeline_v2", "tokens_saved", tokens_before - final_tokens)
-        context.record_metric("pipeline_v2", "latency_ms", total_latency_ms)
-        context.record_metric("pipeline_v2", "optimizers", len(optimizer_transforms))
-        context.record_metric("pipeline_v2", "core_transforms", len(core_transforms))
+        context.record_metric("pipeline", "tokens_before", tokens_before)
+        context.record_metric("pipeline", "tokens_after", final_tokens)
+        context.record_metric("pipeline", "tokens_saved", tokens_before - final_tokens)
+        context.record_metric("pipeline", "latency_ms", total_latency_ms)
+        context.record_metric("pipeline", "optimizers", len(optimizer_transforms))
+        context.record_metric("pipeline", "core_transforms", len(core_transforms))
 
         return Ok(working)
+
+    @property
+    def transforms(self) -> list[Any]:
+        """Materialized lazy-registry transforms (health, tests, debugging)."""
+        instances: list[Any] = []
+        for name in self.registry.get_transform_names():
+            inst = self.registry.get(name)
+            if inst is not None:
+                instances.append(inst)
+        return instances
 
     def compress(
         self,

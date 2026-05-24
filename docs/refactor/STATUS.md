@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after merging Phase 2b-2b-A (commit `5613e5a`, `2026-05-22`).
+> Last updated after completing Phase 3 V1 Kill on `refactor/revised-plan` (2026-05-24).
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
 > `11-docs-release.md`) is preserved as the historical reference. This
@@ -20,8 +20,9 @@
 | **2b-1**  | ✅ Done             | `5d9bffb` (PR #5)    | 8 files moved into `pipeline/`; `PipelineV2` → `Pipeline`, `TransformRegistryV2` → `PipelineTransformRegistry`; stub `pipeline/__init__.py` due to circular-import with v1. |
 | **2b-2a** | ✅ Done             | `67e98d5` (PR #6)    | `legacy_only` flag on `TransformSpec`; `constraint_lifting` + `strategy_selector` flagged; `Pipeline.process` skips them. |
 | **2b-2b-A** | ✅ Done           | `5613e5a` (PR #7)    | 4 hardening tests migrated from `transform.process()` to `transform.optimize()`. |
+| **3**       | ✅ Done           | `refactor/revised-plan` | V1 Kill: deleted `CompressorPipeline` + wrapper; `Pipeline.compress()` + gates; factory/client/proxy rewired; 10 IR-native `process()` deleted. |
 
-**Current totals.** 1878 unit tests passing, 24 contract tests passing, ruff/format/mypy clean across Python 3.10/3.11/3.12.
+**Current totals.** 1695 tests passing, 196 skipped (Phase 11 rewrites), 24 contract tests passing, ruff/format/mypy clean across Python 3.10/3.11/3.12.
 
 ---
 
@@ -107,7 +108,7 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 0         | 0         | Audit & Baseline                           | ✅ Done     | —                |
 | 1         | 1         | IR Primitives                              | ✅ Done     | —                |
 | 2         | 2         | Pipeline Package Structure                 | ✅ Done     | —                |
-| **3 (NEW)** | (split from 2) | **V1 Kill** — port safety machinery, rewire client/factory, delete `CompressorPipeline` + wrapper | ⏳ Pending  | **3–5 days**     |
+| **3 (NEW)** | (split from 2) | **V1 Kill** — port safety machinery, rewire client/factory, delete `CompressorPipeline` + wrapper | ✅ Done     | —                |
 | 4         | 3         | Planner Collapse                           | ⏳ Pending  | 2–3 days         |
 | 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ⏳ Pending  | 2–3 days |
 | 6         | 5         | Providers + Transport split                | ⏳ Pending  | 1–2 days         |
@@ -359,19 +360,20 @@ These are explicitly tracked so they don't get lost:
 
 | Item                                                                     | New target phase    |
 | ------------------------------------------------------------------------ | ------------------- |
-| Delete `core/pipeline.py` (v1 `CompressorPipeline`)                      | Phase 3             |
-| Delete `core/pipeline_v2_wrapper.py`                                     | Phase 3             |
-| Port v1 safety machinery (policy/guardrails/MILV/reputation/rollback)    | Phase 3             |
-| Rewrite `pipeline/factory.py`                                            | Phase 3             |
-| Rewire `src/lattice/client.py`                                           | Phase 3             |
-| Drop `"pipeline_v2"` registry entry                                      | Phase 3             |
-| Delete `process()` on 10 IR-native transforms                            | Phase 3 (after §5.5)|
-| Migrate `optimizer/*.py` constituents to `optimize()`                    | Phase 3 (§5.5)      |
-| Simplify `ReversibleSyncTransform` Protocol                              | Phase 3             |
-| Broaden `pipeline/__init__.py` (currently a stub)                        | Phase 3             |
-| Update `tests/contract/test_python_api_contract.py` (drop CompressorPipeline) | Phase 3        |
+| Delete `core/pipeline.py` (v1 `CompressorPipeline`)                      | ✅ Phase 3          |
+| Delete `core/pipeline_v2_wrapper.py`                                     | ✅ Phase 3          |
+| Port v1 safety machinery (policy/guardrails/MILV/reputation/rollback)    | ✅ Phase 3          |
+| Rewrite `pipeline/factory.py`                                            | ✅ Phase 3          |
+| Rewire `src/lattice/client.py`                                           | ✅ Phase 3          |
+| Drop `"pipeline_v2"` registry entry                                      | ✅ Phase 3          |
+| Delete `process()` on 10 IR-native transforms                            | ✅ Phase 3          |
+| Migrate `optimizer/*.py` constituents to `optimize()`                    | ✅ Phase 3          |
+| Simplify `ReversibleSyncTransform` Protocol                              | ✅ Phase 3          |
+| Broaden `pipeline/__init__.py` (currently a stub)                        | ✅ Phase 3          |
+| Update `tests/contract/test_python_api_contract.py` (drop CompressorPipeline) | ✅ Phase 3     |
 | Remove `--use-v2-pipeline` CLI flag                                      | Phase 11            |
-| Normalize `pipeline_v2` metric namespace → `pipeline`                    | Phase 3 (with delete) |
+| Normalize `pipeline_v2` metric namespace → `pipeline`                    | ✅ Phase 3          |
+| Canonical bench vs phase-0 baseline (±2%)                                  | Run on reviewer CI with `OLLAMA_CLOUD_API_KEY` |
 
 ---
 

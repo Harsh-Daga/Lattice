@@ -31,7 +31,8 @@ class TestOptimizerPipelineEndToEnd:
         names = [t.name for t in pipeline.transforms]
         assert "content_profiler" in names
         assert "runtime_contract" in names
-        assert "representation_optimizer" in names
+        assert "structure_optimizer" in names
+        assert "reference_optimizer" in names
 
         # Simple request with debug signal
         request = Request(
@@ -40,26 +41,16 @@ class TestOptimizerPipelineEndToEnd:
         )
         ctx = TransformContext()
 
-        import asyncio
-
-        async def run():
-            result = await pipeline.process(request, ctx)
-            assert is_ok(result)
-            modified = unwrap(result)
-
-            # content_profiler stores schedule in context.session_state
-            assert "_lattice_schedule" in ctx.session_state, (
-                f"Schedule not in session_state. Keys: {list(ctx.session_state.keys())}"
-            )
-            schedule = ctx.session_state["_lattice_schedule"]
-            assert "allowed_optimizers" in schedule
-            allowed = schedule["allowed_optimizers"]
-            assert isinstance(allowed, list)
-
-            # At minimum, baseline was selected
-            assert modified is not None
-
-        asyncio.run(run())
+        result = pipeline.compress(request, ctx)
+        assert is_ok(result)
+        modified = unwrap(result)
+        assert "_lattice_schedule" in ctx.session_state, (
+            f"Schedule not in session_state. Keys: {list(ctx.session_state.keys())}"
+        )
+        schedule = ctx.session_state["_lattice_schedule"]
+        assert "allowed_optimizers" in schedule
+        assert isinstance(schedule["allowed_optimizers"], list)
+        assert modified is not None
 
     def test_scheduler_decision_reaches_optimizers(self) -> None:
         """content_profiler writes _lattice_schedule; representation_optimizer reads it."""
@@ -132,22 +123,15 @@ class TestOptimizerPipelineEndToEnd:
         )
         ctx = TransformContext()
 
-        import asyncio
-
-        async def run():
-            result = await pipeline.process(request, ctx)
-            assert is_ok(result)
-            compressed = unwrap(result)
-            assert compressed is not None
-            response = Response(
-                role="assistant",
-                content="The error was in module <ref_1>",
-                model="gpt-4",
-            )
-            # Reverse through the pipeline (async)
-            restored = await pipeline.reverse(response, ctx)
-            assert restored is not None
-            # Response should still be a Response object
-            assert hasattr(restored, "content")
-
-        asyncio.run(run())
+        result = pipeline.compress(request, ctx)
+        assert is_ok(result)
+        compressed = unwrap(result)
+        assert compressed is not None
+        response = Response(
+            role="assistant",
+            content="The error was in module <ref_1>",
+            model="gpt-4",
+        )
+        restored = pipeline.reverse(response, ctx)
+        assert restored is not None
+        assert hasattr(restored, "content")

@@ -9,8 +9,6 @@ Verifies the full new flow:
 
 from __future__ import annotations
 
-import asyncio
-
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
@@ -128,8 +126,8 @@ class TestRefoundationEndToEnd:
         passed, reason = CandidateScorer.validate(c, quality_floor=0.85)
         assert passed is True
 
-    def test_legacy_pipeline_still_works(self) -> None:
-        """Old pipeline still functions (backward compat)."""
+    def test_compress_pipeline_works(self) -> None:
+        """Default pipeline compress entry runs end-to-end."""
         cfg = LatticeConfig(use_optimizer_pipeline=True)
         pipeline = build_default_pipeline(cfg)
 
@@ -138,14 +136,10 @@ class TestRefoundationEndToEnd:
             model="gpt-4",
         )
         ctx = TransformContext()
-
-        async def run():
-            result = await pipeline.process(request, ctx)
-            assert is_ok(result)
-            assert result.unwrap() is not None
-            return result
-
-        asyncio.run(run())
+        result = pipeline.compress(request, ctx)
+        assert is_ok(result)
+        assert result.unwrap() is not None
+        assert "content_profiler" in ctx.transforms_applied
 
     def test_end_to_end_v2_architecture(self) -> None:
         """Full integration: profiler -> planner -> pipeline_v2."""

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok
@@ -29,28 +27,19 @@ class TestV2ProxyPipeline:
         )
         ctx = TransformContext()
 
-        async def run() -> None:
-            # Forward: process through v2 pipeline
-            result = await runtime.pipeline.process(request, ctx)
-            assert is_ok(result)
-            compressed = result.unwrap()
-            assert compressed is not None
+        result = runtime.pipeline.compress(request, ctx)
+        assert is_ok(result)
+        compressed = result.unwrap()
+        assert compressed is not None
+        assert "content_profiler" in ctx.transforms_applied
+        assert "_lattice_execution_plan" in ctx.session_state or (
+            "_lattice_schedule" in ctx.session_state
+        )
 
-            # Verify v2 ran
-            assert "pipeline_v2" in ctx.transforms_applied
-
-            # Verify ExecutionPlan exists
-            assert "_lattice_execution_plan" in ctx.session_state or (
-                "_lattice_schedule" in ctx.session_state
-            )
-
-            # Reverse: restore references (await because CompressorPipeline.reverse is async)
-            response = Response(role="assistant", content="Hello!", model="gpt-4")
-            reversed_resp = await runtime.pipeline.reverse(response, ctx)
-            assert reversed_resp is not None
-            assert reversed_resp.content == "Hello!"
-
-        asyncio.run(run())
+        response = Response(role="assistant", content="Hello!", model="gpt-4")
+        reversed_resp = runtime.pipeline.reverse(response, ctx)
+        assert reversed_resp is not None
+        assert reversed_resp.content == "Hello!"
 
     def test_v2_pipeline_with_optimizer_transforms(self) -> None:
         """ExecutionPlan with optimizers triggers CandidateSearch beam."""
@@ -83,11 +72,7 @@ class TestV2ProxyPipeline:
         assert isinstance(plan, ExecutionPlan)
         assert plan.quality_floor >= 0.80
 
-        # Run full pipeline including pipeline_v2
-        async def run() -> None:
-            result = await pipeline.process(request, ctx)
-            assert is_ok(result)
-            assert result.unwrap() is not None
-            assert "pipeline_v2" in ctx.transforms_applied
-
-        asyncio.run(run())
+        result = pipeline.compress(request, ctx)
+        assert is_ok(result)
+        assert result.unwrap() is not None
+        assert "content_profiler" in ctx.transforms_applied

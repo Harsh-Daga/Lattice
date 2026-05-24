@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok
@@ -24,17 +22,13 @@ class TestV2TiersEndToEnd:
     """All 5 UnifiedPlanner tiers through the v2 pipeline."""
 
     def _run_pipeline(self, request: Request) -> tuple[Request, TransformContext]:
-        """Run v2 pipeline synchronously."""
+        """Run pipeline.compress through proxy bootstrap wiring."""
         cfg = LatticeConfig()
         runtime = build_proxy_runtime(cfg)
         ctx = TransformContext()
-
-        async def _run() -> tuple[Request, TransformContext]:
-            result = await runtime.pipeline.process(request, ctx)
-            assert is_ok(result)
-            return result.unwrap(), ctx
-
-        return asyncio.run(_run())
+        result = runtime.pipeline.compress(request, ctx)
+        assert is_ok(result)
+        return result.unwrap(), ctx
 
     def test_fast_tier_runs_profiler_contract_only(self) -> None:
         """FAST tier: minimal latency, no beam search."""
@@ -109,7 +103,7 @@ class TestV2TiersEndToEnd:
         request = Request(messages=[_req("Short prompt")], model="gpt-4")
         compressed, ctx = self._run_pipeline(request)
         assert compressed is not None
-        assert "pipeline_v2" in ctx.transforms_applied
+        assert "content_profiler" in ctx.transforms_applied
 
     def test_full_pipeline_reasoning_tier(self) -> None:
         """REASONING tier through full v2 proxy pipeline."""
@@ -120,7 +114,7 @@ class TestV2TiersEndToEnd:
         compressed, ctx = self._run_pipeline(request)
         assert compressed is not None
         # v2 pipeline should have been applied
-        assert "pipeline_v2" in ctx.transforms_applied
+        assert "content_profiler" in ctx.transforms_applied
         # ExecutionPlan should exist
         assert "_lattice_execution_plan" in ctx.session_state or (
             "_lattice_schedule" in ctx.session_state
