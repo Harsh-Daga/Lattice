@@ -32,7 +32,11 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 
 | Directory | Responsibility |
 |-----------|---------------|
-| `core/` | Leaf primitives only: `config`, `context`, `errors`, `result`, `segmentation`, `transform_registry`, session/store/metrics/telemetry (Phase 9 moves) |
+| `core/` | Leaf primitives only: `config`, `context`, `errors`, `result`, `segmentation` (6 files incl. `__init__.py`) |
+| `telemetry/` | `metrics`, `downgrade`, `agent_stats`, `cost_estimator`, `maintenance`, `streaming_sketches` |
+| `state/` | `session`, `store`, `segment_store` — sessions + cross-session segment dedup |
+| `cache/` | `semantic.py` — `SemanticCache` (in-memory + optional Redis) |
+| `safety/` | `risk_scoring.py` — semantic risk score + transform gating |
 | `ir/` | PromptIRV2, builder, primitives, native optimizer base, quality, validation |
 | `planner/` | **UnifiedPlanner** (sole scheduler), task classifier, execution plan builder, runtime state bridges |
 | `pipeline/` | `Pipeline`, safety gates, policy, guardrails, MILV, representation_optimizer (beam search) |
@@ -69,7 +73,7 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 
 ## Testing
 
-- Unit tests: `tests/unit/` — **1752 passed**, 196 skipped (Phase 11 full reorg pending)
+- Unit tests: `tests/unit/` — **1760 passed**, 196 skipped (Phase 11 full reorg pending)
 - Integrations unit tests: `tests/unit/integrations/` (tunnel, doctor, mutation_store, protocol)
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
@@ -97,12 +101,12 @@ uv run python benchmarks/evals/cli.py --suite all \
 
 Suites: `all`, `feature`, `feature-matrix`, `provider`, `protocol`, `transport`, `integration`, `capability`, `replay`, `replay-governance`, `tacc`, `control`.
 
-## Latest CI (Phase 4)
+## Latest CI (Phase 9)
 
 | Metric | Value |
 |--------|-------|
-| Tests passed | **1712/1712** executable (+ 196 skipped) |
-| Contract tests | **27/27** |
+| Tests passed | **1760** (+ 196 skipped) |
+| Contract tests | green (`tests/contract/`) |
 | ruff / format / mypy | **0 errors** |
 
-Canonical benchmark vs `phase-0-baseline.json` → `phase-4.json` (±2%): run on CI with `OLLAMA_CLOUD_API_KEY`.
+Canonical benchmark vs `phase-0-baseline.json` → `phase-9-observability.json` (±2%): operator-run with `OLLAMA_CLOUD_API_KEY`.

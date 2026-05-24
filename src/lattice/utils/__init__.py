@@ -1,29 +1,18 @@
-"""Utility modules for LATTICE."""
+"""Truly general utilities. Most former contents moved to their domain:
 
-from lattice.utils.streaming_sketches import (
-    BloomFilter,
-    CountMinSketch,
-    HyperLogLog,
-)
-from lattice.utils.token_count import TokenCounter
-from lattice.utils.validation import (
-    SafetyProfile,
-    has_code_blocks,
-    has_strict_instructions,
-    lossy_transform_allowed,
-    request_safety_profile,
-    structure_signature,
+patterns           → transforms/patterns
+validation         → safety/risk_scoring
+streaming_sketches → telemetry/streaming_sketches
+"""
+
+from lattice.utils.token_count import (
+    TokenCounter,
+    count_message_tokens,
+    count_tokens,
 )
 
 __all__ = [
     "TokenCounter",
-    "CountMinSketch",
-    "HyperLogLog",
-    "BloomFilter",
-    "SafetyProfile",
-    "has_code_blocks",
-    "has_strict_instructions",
-    "lossy_transform_allowed",
-    "request_safety_profile",
-    "structure_signature",
+    "count_tokens",
+    "count_message_tokens",
 ]

@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 
-from lattice.core.session import MemorySessionStore, SessionManager
 from lattice.providers.capabilities import (
     CacheMode,
     Capability,
@@ -15,6 +14,7 @@ from lattice.providers.capabilities import (
 )
 from lattice.providers.transport import DirectHTTPProvider
 from lattice.runtime.tier_classifier import TierClassifier
+from lattice.state.session import MemorySessionStore, SessionManager
 from lattice.transforms.batching import BatchedRequest, BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor
 from lattice.transport.types import Message, Request

@@ -21,7 +21,7 @@ from typing import Any
 import structlog
 
 from lattice.core.errors import SessionStoreError
-from lattice.core.session import Session
+from lattice.state.session import Session
 
 logger = structlog.get_logger()
 

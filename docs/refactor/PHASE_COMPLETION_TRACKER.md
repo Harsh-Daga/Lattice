@@ -1,9 +1,9 @@
-# Phase completion tracker (Phases 0–8)
+# Phase completion tracker (Phases 0–9)
 
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `main` @ merge PR #13 — **1756 passed**, contract green.
+**Last verified:** `refactor/phase-9-observability-state` — **1760 passed**, contract green.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -16,6 +16,7 @@
 | **6** | ✅ | Providers/adapters + transport split; see §6 below |
 | **7** | ✅ | Proxy health routes, header middleware, SDK surface; see §7 below |
 | **8** | ✅ | Integrations tunnel move, doctor, mutation store; see §8 below |
+| **9** | ✅ | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/`; see §9 below |
 
 ---
 
@@ -152,7 +153,30 @@ All import/layout criteria ✅. Benchmark lines excluded.
 
 ---
 
+## Phase 9 — `08-observability-state.md` §8
+
+| Criterion | Status |
+|-----------|--------|
+| `observability/` removed; `telemetry/` with `__init__.py` + 6 modules | ✅ |
+| `state/`: `session.py`, `store.py`, `segment_store.py` | ✅ |
+| `cache/semantic.py`; `safety/risk_scoring.py` | ✅ |
+| `core/` leaf only (6 files); `utils/` = `token_count` + `__init__` | ✅ |
+| `from lattice.telemetry import MetricsCollector, …` | ✅ |
+| `from lattice.state import Session, RedisSessionStore, SegmentStore, …` | ✅ |
+| `from lattice.cache import SemanticCache, ContentClass` | ✅ |
+| `from lattice.safety import SemanticRiskScore, compute_risk_score` | ✅ |
+| Top-level `from lattice import MetricsCollector, Session, SemanticCache, …` | ✅ |
+| `test_core_is_leaf.py`, `test_no_old_paths.py` | ✅ |
+| Contract tests extended (`test_new_top_level_exports`) | ✅ |
+| No old-path imports in `src/` (rg) | ✅ |
+| ruff / mypy / pytest / contract | ✅ |
+| `tests/integration/test_redis_store_integration.py` | ✅ (full suite) |
+| Benchmark `phase-9-observability.json` vs baseline ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) |
+
+---
+
 ## Remaining operator actions (not code)
 
 1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`); compare vs `phase-0-baseline.json` (±2%).
 2. Run Phase 7 benchmark → `phase-7-proxy.json` (same key); compare vs `phase-0-baseline.json` (±2%).
+3. Run Phase 9 benchmark → `phase-9-observability.json` (same key); `compare_benchmarks.py` vs `phase-0-baseline.json` (±2%).

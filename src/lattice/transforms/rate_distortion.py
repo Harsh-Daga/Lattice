@@ -14,8 +14,8 @@ from lattice.planner.runtime_state import (
     get_ir_metadata_value,
     thaw_value,
 )
+from lattice.safety.risk_scoring import lossy_transform_allowed
 from lattice.transport.types import Request, Response
-from lattice.utils.validation import lossy_transform_allowed
 
 _QUESTION_PATTERN = re.compile(r"\?")
 _NUMBER_PATTERN = re.compile(r"\b\d+(?:[.,]\d+)?\b")

@@ -258,7 +258,15 @@
       "LatticeProxyClient",
       "CompressResult",
       "wrap_openai_client",
-      "__version__"
+      "__version__",
+      "MetricsCollector",
+      "DowngradeCategory",
+      "Session",
+      "SessionManager",
+      "SegmentStore",
+      "SemanticCache",
+      "SemanticRiskScore",
+      "compute_risk_score"
     ],
     "today": {
       "from_lattice": [
@@ -270,7 +278,15 @@
         "PromptIR",
         "PromptIRV2",
         "build_ir",
-        "serialize_ir_to_text"
+        "serialize_ir_to_text",
+        "MetricsCollector",
+        "DowngradeCategory",
+        "Session",
+        "SessionManager",
+        "SegmentStore",
+        "SemanticCache",
+        "SemanticRiskScore",
+        "compute_risk_score"
       ],
       "from_lattice_client": [
         "LatticeClient",
@@ -328,6 +344,7 @@
     "wrap_openai_client is exported at lattice top-level; lattice.sdk also exposes wrap_openai and wrap_openai_client alias.",
     "Phase 6 (providers): all 17 adapters + DirectHTTPProvider/ProviderRegistry exportable from lattice.providers.",
     "Phase 7 (proxy/sdk/cli): top-level LatticeClient, LatticeProxyClient, CompressResult, wrap_openai_client shipped (06-proxy-sdk-cli.md).",
+    "Phase 9 (observability/state): MetricsCollector, Session, SemanticCache, compute_risk_score at lattice top-level; domain packages telemetry, state, cache, safety.",
     "Many additional x-lattice-* headers are emitted today (cost/runtime/cached-tokens/etc.); only the \u00a72.3 set is contract-required."
   ]
 }

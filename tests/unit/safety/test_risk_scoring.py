@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from benchmarks.framework.types import QualityMeasurement, TaskEquivalenceScore
 from lattice.core.config import LatticeConfig
-from lattice.transport.types import Message, Request
-from lattice.utils.validation import (
+from lattice.safety.risk_scoring import (
     SemanticRiskScore,
     TransformSafetyBucket,
     compute_risk_score,
     get_transform_safety_bucket,
     transform_allowed_at_risk,
 )
+from lattice.transport.types import Message, Request
 
 
 class TestTaskEquivalenceScoring:

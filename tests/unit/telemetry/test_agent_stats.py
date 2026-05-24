@@ -17,7 +17,7 @@ import asyncio
 
 import pytest
 
-from lattice.core.agent_stats import AgentStatsCollector, identify_agent
+from lattice.telemetry.agent_stats import AgentStatsCollector, identify_agent
 
 
 class TestIdentifyAgent:
@@ -50,7 +50,7 @@ class TestIdentifyAgent:
 class TestAgentStatsCollector:
     @pytest.fixture
     async def collector(self):
-        from lattice.core.metrics import MetricsCollector
+        from lattice.telemetry.metrics import MetricsCollector
 
         c = AgentStatsCollector(
             metrics=MetricsCollector(),

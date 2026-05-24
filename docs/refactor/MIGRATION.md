@@ -46,3 +46,42 @@ DeprecationWarning: lattice.sdk.client is deprecated; import from `lattice` or
 - `lattice doctor <agent>` uses per-integration `doctor()` (install / durable / transient lace / proxy `/healthz`).
 - `JsonFileIntegration.patch()` (via `wrap_agent` / durable patch paths) raises `AgentNotInstalledError` when the agent config file is missing (non–dry-run).
 - `lattice status` uses `mutation_store.list_all_active()` (durable init ∪ live transient lace).
+
+## Phase 9 — Observability, state, cache, safety (shipped on `refactor/phase-9-observability-state`)
+
+### Python imports
+
+| Old | New |
+|-----|-----|
+| `lattice.core.metrics.MetricsCollector` | `lattice.telemetry.MetricsCollector` |
+| `lattice.core.metrics.LatencyTracker` | `lattice.telemetry.LatencyTracker` |
+| `lattice.core.telemetry.DowngradeCategory` | `lattice.telemetry.DowngradeCategory` |
+| `lattice.core.telemetry.DowngradeTelemetry` | `lattice.telemetry.DowngradeTelemetry` |
+| `lattice.core.telemetry.TransportOutcome` | `lattice.telemetry.TransportOutcome` |
+| `lattice.core.agent_stats.AgentStatsCollector` | `lattice.telemetry.AgentStatsCollector` |
+| `lattice.core.cost_estimator.CostEstimator` | `lattice.telemetry.CostEstimator` |
+| `lattice.core.maintenance.MaintenanceCoordinator` | `lattice.telemetry.MaintenanceCoordinator` |
+| `lattice.utils.streaming_sketches.CountMinSketch` | `lattice.telemetry.CountMinSketch` |
+| `lattice.core.session.Session` | `lattice.state.Session` |
+| `lattice.core.session.SessionManager` | `lattice.state.SessionManager` |
+| `lattice.core.store.RedisSessionStore` | `lattice.state.RedisSessionStore` |
+| `lattice.core.semantic_cache.SemanticCache` | `lattice.cache.SemanticCache` |
+| `lattice.utils.validation.SemanticRiskScore` | `lattice.safety.SemanticRiskScore` |
+| `lattice.utils.validation.compute_risk_score` | `lattice.safety.compute_risk_score` |
+
+Note: `core.telemetry` module file is now `telemetry/downgrade.py` (package `telemetry`, module `downgrade`).
+
+### Top-level convenience imports (v1.0.0)
+
+```python
+from lattice import (
+    MetricsCollector,
+    DowngradeCategory,
+    Session,
+    SessionManager,
+    SegmentStore,
+    SemanticCache,
+    SemanticRiskScore,
+    compute_risk_score,
+)
+```

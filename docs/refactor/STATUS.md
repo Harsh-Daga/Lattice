@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after Phase 8 on `refactor/phase-8-integrations` (2026-05-24).
+> Last updated after Phase 9 on `refactor/phase-9-observability-state` (2026-05-24).
 > See **[PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md)** for line-by-line acceptance vs each phase doc.
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
@@ -27,8 +27,9 @@
 | **6**       | ✅ Done             | `4798bfb` — PR [#11](https://github.com/Harsh-Daga/Lattice/pull/11) merged | Adapters under `providers/adapters/`; `providers/transport/` package; unified `_stream`. Benchmark `phase-6.json` operator-run. |
 | **7**       | ✅ Done (merge PR #12) | `refactor/phase-7-proxy-sdk-cli` | HealthManager + middleware; top-level imports; sdk deprecation shim; doc/MIGRATION slice. |
 | **8**       | ✅ Done             | `refactor/phase-8-integrations` | Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. |
+| **9**       | ✅ Done             | `refactor/phase-9-observability-state` | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` (6 files); `utils/` → `token_count` only. |
 
-**Current totals.** 1752 passed, 196 skipped, contract green. **Next:** Phase 9 (observability / `08-observability-state.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** 1760 passed, 196 skipped, contract green. **Next:** Phase 10 (benchmarks / `09-benchmarks.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 
@@ -81,12 +82,21 @@ Canonical runtime chain:
 Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress/process → Provider
 ```
 
-**`src/lattice/core/`** (15 files) — leaf + observability until Phase 9:
+**`src/lattice/core/`** (6 files) — leaf primitives only:
 
 ```
-agent_stats, config, context, cost_estimator, errors, maintenance, metrics, result,
-segmentation, semantic_cache, session, store, telemetry
+__init__.py, config, context, errors, result, segmentation
 ```
+
+**`src/lattice/telemetry/`** — metrics, downgrade taxonomy, cost, agent stats, maintenance, sketches.
+
+**`src/lattice/state/`** — `session`, `store`, `segment_store`.
+
+**`src/lattice/cache/`** — `semantic.py` (`SemanticCache`).
+
+**`src/lattice/safety/`** — `risk_scoring.py` (was `utils/validation.py`).
+
+**`src/lattice/utils/`** — `token_count.py` only (+ `__init__.py`).
 
 **`src/lattice/transforms/`** (registry + reputation + patterns moved from `core/` / `utils/` in Phase 5):
 
@@ -145,8 +155,8 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 6         | 5         | Providers + Transport split                | ✅ Done     | PR #11           |
 | 7         | 6         | Proxy + SDK + CLI                          | ✅ Done     | branch `refactor/phase-7-proxy-sdk-cli` |
 | 8         | 7         | Integrations (tunnel, doctor, mutation store) | ✅ Done     | PR #13           |
-| 9         | 8         | Observability + State                      | ⏳ Next     | 1–2 days         |
-| 10        | 9         | Benchmarks                                 | ⏳ Pending  | 1 day            |
+| 9         | 8         | Observability + State                      | ✅ Done     | PR phase-9     |
+| 10        | 9         | Benchmarks                                 | ⏳ Next     | 1 day            |
 | 11        | 10        | Tests reorg                                | ⏳ Pending  | 1 day            |
 | 12        | 11        | Docs + Release                             | ⏳ Pending  | 1 day            |
 
@@ -380,8 +390,8 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 - **Phase 6 (Providers + Transport)** — ✅ Shipped on PR #11. Monolith `providers/transport.py` → `providers/transport/` package + `providers/adapters/`.
 - **Phase 7 (Proxy + SDK + CLI)** — ✅ Shipped on `refactor/phase-7-proxy-sdk-cli`. Health routes, `proxy/middleware.py`, top-level SDK exports, `sdk/client.py` deprecation shim.
 - **Phase 8 (Integrations)** — ✅ Shipped on PR #13. Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. (MCP module unchanged — out of scope for 07-integrations.md.)
-- **Phase 9 (Observability + State)** — `core/session.py`, `core/store.py`, metrics/telemetry modules → `state/`, `telemetry/`, `cache/`, `safety/`. **Next.** See `08-observability-state.md`.
-- **Phase 10 (Benchmarks)** — bench framework cleanup, drop dead scenarios, doc bench surface. ~1 day.
+- **Phase 9 (Observability + State)** — ✅ Shipped on `refactor/phase-9-observability-state`. `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/token_count`. See `08-observability-state.md`.
+- **Phase 10 (Benchmarks)** — **Next.** `09-benchmarks.md`: `lattice benchmark` wrapper, CLAIMS.md, v1.0.0 reference run. ~1 day.
 - **Phase 11 (Tests)** — reorg into `tests/unit/{ir,pipeline,transport,planner,...}/`; drop `--use-v2-pipeline` CLI flag (originally scoped here). ~1 day.
 - **Phase 12 (Docs + Release)** — README + CHANGELOG + MIGRATION.md + tag v1.0.0. ~1 day.
 

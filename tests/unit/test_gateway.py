@@ -9,7 +9,6 @@ from typing import Any
 import pytest
 
 from lattice.core.result import Ok
-from lattice.core.session import MemorySessionStore, SessionManager
 from lattice.gateway.compat import (
     HTTPCompatHandler,
     anthropic_passthrough,
@@ -23,6 +22,7 @@ from lattice.gateway.server import ClientConnectionInfo, LLMTPGateway
 from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType
 from lattice.protocol.resume import StreamManager
+from lattice.state.session import MemorySessionStore, SessionManager
 from lattice.transport.types import Response
 
 

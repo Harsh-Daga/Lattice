@@ -17,7 +17,7 @@ import asyncio
 
 import pytest
 
-from lattice.core.semantic_cache import (
+from lattice.cache.semantic import (
     CachedResponse,
     ContentClass,
     InMemoryCacheBackend,

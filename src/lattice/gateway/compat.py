@@ -15,12 +15,9 @@ from fastapi import status
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.responses import Response as StarletteResponse
 
-from lattice.core.agent_stats import identify_agent
+from lattice.cache.semantic import assemble_cached_response, compute_cache_key
 from lattice.core.context import TransformContext
-from lattice.core.cost_estimator import normalize_usage
 from lattice.core.result import is_err, unwrap
-from lattice.core.semantic_cache import assemble_cached_response, compute_cache_key
-from lattice.core.telemetry import TransportOutcome
 from lattice.gateway.server import LLMTPGateway
 from lattice.pipeline.factory import pipeline_summary
 from lattice.planner.runtime_state import (
@@ -32,6 +29,9 @@ from lattice.planner.runtime_state import (
 from lattice.protocol.manifest import manifest_summary
 from lattice.providers.capabilities import Capability, get_capability_registry
 from lattice.proxy.middleware import attach_routing_headers, stash_lattice_response_headers
+from lattice.telemetry.agent_stats import identify_agent
+from lattice.telemetry.cost_estimator import normalize_usage
+from lattice.telemetry.downgrade import TransportOutcome
 from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.transport.types import Message, Request, Response
 
@@ -1796,7 +1796,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     )
                     cache_savings_usd = cache_cost.total_cost_usd
                 if compressed_request.stream:
-                    from lattice.core.semantic_cache import generate_sse_chunks
+                    from lattice.cache.semantic import generate_sse_chunks
 
                     sse_chunks = generate_sse_chunks(
                         cached,

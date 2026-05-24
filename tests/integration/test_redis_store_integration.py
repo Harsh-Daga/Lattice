@@ -22,8 +22,8 @@ pytest.importorskip("fakeredis", reason="fakeredis not installed")
 
 import fakeredis.aioredis
 
-from lattice.core.session import Message, Session
-from lattice.core.store import RedisSessionStore
+from lattice.state.session import Message, Session
+from lattice.state.store import RedisSessionStore
 
 
 @pytest.fixture

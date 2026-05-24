@@ -30,7 +30,7 @@ After Phases 1–7, `core/` still holds ten files that don't belong there:
 
 Each move is mechanical (rename + import rewrites) but the *combination* is what makes the new dependency direction enforceable: `core/` shrinks to leaf primitives only.
 
-The `observability/` placeholder created earlier in the codebase is **renamed to `telemetry/`** in Phase 8 — `telemetry` better matches the contents (metrics, downgrade taxonomy, agent stats, cost, maintenance, sketches). If `observability/` is already a directory in the repo, `git mv` it.
+The `observability/` placeholder created earlier in the codebase is **renamed to `telemetry/`** in STATUS Phase 9 — `telemetry` better matches the contents (metrics, downgrade taxonomy, agent stats, cost, maintenance, sketches). If `observability/` is already a directory in the repo, `git mv` it.
 
 The semantic cache deserves its own top-level `cache/` domain because:
 1. It's 1014 LoC and growing.
@@ -596,25 +596,25 @@ rg "from lattice.utils.(validation|streaming_sketches)" src/ tests/ benchmarks/
 
 ## 8. Acceptance criteria
 
-- [ ] `src/lattice/observability/` directory does not exist (renamed or deleted).
-- [ ] `src/lattice/telemetry/` exists with `__init__.py` + 6 module files.
-- [ ] `src/lattice/state/` contains `__init__.py`, `session.py`, `store.py`, `segment_store.py`.
-- [ ] `src/lattice/cache/` exists with `__init__.py` + `semantic.py`.
-- [ ] `src/lattice/safety/` exists with `__init__.py` + `risk_scoring.py`.
-- [ ] `src/lattice/core/` contains exactly: `__init__.py`, `config.py`, `context.py`, `errors.py`, `result.py`, `segmentation.py`. (`tunnel_sidecar.py` moved to `integrations/tunnel.py` in STATUS Phase 8.)
-- [ ] `src/lattice/utils/` contains exactly: `__init__.py`, `token_count.py`.
-- [ ] `from lattice.telemetry import MetricsCollector, LatencyTracker, DowngradeCategory, DowngradeTelemetry, AgentStatsCollector, CostEstimator, MaintenanceCoordinator, CountMinSketch, HyperLogLog` works.
-- [ ] `from lattice.state import Session, SessionManager, SessionStore, MemorySessionStore, RedisSessionStore, SegmentStore` works.
-- [ ] `from lattice.cache import SemanticCache, ContentClass, CachedResponse, compute_cache_key` works.
-- [ ] `from lattice.safety import SemanticRiskScore, compute_risk_score` works.
-- [ ] `from lattice import MetricsCollector, Session, SessionManager, SegmentStore, SemanticCache, SemanticRiskScore` works (top-level re-exports).
-- [ ] `tests/unit/test_core_is_leaf.py` passes — core has no uphill imports.
-- [ ] `tests/unit/test_no_old_paths.py` passes — no production code uses any of the 50+ old import paths.
-- [ ] `tests/contract/test_python_api_contract.py` covers all new top-level names.
-- [ ] `uv run ruff check src/ tests/` clean.
-- [ ] `uv run mypy src/lattice/` clean.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `uv run pytest tests/contract/ -q` passes.
+- [x] `src/lattice/observability/` directory does not exist (renamed or deleted).
+- [x] `src/lattice/telemetry/` exists with `__init__.py` + 6 module files.
+- [x] `src/lattice/state/` contains `__init__.py`, `session.py`, `store.py`, `segment_store.py`.
+- [x] `src/lattice/cache/` exists with `__init__.py` + `semantic.py`.
+- [x] `src/lattice/safety/` exists with `__init__.py` + `risk_scoring.py`.
+- [x] `src/lattice/core/` contains exactly: `__init__.py`, `config.py`, `context.py`, `errors.py`, `result.py`, `segmentation.py`. (`tunnel_sidecar.py` moved to `integrations/tunnel.py` in STATUS Phase 8.)
+- [x] `src/lattice/utils/` contains exactly: `__init__.py`, `token_count.py`.
+- [x] `from lattice.telemetry import MetricsCollector, LatencyTracker, DowngradeCategory, DowngradeTelemetry, AgentStatsCollector, CostEstimator, MaintenanceCoordinator, CountMinSketch, HyperLogLog` works.
+- [x] `from lattice.state import Session, SessionManager, SessionStore, MemorySessionStore, RedisSessionStore, SegmentStore` works.
+- [x] `from lattice.cache import SemanticCache, ContentClass, CachedResponse, compute_cache_key` works.
+- [x] `from lattice.safety import SemanticRiskScore, compute_risk_score` works.
+- [x] `from lattice import MetricsCollector, Session, SessionManager, SegmentStore, SemanticCache, SemanticRiskScore` works (top-level re-exports).
+- [x] `tests/unit/test_core_is_leaf.py` passes — core has no uphill imports.
+- [x] `tests/unit/test_no_old_paths.py` passes — no production code uses any of the 50+ old import paths.
+- [x] `tests/contract/test_python_api_contract.py` covers all new top-level names.
+- [x] `uv run ruff check src/ tests/` clean.
+- [x] `uv run mypy src/lattice/` clean.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `uv run pytest tests/contract/ -q` passes.
 - [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-9-observability.json --tolerance-pct 2` exits 0.
 
 ---

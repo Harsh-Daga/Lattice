@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.config import LatticeConfig
-from lattice.core.semantic_cache import (
+from lattice.cache.semantic import (
     CachedResponse,
     ContentClass,
     RedisCacheBackend,
     SemanticCache,
     compute_cache_key,
 )
+from lattice.core.config import LatticeConfig
 from lattice.transport.types import Message, Request
 
 

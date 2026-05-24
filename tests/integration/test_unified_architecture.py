@@ -158,7 +158,7 @@ class TestTransportOptimizerLayer:
     """Layer 3 — delta, cache alignment, binary framing, multiplex, resume."""
 
     def test_delta_wire_decoder_exists(self) -> None:
-        from lattice.core.session import MemorySessionStore
+        from lattice.state.session import MemorySessionStore
         from lattice.transport.delta_wire import DeltaWireDecoder
 
         store = MemorySessionStore(ttl_seconds=3600, max_sessions=100)

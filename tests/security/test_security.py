@@ -11,10 +11,10 @@ import time
 
 import pytest
 
-from lattice.core.session import MemorySessionStore, Session, SessionManager
 from lattice.protocol.manifest import Manifest, build_manifest
 from lattice.protocol.resume import ResumeTokenManager, StreamManager
 from lattice.protocol.segments import build_system_segment
+from lattice.state.session import MemorySessionStore, Session, SessionManager
 
 # =============================================================================
 # Session fixation

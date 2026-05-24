@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.core.session import MemorySessionStore, Session, SessionManager
 from lattice.protocol.content import TextPart
+from lattice.state.session import MemorySessionStore, Session, SessionManager
 from lattice.transport.types import Message
 
 # =============================================================================

@@ -31,7 +31,7 @@ from typing import Any
 
 import structlog
 
-from lattice.core.cost_estimator import CostEstimator
+from lattice.telemetry.cost_estimator import CostEstimator
 
 logger = structlog.get_logger()
 

@@ -11,14 +11,8 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from lattice.core.agent_stats import AgentStatsCollector
+from lattice.cache.semantic import SemanticCache
 from lattice.core.config import LatticeConfig
-from lattice.core.cost_estimator import CostEstimator
-from lattice.core.metrics import get_metrics
-from lattice.core.semantic_cache import SemanticCache
-from lattice.core.session import MemorySessionStore, SessionManager
-from lattice.core.store import RedisSessionStore
-from lattice.core.telemetry import DowngradeTelemetry
 from lattice.gateway.compat import HTTPCompatHandler, serialize_messages
 from lattice.gateway.server import LLMTPGateway
 from lattice.pipeline.auto_continuation import AutoContinuation
@@ -29,6 +23,12 @@ from lattice.protocol.framing import BinaryFramer
 from lattice.protocol.resume import StreamManager
 from lattice.providers.credentials import CredentialResolver
 from lattice.providers.transport import DirectHTTPProvider
+from lattice.state.session import MemorySessionStore, SessionManager
+from lattice.state.store import RedisSessionStore
+from lattice.telemetry.agent_stats import AgentStatsCollector
+from lattice.telemetry.cost_estimator import CostEstimator
+from lattice.telemetry.downgrade import DowngradeTelemetry
+from lattice.telemetry.metrics import get_metrics
 from lattice.transforms.batching import BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform
 from lattice.transport.serialization import message_to_dict
@@ -257,7 +257,7 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
 
     cache_backend = None
     if config.semantic_cache_backend == "redis":
-        from lattice.core.semantic_cache import RedisCacheBackend
+        from lattice.cache.semantic import RedisCacheBackend
 
         cache_url = (
             config.semantic_cache_backend_url or config.redis_url or "redis://localhost:6379/0"

@@ -9,16 +9,16 @@ import pytest
 # Patch redis BEFORE importing our store
 pytest.importorskip("redis", reason="redis not installed")
 
-from lattice.core.session import Session
-from lattice.core.store import RedisSessionStore
+from lattice.state.session import Session
+from lattice.state.store import RedisSessionStore
 
 
 @pytest.fixture
 def mock_redis_client(monkeypatch):
     """Provide a mock redis client for tests."""
     client = AsyncMock()
-    monkeypatch.setattr("lattice.core.store.redis", MagicMock())
-    monkeypatch.setattr("lattice.core.store._REDIS_AVAILABLE", True)
+    monkeypatch.setattr("lattice.state.store.redis", MagicMock())
+    monkeypatch.setattr("lattice.state.store._REDIS_AVAILABLE", True)
     return client
 
 
@@ -131,7 +131,7 @@ class TestRedisStoreLifecycle:
         mock_redis_client.close = AsyncMock()
 
         # Patch redis.from_url to return our mock
-        import lattice.core.store as store_mod
+        import lattice.state.store as store_mod
 
         orig_redis = store_mod.redis
         store_mod.redis = MagicMock()

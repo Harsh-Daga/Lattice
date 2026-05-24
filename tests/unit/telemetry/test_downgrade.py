@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from lattice.core.telemetry import DowngradeCategory, DowngradeTelemetry, TransportOutcome
 from lattice.providers.transport.stall_detector import StreamStallDetector
+from lattice.telemetry.downgrade import DowngradeCategory, DowngradeTelemetry, TransportOutcome
 
 
 class TestDowngradeTelemetry:
@@ -235,8 +235,8 @@ class TestTransportOutcomeOverrideSemantics:
     """Phase 0: Explicit False overrides on legacy booleans."""
 
     def test_false_suppresses_speculative_when_canonical_is_hit(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
         from lattice.gateway.compat import build_routing_headers
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(speculative_status="hit")
         headers = build_routing_headers(
@@ -248,8 +248,8 @@ class TestTransportOutcomeOverrideSemantics:
         assert "x-lattice-speculative-status" not in headers
 
     def test_false_suppresses_batched_when_canonical_is_batched(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
         from lattice.gateway.compat import build_routing_headers
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(batching_status="batched")
         headers = build_routing_headers(
@@ -261,8 +261,8 @@ class TestTransportOutcomeOverrideSemantics:
         assert "x-lattice-batching" not in headers
 
     def test_false_suppresses_stream_resumed_when_canonical_is_true(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
         from lattice.gateway.compat import build_routing_headers
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(stream_resumed=True)
         headers = build_routing_headers(
@@ -273,8 +273,8 @@ class TestTransportOutcomeOverrideSemantics:
         assert "x-lattice-stream-resumed" not in headers
 
     def test_none_preserves_canonical_value(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
         from lattice.gateway.compat import build_routing_headers
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(
             speculative_status="hit",
@@ -293,8 +293,8 @@ class TestTransportOutcomeOverrideSemantics:
         assert headers["x-lattice-stream-resumed"] == "true"
 
     def test_true_overrides_canonical_speculative(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
         from lattice.gateway.compat import build_routing_headers
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(speculative_status="miss")
         headers = build_routing_headers(
@@ -309,8 +309,8 @@ class TestTransportOutcomeOverrideSemantics:
         assert headers["x-lattice-speculative-status"] == "miss"
 
     def test_stream_resume_fallback_reason_still_visible(self) -> None:
-        from lattice.core.telemetry import TransportOutcome
         from lattice.gateway.compat import build_routing_headers
+        from lattice.telemetry.downgrade import TransportOutcome
 
         outcome = TransportOutcome(
             stream_resumed=True,

@@ -176,6 +176,29 @@ def test_lattice_toplevel_target_imports() -> None:
     )
 
 
+def test_new_top_level_exports() -> None:
+    from lattice import (  # noqa: F401
+        DowngradeCategory,
+        MetricsCollector,
+        SegmentStore,
+        SemanticCache,
+        SemanticRiskScore,
+        Session,
+        SessionManager,
+        compute_risk_score,
+    )
+
+
+def test_new_domain_packages() -> None:
+    import lattice.cache
+    import lattice.safety
+    import lattice.state
+    import lattice.telemetry
+
+    for mod in (lattice.telemetry, lattice.state, lattice.cache, lattice.safety):
+        assert hasattr(mod, "__all__") and len(mod.__all__) > 0
+
+
 def test_lattice_sdk_client_deprecation() -> None:
     import sys
     import warnings

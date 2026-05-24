@@ -59,7 +59,7 @@ Design Decisions
 • The proxy is intentionally focused (~400 lines). Heavy logic lives in:
   • ``lattice.core.pipeline``        — compression / decompression
   • ``lattice.core.transport``       — Request / Response data model
-  • ``lattice.core.session``         — session management
+  • ``lattice.state.session``         — session management
   • ``lattice.protocol.manifest``    — canonical segments
   • ``lattice.protocol.cache_planner`` — provider cache optimization
   • ``lattice.providers.transport``  — DirectHTTPProvider + connection pools
@@ -173,7 +173,7 @@ def create_app(config: LatticeConfig | None = None) -> FastAPI:
     # Shared maintenance coordinator (created before lifecycle so the
     # background loop can be started/stopped alongside the app).
     # ------------------------------------------------------------------
-    from lattice.core.maintenance import MaintenanceCoordinator, MaintenanceResult
+    from lattice.telemetry.maintenance import MaintenanceCoordinator, MaintenanceResult
 
     maintenance = MaintenanceCoordinator(interval_seconds=60.0)
 
