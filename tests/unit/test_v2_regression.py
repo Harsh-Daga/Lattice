@@ -4,10 +4,29 @@ from __future__ import annotations
 
 import asyncio
 
-from lattice.core.scheduler import decide_schedule
-from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
+from lattice.planner.task_classifier import (
+    ExecutionTier,
+    TaskClass,
+    TaskClassification,
+    classify_task,
+)
+from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.transport.types import Message, Request
-from lattice.utils.validation import SemanticRiskScore
+
+
+def _plan_for_task(task: TaskClassification, **profile_kw: object) -> object:
+    request = Request(messages=[Message(role="user", content="test prompt")])
+    profile = SemanticProfile(
+        task_class=task.task_class,
+        task_label=task.preferred_strategy,
+        risk_total=int(profile_kw.get("risk_total", 0)),
+        context_length=int(profile_kw.get("context_length", 1000)),
+        has_tool_calls=bool(profile_kw.get("has_tool_calls", False)),
+        is_streaming=bool(profile_kw.get("is_streaming", False)),
+        is_conservative=task.is_conservative,
+        provider=str(profile_kw.get("provider", "generic")),
+    )
+    return UnifiedPlanner().plan(request, profile)
 
 
 class TestClassifierV2:
@@ -60,73 +79,45 @@ class TestClassifierV2:
         assert tc.requires_safe_mode is True
 
 
-class TestSchedulerV2:
-    """Phase 4: Tier-based scheduler with REASONING_DISABLED."""
+class TestUnifiedPlannerV2:
+    """UnifiedPlanner tier gating for reasoning/debugging workloads."""
 
     def test_reasoning_disables_lossy_transforms(self) -> None:
         task = TaskClassification(
             task_class=TaskClass.REASONING,
             execution_tier=ExecutionTier.REASONING,
         )
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["message_dedup", "rate_distortion", "tool_filter"],
-            task=task,
-            risk=risk,
-        )
-        assert "message_dedup" in decision.blocked_transforms
-        assert "rate_distortion" in decision.blocked_transforms
-        # tool_filter is SAFE/reversible, no longer blocked in REASONING matrix.
-        # It is ranked in _HIGH_VALUE_MATRIX for reasoning.
-        assert "tool_filter" in decision.allowed_transforms
+        plan = _plan_for_task(task)
+        assert "message_dedup" not in plan.transforms
+        assert "rate_distortion" not in plan.transforms
+        assert "tool_filter" in plan.transforms
 
     def test_reasoning_allows_reversible_conditionals(self) -> None:
         task = TaskClassification(
             task_class=TaskClass.REASONING,
             execution_tier=ExecutionTier.REASONING,
         )
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["reference_sub", "rate_distortion", "format_conversion"],
-            task=task,
-            risk=risk,
-        )
-        # reference_sub is SAFE/reversible and ranked for REASONING → allowed.
-        assert "reference_sub" in decision.allowed_transforms
-        # format_conversion is also allowed in reasoning tier (lossless structural)
-        assert "format_conversion" in decision.allowed_transforms
-        # rate_distortion is lossy and blocked in reasoning tier
-        assert "rate_distortion" in decision.blocked_transforms
+        plan = _plan_for_task(task)
+        assert "reference_sub" in plan.transforms
+        assert "format_conversion" in plan.transforms
+        assert "rate_distortion" not in plan.transforms
 
     def test_debugging_uses_reasoning_tier(self) -> None:
         task = TaskClassification(
             task_class=TaskClass.DEBUGGING,
             execution_tier=ExecutionTier.SIMPLE,
         )
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["message_dedup"],
-            task=task,
-            risk=risk,
-        )
-        # is_conservative overrides SIMPLE → REASONING, blocking message_dedup
-        assert "message_dedup" in decision.blocked_transforms
+        plan = _plan_for_task(task)
+        assert "message_dedup" not in plan.transforms
 
-    def test_reasoning_safe_only_allows_safe(self) -> None:
+    def test_high_risk_uses_safe_tier(self) -> None:
         task = TaskClassification(
+            task_class=TaskClass.REASONING,
             execution_tier=ExecutionTier.REASONING_SAFE,
         )
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["reference_sub", "output_cleanup", "tool_filter"],
-            task=task,
-            risk=risk,
-        )
-        # reference_sub: CONDITIONAL bucket, blocked on REASONING_SAFE tier.
-        assert "reference_sub" in decision.blocked_transforms
-        # output_cleanup: SAFE, ranked → allowed.
-        assert "output_cleanup" in decision.allowed_transforms
-        # tool_filter: SAFE (not blocked in matrix) → allowed on REASONING_SAFE.
+        plan = _plan_for_task(task, risk_total=70)
+        assert "rate_distortion" not in plan.transforms
+        assert "content_profiler" in plan.transforms
 
 
 class TestSIGContrastive:

@@ -26,11 +26,6 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Err, Ok, Result, is_err, is_ok, unwrap, unwrap_err
-from lattice.core.runtime_state import (
-    coerce_execution_plan,
-    get_canonical_request_value,
-    get_canonical_state_value,
-)
 from lattice.ir.primitives import Candidate, ExecutionPlan, PromptIRV2
 from lattice.ir.transform import (
     CandidateSearch,
@@ -40,6 +35,11 @@ from lattice.ir.transform import (
 from lattice.pipeline import gates as _gates
 from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.pipeline.policy import OptimizationPolicy, Reject, Skip
+from lattice.planner.runtime_state import (
+    coerce_execution_plan,
+    get_canonical_request_value,
+    get_canonical_state_value,
+)
 
 # Re-exports — keeps ``from lattice.pipeline.runner import ReversibleSyncTransform``
 # working for callers that prefer the runner module path.
@@ -102,15 +102,23 @@ class PipelineTransformRegistry:
         "rate_distortion": ("lattice.transforms.rate_distortion", "RateDistortionCompressor"),
         "path_prefix": ("lattice.transforms.path_prefix", "PathPrefixCompressor"),
         "tool_projection": ("lattice.transforms.tool_projection", "QueryAwareProjection"),
-        "reference_optimizer": ("lattice.optimizer.reference_optimizer", "ReferenceOptimizer"),
-        "structure_optimizer": ("lattice.optimizer.structure_optimizer", "StructureOptimizer"),
+        "reference_optimizer": (
+            "lattice.transforms.optimizers.reference_optimizer",
+            "ReferenceOptimizer",
+        ),
         "ir_structure_optimizer": (
-            "lattice.optimizer.ir_structure_optimizer",
+            "lattice.transforms.optimizers.ir_structure_optimizer",
             "IRStructureOptimizer",
         ),
-        "diagnostic_optimizer": ("lattice.optimizer.diagnostic_optimizer", "DiagnosticOptimizer"),
-        "context_optimizer": ("lattice.optimizer.context_optimizer", "ContextOptimizer"),
-        "tool_optimizer": ("lattice.optimizer.tool_optimizer", "ToolOptimizer"),
+        "diagnostic_optimizer": (
+            "lattice.transforms.optimizers.diagnostic_optimizer",
+            "DiagnosticOptimizer",
+        ),
+        "context_optimizer": (
+            "lattice.transforms.optimizers.context_optimizer",
+            "ContextOptimizer",
+        ),
+        "tool_optimizer": ("lattice.transforms.optimizers.tool_optimizer", "ToolOptimizer"),
         "output_cleanup": ("lattice.transforms.output_cleanup", "OutputCleanup"),
         "reference_sub": ("lattice.transforms.reference_sub", "ReferenceSubstitution"),
         "tool_filter": ("lattice.transforms.tool_filter", "ToolOutputFilter"),
@@ -621,8 +629,8 @@ class Pipeline:
                 and bool(task_data.get("task_class"))
             )
             if _gates.should_run_milv(tx_name, text_before, text_after, tokens_before, has_task):
-                from lattice.core.task_classifier import TaskClass, TaskClassification
                 from lattice.pipeline.milv import should_trigger_milv, validate_transform
+                from lattice.planner.task_classifier import TaskClass, TaskClassification
 
                 tc_str = (
                     task_data.get("task_class", "simple")

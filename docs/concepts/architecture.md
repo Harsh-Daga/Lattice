@@ -61,50 +61,67 @@
               └─────────────────────┘
 ```
 
-## Core Modules
+## Core Modules (v1.0.0 refactor — through Phase 4)
+
+Canonical compression path:
+
+```
+content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress → Provider
+```
 
 ### `lattice.core`
 
+Leaf primitives and observability (session/store/metrics move in Phase 9):
+
 | Module | Purpose |
 |--------|---------|
-| `transport.py` | Request, Response, Message data models |
-| `pipeline.py` | CompressorPipeline orchestrator, ReversibleSyncTransform base class |
-| `pipeline_factory.py` | Default pipeline construction with all transforms |
-| `session.py` | SessionManager, MemorySessionStore |
-| `store.py` | RedisSessionStore |
 | `config.py` | LatticeConfig with env var binding |
-| `telemetry.py` | TransportOutcome, DowngradeTelemetry |
-| `maintenance.py` | MaintenanceCoordinator with background loop |
-| `semantic_cache.py` | SemanticCache with hybrid exact/approximate matching |
-| `metrics.py` | MetricsCollector (Prometheus) |
+| `context.py` | TransformContext (mutable per-request scratchpad) |
 | `result.py` | Result[T,E] monad (Ok/Err) |
-| `serialization.py` | request_to_dict, message_to_dict, response_to_dict |
-| `delta_wire.py` | Delta encoding/decoding for session reuse |
-| `cost_estimator.py` | Per-provider cost estimation |
+| `errors.py` | Typed error hierarchy |
+| `segmentation.py` | Semantic segmenter |
+| `transform_registry.py` | TransformSpec metadata (→ `transforms/registry.py` in Phase 5) |
+| `session.py`, `store.py`, `metrics.py`, … | Session, cache, telemetry (Phase 9) |
 
-### `lattice.transforms`
+Transport types: `lattice.transport`. Pipeline: `lattice.pipeline`.
 
-18 transforms running in priority order. See [Transforms](transforms.md).
+### `lattice.planner`
+
+| Module | Purpose |
+|--------|---------|
+| `unified_planner.py` | Sole scheduler — `UnifiedPlanner.plan()` → `ExecutionPlan` |
+| `task_classifier.py` | Task class + execution tier heuristics |
+| `execution_builder.py` | `build_execution_plan()` for gateway/proxy |
+| `runtime_state.py` | Canonical plan/IR metadata bridges |
+
+### `lattice.pipeline`
+
+| Module | Purpose |
+|--------|---------|
+| `runner.py` | `Pipeline.compress()` / `process()` |
+| `gates.py` | Safety gates (policy, budget, PSG, compression limits) |
+| `representation_optimizer.py` | Beam search over `transforms/optimizers/` |
+| `factory.py` | `build_default_pipeline()` |
+
+### `lattice.transforms` + `transforms/optimizers`
+
+Registered transforms; orchestrators in `transforms/optimizers/` (Phase 4). See [Transforms](transforms.md).
+
+### `lattice.runtime`
+
+`tier_classifier.py` — workload complexity tiers. **Not a provider router.**
 
 ### `lattice.providers`
 
-Per-provider adapters. See [Providers](providers.md).
+Adapters, transport, `credentials.py`. See [Providers](providers.md).
 
 ### `lattice.protocol`
 
-Binary framing, cache planners, stream resume, dictionary codec. See [Protocol](protocol.md).
+Binary framing, cache planners, stream resume. See [Protocol](protocol.md).
 
-### `lattice.gateway`
+### `lattice.gateway` / `lattice.proxy` / `lattice.integrations`
 
-HTTP compatibility handlers: OpenAI, Anthropic, Responses API passthrough, routing headers.
-
-### `lattice.proxy`
-
-FastAPI app factory, lifecycle management, operational routes, agent routing.
-
-### `lattice.integrations`
-
-Agent config injection and routing for Claude Code, Cursor, Codex, OpenCode, Copilot.
+HTTP compatibility, FastAPI app, agent lace/unlace.
 
 ## Data Flow
 
@@ -114,7 +131,7 @@ Agent config injection and routing for Claude Code, Cursor, Codex, OpenCode, Cop
 1. Client POST /v1/chat/completions → Proxy
 2. Proxy deserializes OpenAI JSON → internal Request
 3. SessionManager looks up or creates session
-4. Transform pipeline processes Request (in priority order)
+4. `content_profiler` + `UnifiedPlanner` build `ExecutionPlan`; `Pipeline.compress()` runs transforms
 5. Semantic cache check (exact → approximate → miss)
 6. [cache miss] DirectHTTPProvider dispatches to provider adapter
 7. Provider adapter serializes Request → provider-native format
@@ -139,7 +156,7 @@ Same as above, but after step 6:
 
 ## Thread Safety
 
-- `CompressorPipeline.process()` is async-safe. Each request gets its own `TransformContext`.
+- `Pipeline.compress()` is sync; each request gets its own `TransformContext`.
 - `SessionManager` uses `asyncio.Lock` for safe concurrent access.
 - `SemanticCache` uses `asyncio.Lock` for fingerprint and index operations.
 - `StreamStallDetector` uses `threading.Lock` (thread-safe, not async).

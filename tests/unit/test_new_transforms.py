@@ -163,13 +163,13 @@ class TestSafetyGates:
 
 class TestTaskGating:
     def test_debugging_blocks_rate_distortion(self) -> None:
-        from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
+        from lattice.planner.unified_planner import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("debugging", {})
         assert matrix.get("rate_distortion") is False
 
     def test_reasoning_blocks_rate_distortion(self) -> None:
-        from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
+        from lattice.planner.unified_planner import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("reasoning", {})
         assert matrix.get("rate_distortion") is False

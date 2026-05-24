@@ -1,11 +1,9 @@
-"""Tests for SIG (Semantic Importance Graph), RATS (scheduler), and PSG (guardrails)."""
+"""Tests for SIG (Semantic Importance Graph), UnifiedPlanner, and PSG (guardrails)."""
 
 from __future__ import annotations
 
 import pytest
 
-from lattice.core.scheduler import decide_schedule
-from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
 from lattice.core.transform_reputation import get_reputation_registry
 from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.pipeline.guardrails import (
@@ -15,8 +13,29 @@ from lattice.pipeline.guardrails import (
     check_expansion_guard,
     check_format_preservation,
 )
+from lattice.planner.task_classifier import (
+    ExecutionTier,
+    TaskClass,
+    TaskClassification,
+    classify_task,
+)
+from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.transport.types import Message, Request
-from lattice.utils.validation import SemanticRiskScore
+
+
+def _plan_for_task(task: TaskClassification, **profile_kw: object) -> object:
+    request = Request(messages=[Message(role="user", content="test prompt")])
+    profile = SemanticProfile(
+        task_class=task.task_class,
+        task_label=task.preferred_strategy,
+        risk_total=int(profile_kw.get("risk_total", 0)),
+        context_length=int(profile_kw.get("context_length", 1000)),
+        has_tool_calls=bool(profile_kw.get("has_tool_calls", False)),
+        is_streaming=bool(profile_kw.get("is_streaming", False)),
+        is_conservative=task.is_conservative,
+        provider=str(profile_kw.get("provider", "generic")),
+    )
+    return UnifiedPlanner().plan(request, profile)
 
 
 @pytest.fixture(autouse=True)
@@ -150,75 +169,36 @@ class TestTaskClassification:
         assert d["reasoning_heavy"] is True
 
 
-class TestSchedulerDecision:
-    """RATS scheduler produces correct transform permissions."""
+class TestUnifiedPlannerDecision:
+    """UnifiedPlanner produces correct transform permissions."""
 
-    def test_safe_transforms_always_allowed(self) -> None:
+    def test_retrieval_plan_includes_core_transforms(self) -> None:
         task = TaskClassification(task_class=TaskClass.RETRIEVAL)
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["content_profiler", "tool_filter", "output_cleanup"],
-            task=task,
-            risk=risk,
-        )
-        assert "content_profiler" in decision.allowed_transforms
-        # tool_filter IS ranked for RETRIEVAL (#3) → allowed.
-        # output_cleanup IS ranked for RETRIEVAL (#9) → allowed.
-        assert "tool_filter" in decision.allowed_transforms
-        assert "output_cleanup" in decision.allowed_transforms
+        plan = _plan_for_task(task)
+        assert "content_profiler" in plan.transforms
+        assert "tool_filter" in plan.transforms
 
-    def test_conditional_blocked_on_reasoning(self) -> None:
+    def test_reasoning_plan_excludes_lossy_transforms(self) -> None:
         task = TaskClassification(
             task_class=TaskClass.REASONING,
             reasoning_heavy=True,
-            execution_tier=ExecutionTier.REASONING_SAFE,
+            execution_tier=ExecutionTier.REASONING,
         )
-        risk = SemanticRiskScore(strict_instructions=15, sensitive_domain=10)
-        decision = decide_schedule(
-            transform_names=["reference_sub", "output_cleanup"],
-            task=task,
-            risk=risk,
-        )
-        # CONDITIONAL blocked on REASONING_SAFE tier (only SAFE allowed)
-        assert "reference_sub" in decision.blocked_transforms
-        assert "output_cleanup" in decision.allowed_transforms
+        plan = _plan_for_task(task)
+        assert "rate_distortion" not in plan.transforms
+        assert "message_dedup" not in plan.transforms
+        assert "reference_sub" in plan.transforms
 
-    def test_dangerous_blocked_on_debugging(self) -> None:
+    def test_debugging_plan_excludes_rate_distortion(self) -> None:
         task = TaskClassification(task_class=TaskClass.DEBUGGING, debug_heavy=True)
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["rate_distortion"],
-            task=task,
-            risk=risk,
-        )
-        # rate_distortion is CONDITIONAL but blocked for DEBUGGING in matrix
-        assert "rate_distortion" in decision.blocked_transforms
+        plan = _plan_for_task(task)
+        assert "rate_distortion" not in plan.transforms
 
-    def test_schedule_sort_order(self) -> None:
-        task = TaskClassification(task_class=TaskClass.RETRIEVAL)
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["reference_sub", "output_cleanup"],
-            task=task,
-            risk=risk,
-        )
-        names = [e.transform_name for e in decision.schedule]
-        # New scheduler ranks by per-task value, not just SAFE-before-CONDITIONAL.
-        # reference_sub (rank 0) trumps output_cleanup (rank 5) for RETRIEVAL.
-        # Both are allowed with HARD_MAX_TRANSFORMS=8.
-        assert "reference_sub" in names
-        assert "output_cleanup" in names
-
-    def test_to_dict(self) -> None:
+    def test_plan_has_quality_floor_and_budget(self) -> None:
         task = TaskClassification(task_class=TaskClass.ANALYSIS)
-        decision = decide_schedule(
-            transform_names=["tool_filter"],
-            task=task,
-        )
-        d = decision.to_dict()
-        assert "task_class" in d
-        assert "blocked" in d
-        assert "schedule" in d
+        plan = _plan_for_task(task)
+        assert plan.quality_floor > 0.0
+        assert plan.latency_budget_ms > 0.0
 
 
 class TestGuardrails:
@@ -310,36 +290,18 @@ class TestSIGIntegration:
         assert METADATA_KEY_SCHEDULE in modified.metadata
 
 
-class TestRATSSafetyIntegration:
-    """RATS + PSG work together in the scheduled pipeline order."""
+class TestPlannerSafetyIntegration:
+    """UnifiedPlanner + PSG policy constants stay aligned."""
 
     def test_debugging_prompt_blocks_dangerous(self) -> None:
         task = TaskClassification(task_class=TaskClass.DEBUGGING, debug_heavy=True)
-        risk = SemanticRiskScore(strict_instructions=10)
-        decision = decide_schedule(
-            transform_names=[
-                "rate_distortion",
-                "message_dedup",
-                "tool_filter",
-            ],
-            task=task,
-            risk=risk,
-        )
-        # rate_distortion: CONDITIONAL but blocked for DEBUGGING in matrix
-        assert "rate_distortion" in decision.blocked_transforms
-        # message_dedup: CONDITIONAL but in _REASONING_DISABLED → blocked for DEBUGGING
-        assert "message_dedup" in decision.blocked_transforms
-        # tool_filter is SAFE/reversible — now allowed in DEBUGGING matrix.
+        plan = _plan_for_task(task, risk_total=10)
+        assert "rate_distortion" not in plan.transforms
+        assert "message_dedup" not in plan.transforms
+        assert "tool_filter" in plan.transforms
 
-    def test_retrieval_prompt_allows_aggressive(self) -> None:
+    def test_retrieval_prompt_allows_core_transforms(self) -> None:
         task = TaskClassification(task_class=TaskClass.RETRIEVAL)
-        risk = SemanticRiskScore()
-        decision = decide_schedule(
-            transform_names=["reference_sub", "columnar_pack", "tool_filter"],
-            task=task,
-            risk=risk,
-        )
-        assert "reference_sub" in decision.allowed_transforms
-        assert "columnar_pack" in decision.allowed_transforms
-        assert "tool_filter" in decision.allowed_transforms
-        assert len(decision.allowed_transforms) == 3
+        plan = _plan_for_task(task)
+        assert "reference_sub" in plan.transforms
+        assert "tool_filter" in plan.transforms

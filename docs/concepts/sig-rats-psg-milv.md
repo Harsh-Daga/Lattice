@@ -12,9 +12,8 @@ LATTICE's safety layer consists of four cooperating subsystems with clear contra
                     └──────┬──────┘
                            │ protected spans, risk score, task signals
                     ┌──────▼──────┐
-                    │  RATS       │ → What MAY run on this request?
-                    │(task-aware  │   Task class, transform gating,
-                    │ scheduler)  │   budget, execution order
+                    │ UnifiedPlanner │ → What MAY run on this request?
+                    │ (+ task class) │   ExecutionPlan, budget, quality floor
                     └──────┬──────┘
                            │ schedule (allowed/blocked), task class
                     ┌──────▼──────┐
@@ -34,7 +33,7 @@ LATTICE's safety layer consists of four cooperating subsystems with clear contra
 
 **Question**: What content matters in this request?
 
-**Files**: `src/lattice/core/semantic_graph.py`, `src/lattice/transforms/content_profiler.py`
+**Files**: `src/lattice/ir/semantic_graph.py`, `src/lattice/transforms/content_profiler.py`
 
 SIG segments the request into spans and computes importance scores:
 
@@ -73,11 +72,13 @@ Spans with importance ≥ 40.0 are marked protected. Reasoning signals always pr
 
 ---
 
-## RATS — Runtime-Aware Transform Scheduler
+## Planning — UnifiedPlanner (formerly RATS)
 
 **Question**: What transforms may run, and in what order?
 
-**Files**: `src/lattice/core/task_classifier.py`, `src/lattice/core/scheduler.py`
+**Files**: `src/lattice/planner/task_classifier.py`, `src/lattice/planner/unified_planner.py`, `src/lattice/planner/execution_builder.py`
+
+> **Phase 4 note.** The legacy reactive schedulers (`core/scheduler.py`, `core/optimizer_scheduler.py`) are deleted. `UnifiedPlanner.plan()` is the **only** scheduling entry point. Task classification still feeds the planner via `SemanticProfile`.
 
 ### Task Classification
 
@@ -102,15 +103,16 @@ DANGEROUS:    Allowed at LOW risk only. Blocked on conservative tasks + HIGH ris
 UNKNOWN:      Treated as DANGEROUS — must be explicitly registered.
 ```
 
-### Scheduler Decision
+### Planner output
 
-The scheduler produces a `SchedulerDecision` with:
-- `allowed_transforms`: what can run
-- `blocked_transforms`: what must not run
-- `protected_span_count`: number of protected spans from SIG
-- `budget_ms`: runtime budget from task classification
+`UnifiedPlanner.plan()` produces an `ExecutionPlan` with:
+- `transforms`: ordered transform names to execute
+- `quality_floor`: minimum acceptable quality for this request
+- `latency_budget_ms`: runtime budget
 
-**Metadata key**: `_lattice_schedule`
+`content_profiler` also projects optimizer-level metadata into `_lattice_optimizer_schedule` (dict) for `representation_optimizer`.
+
+**Metadata keys**: `_lattice_execution_plan`, `_lattice_schedule`, `_lattice_optimizer_schedule`
 
 ---
 
@@ -118,7 +120,7 @@ The scheduler produces a `SchedulerDecision` with:
 
 **Question**: What must never happen?
 
-**Files**: `src/lattice/core/guardrails.py`, `src/lattice/core/pipeline.py`
+**Files**: `src/lattice/pipeline/guardrails.py`, `src/lattice/pipeline/gates.py`, `src/lattice/pipeline/runner.py`
 
 PSG runs after each irreversible transform and enforces hard safety constraints:
 
@@ -127,7 +129,7 @@ PSG runs after each irreversible transform and enforces hard safety constraints:
 | Guard | When | Action on Failure |
 |-------|------|-------------------|
 | **Risk gate** | Before execution | Skip transform |
-| **Scheduler gate** | Before execution | Skip blocked transforms |
+| **Plan gate** | Before execution | Skip transforms not in `ExecutionPlan` |
 | **Protected-span veto** | Before execution (DANGEROUS only) | Skip transform |
 | **Expansion guard** | After execution | Rollback if ratio > max |
 | **Entity preservation** | After execution (irreversible only) | Rollback |
@@ -157,7 +159,7 @@ Reversible transforms (`reference_sub`) store referent mappings and restore them
 
 **Question**: Does the optimized request still produce the correct answer?
 
-**Files**: `src/lattice/core/guardrails.py`, `benchmarks/evals/runner.py`, `src/lattice/gateway/compat.py`
+**Files**: `src/lattice/pipeline/guardrails.py`, `src/lattice/pipeline/milv.py`, `benchmarks/evals/runner.py`, `src/lattice/gateway/compat.py`
 
 ### Benchmark Path
 
@@ -196,15 +198,13 @@ Lightweight post-response validation:
 
 ```
 Request → SIG (content_profiler)
-       → RATS (task classification + scheduler)
-       → Pipeline:
-           for each transform:
-             risk gate   → skip unsafe transforms
-             scheduler   → skip blocked transforms
-             span veto   → skip DANGEROUS on protected content
-             execute     → run transform
-             expansion   → rollback if token explosion
-             PSG check   → rollback on entity/format loss (irreversible only)
+       → UnifiedPlanner (task classification + ExecutionPlan)
+       → Pipeline.compress:
+           for each transform in plan:
+             policy / budget / risk gates → skip if blocked
+             protected-span veto   → skip DANGEROUS on protected content
+             execute               → run transform (IR-native optimize path)
+             expansion / PSG checks → rollback on failure
        → Provider call
        → MILV check   → blank output? rollback
        → Response

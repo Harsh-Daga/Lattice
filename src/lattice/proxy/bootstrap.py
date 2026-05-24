@@ -14,9 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from lattice.core.agent_stats import AgentStatsCollector
 from lattice.core.config import LatticeConfig
 from lattice.core.cost_estimator import CostEstimator
-from lattice.core.credentials import CredentialResolver
 from lattice.core.metrics import get_metrics
-from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.semantic_cache import SemanticCache
 from lattice.core.session import MemorySessionStore, SessionManager
 from lattice.core.store import RedisSessionStore
@@ -26,8 +24,10 @@ from lattice.gateway.server import LLMTPGateway
 from lattice.pipeline.auto_continuation import AutoContinuation
 from lattice.pipeline.factory import build_default_pipeline
 from lattice.pipeline.runner import Pipeline
+from lattice.planner.runtime_state import get_canonical_request_value
 from lattice.protocol.framing import BinaryFramer
 from lattice.protocol.resume import StreamManager
+from lattice.providers.credentials import CredentialResolver
 from lattice.providers.transport import DirectHTTPProvider
 from lattice.transforms.batching import BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform

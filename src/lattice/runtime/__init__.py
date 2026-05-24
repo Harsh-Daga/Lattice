@@ -1,9 +1,10 @@
-"""LATTICE runtime plane: routing, batching, speculation, telemetry."""
+"""Runtime workload-tier classification.
 
-from lattice.runtime.router import RoutingDecision, RuntimeRouter, Tier
+NOT a provider router — provider selection is external to LATTICE.
+This module classifies workload complexity (SIMPLE/MEDIUM/COMPLEX/REASONING)
+for setting optimisation budgets.
+"""
 
-__all__ = [
-    "RoutingDecision",
-    "RuntimeRouter",
-    "Tier",
-]
+from lattice.runtime.tier_classifier import Tier, TierClassifier, TierDecision
+
+__all__ = ["Tier", "TierClassifier", "TierDecision"]

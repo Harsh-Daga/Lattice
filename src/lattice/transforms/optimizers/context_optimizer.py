@@ -1,10 +1,9 @@
-"""StructureOptimizer — merged json_shape, format_conversion, columnar_pack.
+"""ContextOptimizer — merged context_selector, information_theoretic_selector, rate_distortion, extractive_compress.
 
 Phase 3 — Collapse overlapping transforms.
 
-Purpose: JSON / table / log / CSV / markdown structure compaction.
-Runs constituent transforms, scores candidates, applies the best one.
-Implements hard rollback: rejects candidates with negative savings or quality loss.
+Purpose: long-context selection and compression.
+WARNING: All constituent transforms are LOSSY. Gated tightly.
 """
 
 from __future__ import annotations
@@ -16,26 +15,30 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Ok, Result, is_ok, unwrap
-from lattice.core.runtime_state import get_ir_metadata_value, thaw_value
-from lattice.optimizer._dispatch import run_constituent
 from lattice.pipeline.base import ReversibleSyncTransform
+from lattice.planner.runtime_state import (
+    get_canonical_state_value,
+    get_ir_metadata_value,
+    thaw_value,
+)
+from lattice.transforms.optimizers._dispatch import run_constituent
 from lattice.transport.types import Request, Response
 
-# Import constituent transforms (may fail gracefully)
+# Import constituent transforms
 try:
-    from lattice.transforms.json_shape import JSONShapeFactor
+    from lattice.transforms.context_selector import SubmodularContextSelector
 except Exception:
-    JSONShapeFactor = None  # type: ignore[misc,assignment]
+    SubmodularContextSelector = None  # type: ignore[misc,assignment]
 
 try:
-    from lattice.transforms.format_conv import FormatConverter
+    from lattice.transforms.rate_distortion import RateDistortionCompressor
 except Exception:
-    FormatConverter = None  # type: ignore[misc,assignment]
+    RateDistortionCompressor = None  # type: ignore[misc,assignment]
 
 try:
-    from lattice.transforms.columnar_pack import ColumnarTablePack
+    from lattice.transforms.extractive_compress import ExtractiveCompressor
 except Exception:
-    ColumnarTablePack = None  # type: ignore[misc,assignment]
+    ExtractiveCompressor = None  # type: ignore[misc,assignment]
 
 
 @dataclasses.dataclass(slots=True)
@@ -46,40 +49,59 @@ class _Candidate:
     tokens_after: int
     transforms_used: list[str]
     quality_estimate: float = 1.0
-    cache_gain: float = 0.0
-    transport_gain: float = 0.0
     semantic_risk: float = 0.0
-    rollback_reason: str | None = None
 
     @property
     def score(self) -> float:
         savings = max(0, self.tokens_before - self.tokens_after)
         return (
             self.quality_estimate
-            + self.cache_gain
-            + self.transport_gain
-            - (self.tokens_after / 1000.0)
+            + (savings / 50.0)
             - (self.latency_ms / 100.0)
             - self.semantic_risk
-            + (savings / 100.0)
         )
 
 
-class StructureOptimizer(ReversibleSyncTransform):
-    """Unified structure compaction optimizer."""
+class ContextOptimizer(ReversibleSyncTransform):
+    """Unified long-context selection and compression optimizer.
 
-    name = "structure_optimizer"
-    priority = 20
-    transform_class = ReversibleSyncTransform.transform_class  # LOSSLESS_SAFE
+    This optimizer is LOSSY and only runs when:
+    - Context is long (>4000 tokens)
+    - Task class permits lossy transforms
+    - Risk level is LOW or MEDIUM
+    - User has not explicitly disabled lossy compression
+    """
+
+    name = "context_optimizer"
+    priority = 22
+    transform_class = (
+        ReversibleSyncTransform.transform_class
+    )  # LOSSLESS_SAFE at optimizer level, but constituents are LOSSY
 
     def __init__(self) -> None:
         self._constituents: list[tuple[str, Any]] = []
-        if JSONShapeFactor is not None:
-            self._constituents.append(("json_shape", JSONShapeFactor()))
-        if FormatConverter is not None:
-            self._constituents.append(("format_conversion", FormatConverter()))
-        if ColumnarTablePack is not None:
-            self._constituents.append(("columnar_pack", ColumnarTablePack()))
+        if SubmodularContextSelector is not None:
+            self._constituents.append(("context_selector", SubmodularContextSelector()))
+        if RateDistortionCompressor is not None:
+            self._constituents.append(("rate_distortion", RateDistortionCompressor()))
+        if ExtractiveCompressor is not None:
+            self._constituents.append(("extractive_compress", ExtractiveCompressor()))
+
+    def can_process(self, request: Request, context: TransformContext) -> bool:
+        # Only run if context is long enough to benefit
+        if request.token_estimate < 4000:
+            return False
+        # Check task classification
+        tc = thaw_value(get_ir_metadata_value(context, "_lattice_task_classification", {}))
+        if not tc:
+            tc = get_canonical_state_value(context, "_lattice_task_classification", {})
+        if isinstance(tc, dict):
+            task_class = tc.get("task_class", "")
+            if task_class in ("reasoning", "debugging"):
+                return False
+            if tc.get("is_conservative", False):
+                return False
+        return True
 
     def process(
         self, request: Request, context: TransformContext
@@ -90,7 +112,7 @@ class StructureOptimizer(ReversibleSyncTransform):
 
         candidates: list[_Candidate] = []
 
-        # 1. Run each constituent transform independently as a candidate
+        # Run each constituent independently
         for t_name, t_instance in self._constituents:
             if not getattr(t_instance, "enabled", True):
                 continue
@@ -108,21 +130,24 @@ class StructureOptimizer(ReversibleSyncTransform):
                     tokens_before=original_tokens,
                     tokens_after=candidate_req.token_estimate,
                     transforms_used=[t_name],
+                    semantic_risk=0.2
+                    if t_name in ("rate_distortion", "extractive_compress")
+                    else 0.1,
                 )
                 if _validate_candidate(candidate, quality_floor, context, t_name):
                     candidates.append(candidate)
             else:
-                # Record failure
                 context.record_metric(t_name, "optimizer_skipped", True)
 
-        # 2. Run combinations: format + columnar / json shape pairings
-        # Only combine when both individual candidates were valid
-        if len(candidates) >= 2:
-            combo = self._try_combo(original, context, candidates, quality_floor)
+        # Try context_selector + extractive_compress combo
+        cs_cand = next((c for c in candidates if "context_selector" in c.transforms_used), None)
+        ec_cand = next((c for c in candidates if "extractive_compress" in c.transforms_used), None)
+        if cs_cand and ec_cand:
+            combo = self._try_combo(original, context, [cs_cand, ec_cand], quality_floor)
             if combo:
                 candidates.append(combo)
 
-        # 3. Always include "original" as baseline
+        # Baseline
         baseline = _Candidate(
             request=original,
             latency_ms=0.0,
@@ -133,17 +158,16 @@ class StructureOptimizer(ReversibleSyncTransform):
         )
         candidates.append(baseline)
 
-        # 4. Select best candidate
         if not candidates:
             return Ok(original)
         best = max(candidates, key=lambda c: c.score)
 
         if best.transforms_used:
-            # Save constituent transforms used for reverse
             context.session_state[self.name] = {
                 "transforms_used": best.transforms_used,
                 "tokens_before": best.tokens_before,
                 "tokens_after": best.tokens_after,
+                "lossy": True,
             }
             for t_name in best.transforms_used:
                 context.mark_transform_applied(t_name)
@@ -158,9 +182,9 @@ class StructureOptimizer(ReversibleSyncTransform):
         return Ok(original)
 
     def reverse(self, response: Response, context: TransformContext) -> Response:
+        # Lossy transforms generally have no reverse or a best-effort one
         state = context.session_state.get(self.name, {})
         transforms_used = state.get("transforms_used", [])
-        # Reverse in opposite order
         for t_name in reversed(transforms_used):
             for name, instance in self._constituents:
                 if name == t_name:
@@ -175,15 +199,10 @@ class StructureOptimizer(ReversibleSyncTransform):
         candidates: list[_Candidate],
         quality_floor: float,
     ) -> _Candidate | None:
-        """Try combining the top-2 candidates sequentially."""
-        top2 = sorted(candidates, key=lambda c: c.score, reverse=True)[:2]
-        if len(top2) < 2:
-            return None
-
         working = original.copy()
         transforms_used: list[str] = []
         start = time.perf_counter()
-        for cand in top2:
+        for cand in candidates:
             for t_name, t_inst in self._constituents:
                 if t_name in cand.transforms_used:
                     result = run_constituent(t_name, t_inst, working, context)
@@ -193,15 +212,15 @@ class StructureOptimizer(ReversibleSyncTransform):
                     else:
                         return None
         elapsed_ms = (time.perf_counter() - start) * 1000.0
-
         combo = _Candidate(
             request=working,
             latency_ms=elapsed_ms,
             tokens_before=original.token_estimate,
             tokens_after=working.token_estimate,
             transforms_used=transforms_used,
+            semantic_risk=0.3,
         )
-        if _validate_candidate(combo, quality_floor, context, "combo"):
+        if _validate_candidate(combo, quality_floor, context, "ctx_combo"):
             return combo
         return None
 
@@ -226,36 +245,26 @@ def _validate_candidate(
     context: TransformContext,
     label: str,
 ) -> bool:
-    """Hard rollback validation: reject bad candidates.
-
-    Phase 7 — hard rollback everywhere.
-    """
     tokens_before = candidate.tokens_before
     tokens_after = candidate.tokens_after
 
-    # Reject if tokens increased with no transport/cache gain
     if tokens_after >= tokens_before:
-        if candidate.cache_gain <= 0 and candidate.transport_gain <= 0:
-            context.record_metric(label, "rejected_expansion", True)
-            context.record_metric(label, "rejected_reason", "tokens_after >= tokens_before")
-            return False
-
-    # Reject if quality below floor
-    if candidate.quality_estimate < quality_floor:
-        context.record_metric(label, "rejected_quality", True)
-        context.record_metric(
-            label,
-            "rejected_reason",
-            f"quality {candidate.quality_estimate} < floor {quality_floor}",
-        )
+        context.record_metric(label, "rejected_expansion", True)
         return False
 
-    # Reject if compression is excessive (>50%)
+    if candidate.quality_estimate < quality_floor:
+        context.record_metric(label, "rejected_quality", True)
+        return False
+
     if tokens_before > 0:
         compression = (tokens_before - tokens_after) / tokens_before
         if compression > 0.90:
             context.record_metric(label, "rejected_compression", True)
-            context.record_metric(label, "rejected_reason", f"compression {compression:.2f} > 0.90")
             return False
+
+    # Extra strict for lossy: quality must be high
+    if candidate.semantic_risk > 0.3 and candidate.quality_estimate < 0.92:
+        context.record_metric(label, "rejected_risk_quality", True)
+        return False
 
     return True

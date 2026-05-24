@@ -23,7 +23,7 @@ import re
 from typing import Any
 
 from lattice.core.context import TransformContext
-from lattice.core.runtime_state import (
+from lattice.planner.runtime_state import (
     get_canonical_state_value,
     get_ir_metadata_value,
     thaw_value,

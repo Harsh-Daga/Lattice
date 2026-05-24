@@ -43,8 +43,8 @@ class TestV2ProxyPipeline:
 
     def test_v2_pipeline_with_optimizer_transforms(self) -> None:
         """ExecutionPlan with optimizers triggers CandidateSearch beam."""
-        from lattice.core.unified_planner import UnifiedPlanner, profile_from_legacy
         from lattice.ir.primitives import ExecutionPlan
+        from lattice.planner.unified_planner import UnifiedPlanner, profile_from_legacy
 
         cfg = LatticeConfig()
         pipeline = build_default_pipeline(cfg)

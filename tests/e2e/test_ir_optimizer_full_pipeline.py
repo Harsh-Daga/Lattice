@@ -32,7 +32,11 @@ class TestIRFullPipeline:
 
         sched = ctx.session_state.get("_lattice_optimizer_schedule")
         assert sched is not None, "Schedule not created"
-        allowed = getattr(sched, "allowed_optimizers", [])
+        allowed = (
+            sched.get("allowed_optimizers", [])
+            if isinstance(sched, dict)
+            else getattr(sched, "allowed_optimizers", [])
+        )
         assert "ir_structure_optimizer" in allowed, (
             f"ir_structure_optimizer not in allowed: {allowed}"
         )

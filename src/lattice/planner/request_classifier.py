@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lattice.core.task_classifier import TaskClass, classify_task
+from lattice.planner.task_classifier import TaskClass, classify_task
 from lattice.transport.types import Request
 from lattice.utils.validation import SemanticRiskScore
 

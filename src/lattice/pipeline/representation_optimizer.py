@@ -30,15 +30,15 @@ from typing import Any
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
 from lattice.core.result import Ok, Result, is_ok
-from lattice.core.runtime_state import get_canonical_state_value, thaw_value
 from lattice.ir.primitives import PromptIRV2, prompt_ir_v2_from_legacy
 from lattice.ir.transform import (
     CandidateSearch,
     IRTransform,
     LegacyRequestTransformAdapter,
 )
-from lattice.optimizer import _OPTIMIZER_CLASSES
 from lattice.pipeline.base import ReversibleSyncTransform
+from lattice.planner.runtime_state import get_canonical_state_value, thaw_value
+from lattice.transforms.optimizers import _OPTIMIZER_CLASSES
 from lattice.transport.types import Request, Response
 
 
@@ -240,7 +240,11 @@ def _get_allowed_optimizers(context: TransformContext) -> list[str]:
 
     # 1. OptimizerSchedule (highest priority for Phase 1 cutover)
     opt_sched = get_canonical_state_value(context, "_lattice_optimizer_schedule")
-    if opt_sched is not None:
+    if isinstance(opt_sched, dict):
+        allowed = opt_sched.get("allowed_optimizers")
+        if allowed:
+            return list(allowed)
+    elif opt_sched is not None:
         allowed = getattr(opt_sched, "allowed_optimizers", None)
         if allowed:
             return list(allowed)
@@ -271,13 +275,13 @@ def _get_allowed_optimizers(context: TransformContext) -> list[str]:
     # 5. Fallback: content_profile
     profile = get_canonical_state_value(context, "_lattice_profile")
     profile_to_optimizers: dict[str, list[str]] = {
-        "table_heavy": ["structure_optimizer", "reference_optimizer"],
+        "table_heavy": ["ir_structure_optimizer", "reference_optimizer"],
         "tool_output": ["tool_optimizer", "reference_optimizer"],
-        "code_heavy": ["reference_optimizer", "structure_optimizer"],
+        "code_heavy": ["reference_optimizer", "ir_structure_optimizer"],
         "log_output": ["diagnostic_optimizer", "reference_optimizer"],
         "diff_output": ["reference_optimizer"],
         "stack_trace": ["reference_optimizer", "diagnostic_optimizer"],
-        "grep_output": ["structure_optimizer", "reference_optimizer"],
+        "grep_output": ["ir_structure_optimizer", "reference_optimizer"],
         "file_tree": ["reference_optimizer"],
         "mcp_output": ["tool_optimizer", "reference_optimizer"],
         "narrative_long": ["context_optimizer", "reference_optimizer"],
@@ -286,18 +290,18 @@ def _get_allowed_optimizers(context: TransformContext) -> list[str]:
         return profile_to_optimizers[profile]
 
     # Default production optimizers
-    from lattice.optimizer import PRODUCTION_OPTIMIZERS
+    from lattice.transforms.optimizers import PRODUCTION_OPTIMIZERS
 
     return list(PRODUCTION_OPTIMIZERS)
 
 
 _SEG_OPTIMIZER_MAP: dict[str, list[str]] = {
-    "code": ["structure_optimizer", "reference_optimizer"],
-    "json": ["structure_optimizer", "ir_structure_optimizer", "reference_optimizer"],
-    "table": ["structure_optimizer", "ir_structure_optimizer", "reference_optimizer"],
+    "code": ["ir_structure_optimizer", "reference_optimizer"],
+    "json": ["ir_structure_optimizer", "reference_optimizer"],
+    "table": ["ir_structure_optimizer", "reference_optimizer"],
     "log": ["diagnostic_optimizer", "reference_optimizer"],
     "tool_output": ["tool_optimizer", "ir_structure_optimizer", "reference_optimizer"],
-    "reasoning": ["structure_optimizer", "reference_optimizer"],
+    "reasoning": ["ir_structure_optimizer", "reference_optimizer"],
     "narrative": ["context_optimizer", "reference_optimizer"],
     "instructions": ["reference_optimizer"],
     "short": [],
@@ -331,7 +335,11 @@ def _get_quality_floor(context: TransformContext) -> float:
                 return float(qf)
 
     opt_sched = get_canonical_state_value(context, "_lattice_optimizer_schedule")
-    if opt_sched is not None:
+    if isinstance(opt_sched, dict):
+        qf = opt_sched.get("quality_floor")
+        if qf is not None:
+            return float(qf)
+    elif opt_sched is not None:
         qf = getattr(opt_sched, "quality_floor", None)
         if qf is not None:
             return float(qf)
@@ -363,7 +371,11 @@ def _get_budget_ms(context: TransformContext) -> float:
                 return float(budget)
 
     opt_sched = get_canonical_state_value(context, "_lattice_optimizer_schedule")
-    if opt_sched is not None:
+    if isinstance(opt_sched, dict):
+        budget = opt_sched.get("latency_budget_ms")
+        if budget is not None:
+            return float(budget)
+    elif opt_sched is not None:
         budget = getattr(opt_sched, "latency_budget_ms", None)
         if budget is not None:
             return float(budget)

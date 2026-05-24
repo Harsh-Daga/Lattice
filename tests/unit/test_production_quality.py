@@ -250,22 +250,22 @@ class TestTransformReputationRuntime:
 
 class TestMILVTriggers:
     def test_milv_triggers_on_high_compression(self) -> None:
-        from lattice.core.task_classifier import TaskClass, TaskClassification
         from lattice.pipeline.milv import should_trigger_milv
+        from lattice.planner.task_classifier import TaskClass, TaskClassification
 
         tc = TaskClassification(task_class=TaskClass.SIMPLE)
         assert should_trigger_milv("test", tc, compression_ratio=0.35)
 
     def test_milv_triggers_on_reasoning(self) -> None:
-        from lattice.core.task_classifier import TaskClass, TaskClassification
         from lattice.pipeline.milv import should_trigger_milv
+        from lattice.planner.task_classifier import TaskClass, TaskClassification
 
         tc = TaskClassification(task_class=TaskClass.REASONING)
         assert should_trigger_milv("test", tc, compression_ratio=0.15)
 
     def test_milv_skips_low_risk_simple(self) -> None:
-        from lattice.core.task_classifier import TaskClass, TaskClassification
         from lattice.pipeline.milv import should_trigger_milv
+        from lattice.planner.task_classifier import TaskClass, TaskClassification
 
         tc = TaskClassification(task_class=TaskClass.SIMPLE)
         assert not should_trigger_milv("prefix_optimizer", tc, compression_ratio=0.05)
@@ -273,13 +273,13 @@ class TestMILVTriggers:
 
 class TestSchedulerGating:
     def test_reasoning_blocks_rate_distortion(self) -> None:
-        from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
+        from lattice.planner.unified_planner import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("reasoning", {})
         assert matrix.get("rate_distortion") is False
 
     def test_debugging_blocks_tool_filter(self) -> None:
-        from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
+        from lattice.planner.unified_planner import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("debugging", {})
         # tool_filter is no longer blocked — it's a reversible SAFE transform.
@@ -287,7 +287,7 @@ class TestSchedulerGating:
         assert "tool_filter" not in matrix
 
     def test_debugging_allows_diagnostic_helpers(self) -> None:
-        from lattice.core.scheduler import _TASK_TRANSFORM_MATRIX
+        from lattice.planner.unified_planner import _TASK_TRANSFORM_MATRIX
 
         matrix = _TASK_TRANSFORM_MATRIX.get("debugging", {})
         assert "diagnostic_rle" not in matrix

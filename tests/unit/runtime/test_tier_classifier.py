@@ -1,29 +1,29 @@
-"""Tests for runtime router."""
+"""Tests for runtime tier classifier."""
 
 from lattice.core.context import TransformContext
 from lattice.pipeline.policy import OptimizationPolicy, Skip
-from lattice.runtime.router import RuntimeRouter, Tier
+from lattice.runtime.tier_classifier import Tier, TierClassifier
 from lattice.transforms.runtime_contract import RuntimeContractTransform
 from lattice.transport.types import Message, Request
 
 
-class TestRuntimeRouter:
+class TestTierClassifier:
     def test_simple_tier(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(messages=[Message(role="user", content="hi")])
         decision = router.classify(req)
         assert decision.tier == Tier.SIMPLE
         assert decision.score < 20
 
     def test_medium_tier_long_message(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(messages=[Message(role="user", content="a" * 2500)])
         decision = router.classify(req)
         assert decision.tier == Tier.MEDIUM
         assert decision.features["length"] == 20
 
     def test_complex_tier_tools(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(
             messages=[Message(role="user", content="use tools " * 500)],
             tools=[{"function": {"name": f"t{i}"}} for i in range(4)],
@@ -33,7 +33,7 @@ class TestRuntimeRouter:
         assert decision.features["tools"] == 20
 
     def test_reasoning_tier(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(
             messages=[
                 Message(
@@ -49,20 +49,20 @@ class TestRuntimeRouter:
         assert decision.score >= 65
 
     def test_depth_score(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(messages=[Message(role="user", content=f"msg{i}") for i in range(12)])
         decision = router.classify(req)
         assert decision.features["depth"] == 10
 
     def test_code_score(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(messages=[Message(role="user", content="def foo(): pass" * 100)])
         decision = router.classify(req)
         assert decision.features["code"] > 0
 
     def test_select_model_never_overrides(self):
         """LATTICE is not a router — select_model always returns preferred."""
-        router = RuntimeRouter()
+        router = TierClassifier()
         # High-confidence REASONING request
         req = Request(
             messages=[
@@ -80,19 +80,19 @@ class TestRuntimeRouter:
         assert router.select_model(req, "preferred") == "preferred"
 
     def test_select_model_simple_request(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(messages=[Message(role="user", content="hi")])
         model = router.select_model(req, "my-model")
         assert model == "my-model"
 
     def test_select_model_respects_preferred_always(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(messages=[Message(role="user", content="a" * 550)])
         model = router.select_model(req, "preferred")
         assert model == "preferred"
 
     def test_to_dict(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(messages=[Message(role="user", content="test")])
         decision = router.classify(req)
         d = decision.to_dict()
@@ -104,7 +104,7 @@ class TestRuntimeRouter:
         assert d["contract"]["allow_model_override"] is False
 
     def test_custom_keywords(self):
-        router = RuntimeRouter(
+        router = TierClassifier(
             reasoning_keywords=["custom_reasoning_kw"],
             code_indicators=["custom_code_kw"],
         )
@@ -114,7 +114,7 @@ class TestRuntimeRouter:
         assert decision.features["code"] > 0
 
     def test_simple_contract_skips_expensive_transforms(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         decision = router.classify(Request(messages=[Message(role="user", content="hi")]))
         skipped = decision.contract["skipped_transforms"]
         assert decision.tier == Tier.SIMPLE
@@ -122,7 +122,7 @@ class TestRuntimeRouter:
         assert decision.contract["mode"] == "minimal"
 
     def test_reasoning_contract_keeps_all_transforms(self):
-        router = RuntimeRouter()
+        router = TierClassifier()
         req = Request(
             messages=[
                 Message(

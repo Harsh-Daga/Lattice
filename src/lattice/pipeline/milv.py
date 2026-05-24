@@ -14,7 +14,7 @@ import dataclasses
 import re
 from typing import Any
 
-from lattice.core.task_classifier import TaskClass, TaskClassification
+from lattice.planner.task_classifier import TaskClass, TaskClassification
 
 
 @dataclasses.dataclass(slots=True)

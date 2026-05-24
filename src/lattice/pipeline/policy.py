@@ -34,7 +34,7 @@ import structlog
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.runtime_state import get_canonical_request_value
+from lattice.planner.runtime_state import get_canonical_request_value
 from lattice.transport.types import Request
 
 logger = structlog.get_logger()

@@ -91,7 +91,7 @@ class TestRepresentationOptimizerLayer:
         names = [t.name for t in pipeline.transforms]
         assert "content_profiler" in names
         assert "runtime_contract" in names
-        assert "structure_optimizer" in names
+        assert "ir_structure_optimizer" in names
         assert "diagnostic_optimizer" in names
 
     def test_scheduler_decision_flows_to_representation_optimizer(self) -> None:

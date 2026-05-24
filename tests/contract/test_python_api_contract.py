@@ -53,6 +53,48 @@ def test_lattice_client_has_promised_methods(api_surface) -> None:
     assert not missing, f"LatticeClient missing methods: {missing}"
 
 
+def test_planner_public_api() -> None:
+    from lattice.planner import (
+        ExecutionPlan,
+        TaskClass,
+        TaskClassification,
+        UnifiedPlanner,
+        build_execution_plan,
+        classify_task,
+    )
+
+    assert callable(UnifiedPlanner)
+    assert callable(build_execution_plan)
+    assert callable(classify_task)
+    assert ExecutionPlan is not None
+    assert TaskClass is not None
+    assert TaskClassification is not None
+
+
+def test_runtime_public_api() -> None:
+    from lattice.runtime import Tier, TierClassifier, TierDecision
+
+    assert TierClassifier is not None
+    assert Tier is not None
+    assert TierDecision is not None
+
+
+def test_transforms_optimizers_public_api() -> None:
+    from lattice.transforms.optimizers import (
+        ContextOptimizer,
+        DiagnosticOptimizer,
+        IRStructureOptimizer,
+        ReferenceOptimizer,
+        ToolOptimizer,
+    )
+
+    assert IRStructureOptimizer is not None
+    assert ReferenceOptimizer is not None
+    assert ToolOptimizer is not None
+    assert DiagnosticOptimizer is not None
+    assert ContextOptimizer is not None
+
+
 # --- Phase 6 placeholder tests ---------------------------------------------
 # These will become PASSING tests after Phase 6 hoists symbols to top level.
 # Until then they xfail to document the target surface without blocking CI.

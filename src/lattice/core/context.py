@@ -8,7 +8,7 @@ Standardized metadata keys (canonical):
   _lattice_sig_summary — Compact summary for transport
   _lattice_protected_spans — Span IDs that must not be mutated
   _lattice_task_classification — Task classification from RATS
-  _lattice_schedule — SchedulerDecision from RATS
+  _lattice_schedule — execution plan metadata from UnifiedPlanner (via content_profiler)
   _lattice_risk_score — SemanticRiskScore from content_profiler
   _lattice_safety_decision — SafetyDecision from PSG
   _lattice_validation — ValidationOutcome from MILV

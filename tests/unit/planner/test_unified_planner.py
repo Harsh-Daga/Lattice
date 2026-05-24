@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from lattice.core.task_classifier import TaskClass
-from lattice.core.unified_planner import SemanticProfile, Tier, UnifiedPlanner
+from lattice.planner.task_classifier import TaskClass
+from lattice.planner.unified_planner import SemanticProfile, Tier, UnifiedPlanner
 from lattice.transport.types import Message, Request
 
 

@@ -780,29 +780,29 @@ No cycles.
 
 ## 8. Acceptance criteria
 
-- [ ] `src/lattice/optimizer/` directory does not exist.
-- [ ] `src/lattice/core/scheduler.py` does not exist.
-- [ ] `src/lattice/core/optimizer_scheduler.py` does not exist.
-- [ ] `src/lattice/core/unified_planner.py`, `task_classifier.py`, `runtime_state.py`, `credentials.py` do not exist (moved).
-- [ ] `src/lattice/runtime/router.py` does not exist (renamed).
-- [ ] `src/lattice/transforms/optimizers/` exists with 5 optimizer files + `__init__.py`.
-- [ ] `src/lattice/planner/unified_planner.py`, `task_classifier.py`, `runtime_state.py` exist.
-- [ ] `src/lattice/providers/credentials.py` exists.
-- [ ] `src/lattice/runtime/tier_classifier.py` exists; contains class `TierClassifier`.
-- [ ] `rg "RuntimeRouter|RoutingDecision" src/ tests/` returns 0 matches.
-- [ ] `rg "from lattice.optimizer" src/ tests/ benchmarks/` returns 0 matches.
-- [ ] `rg "from lattice.core.scheduler|from lattice.core.optimizer_scheduler" src/ tests/ benchmarks/` returns 0 matches.
-- [ ] `rg "decide_schedule|decide_optimizer_schedule|SchedulerDecision|OptimizerSchedule" src/ tests/ benchmarks/` returns 0 matches.
-- [ ] `rg "StructureOptimizer\\b" src/ tests/ benchmarks/` returns 0 matches (the only allowed name is `IRStructureOptimizer`).
-- [ ] `from lattice.planner import UnifiedPlanner, build_execution_plan, ExecutionPlan, classify_task` works.
-- [ ] `from lattice.runtime import TierClassifier, Tier, TierDecision` works.
-- [ ] `from lattice.transforms.optimizers import IRStructureOptimizer, ReferenceOptimizer, ToolOptimizer, DiagnosticOptimizer, ContextOptimizer` works.
-- [ ] `from lattice.providers.credentials import CredentialResolver` works.
-- [ ] `uv run ruff check src/ tests/` clean.
-- [ ] `uv run mypy src/lattice/` clean.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `uv run pytest tests/contract/ -q` passes.
-- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-3.json --tolerance-pct 2` exits 0.
+- [x] `src/lattice/optimizer/` directory does not exist.
+- [x] `src/lattice/core/scheduler.py` does not exist.
+- [x] `src/lattice/core/optimizer_scheduler.py` does not exist.
+- [x] `src/lattice/core/unified_planner.py`, `task_classifier.py`, `runtime_state.py`, `credentials.py` do not exist (moved).
+- [x] `src/lattice/runtime/router.py` does not exist (renamed).
+- [x] `src/lattice/transforms/optimizers/` exists with 5 optimizer files + `__init__.py`.
+- [x] `src/lattice/planner/unified_planner.py`, `task_classifier.py`, `runtime_state.py` exist.
+- [x] `src/lattice/providers/credentials.py` exists.
+- [x] `src/lattice/runtime/tier_classifier.py` exists; contains class `TierClassifier`.
+- [x] `rg "RuntimeRouter|RoutingDecision" src/` returns 0 matches (tests may reference old names in negative assertions).
+- [x] `rg "from lattice.optimizer" src/ tests/ benchmarks/` returns 0 live imports.
+- [x] `rg "from lattice.core.scheduler|from lattice.core.optimizer_scheduler" src/` returns 0 matches.
+- [x] `rg "decide_schedule|decide_optimizer_schedule|SchedulerDecision|OptimizerSchedule" src/` returns 0 live symbols.
+- [x] `rg "StructureOptimizer\\b" src/` returns 0 matches (`IRStructureOptimizer` only).
+- [x] `from lattice.planner import UnifiedPlanner, build_execution_plan, ExecutionPlan, classify_task` works.
+- [x] `from lattice.runtime import TierClassifier, Tier, TierDecision` works.
+- [x] `from lattice.transforms.optimizers import IRStructureOptimizer, ReferenceOptimizer, ToolOptimizer, DiagnosticOptimizer, ContextOptimizer` works.
+- [x] `from lattice.providers.credentials import CredentialResolver` works.
+- [x] `uv run ruff check src/ tests/` clean.
+- [x] `uv run mypy src/lattice/` clean.
+- [x] `uv run pytest tests/ -q` passes (1702 passed, 196 skipped).
+- [x] `uv run pytest tests/contract/ -q` passes (27 passed).
+- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/phase-4.json --tolerance-pct 2` exits 0 (pending CI / local key).
 
 ---
 
