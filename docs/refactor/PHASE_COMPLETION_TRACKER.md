@@ -3,7 +3,7 @@
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `refactor/phase-9-observability-state` — **1760 passed**, contract green.
+**Last verified:** `main` @ merge PR [#14](https://github.com/Harsh-Daga/Lattice/pull/14) (`800a24c`) — **1760 passed**, contract green.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
