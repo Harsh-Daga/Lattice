@@ -19,10 +19,10 @@ from collections import Counter
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
-from lattice.transport.types import Message, Request, Response
+from lattice.pipeline.base import ReversibleSyncTransform
+from lattice.transport.types import Request, Response
 
 
 class PathPrefixCompressor(ReversibleSyncTransform):
@@ -61,31 +61,6 @@ class PathPrefixCompressor(ReversibleSyncTransform):
             context.record_metric(self.name, "chars_saved", total_saved)
 
         return Ok(ir.with_sections(tuple(new_sections)))
-
-    # ------------------------------------------------------------------
-    # Legacy process()
-    # ------------------------------------------------------------------
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        new_messages: list[Message] = []
-        saved = 0
-
-        for msg in request.messages:
-            compressed, prefix, saved_delta = _compress_paths(msg.content)
-            saved += saved_delta
-            if prefix:
-                state = context.get_transform_state(self.name)
-                state["prefix"] = prefix
-            new_msg = msg.copy()
-            new_msg.content = compressed
-            new_messages.append(new_msg)
-
-        context.record_metric(self.name, "chars_saved", saved)
-        new_req = request.copy()
-        new_req.messages = new_messages
-        return Ok(new_req)
 
     def reverse(self, response: Response, context: TransformContext) -> Response:
         state = context.get_transform_state(self.name)

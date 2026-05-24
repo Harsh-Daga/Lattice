@@ -138,15 +138,16 @@ class TestRuntimeRouter:
         assert decision.contract["mode"] == "max_fidelity"
 
     def test_runtime_contract_transform_writes_metadata(self):
+        from lattice.ir.primitives import PromptIRV2
+
         transform = RuntimeContractTransform()
         req = Request(messages=[Message(role="user", content="hi")])
         ctx = TransformContext()
-        result = transform.process(req, ctx)
+        result = transform.optimize(PromptIRV2(), req, ctx)
         assert result
-        new_req = result.unwrap()
-        runtime = new_req.metadata["_lattice_runtime"]
+        runtime = req.metadata["_lattice_runtime"]
         assert runtime["tier"] == Tier.SIMPLE
-        assert new_req.metadata["_lattice_runtime_contract"]["mode"] == "minimal"
+        assert req.metadata["_lattice_runtime_contract"]["mode"] == "minimal"
 
     def test_policy_enforces_runtime_contract_skip(self):
         req = Request(

@@ -16,11 +16,11 @@ from lattice.core.context import (
     TransformContext,
 )
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import get_canonical_request_value, get_canonical_state_value
 from lattice.ir.primitives import PromptIRV2
-from lattice.transport.types import Message, Request, Response, Role
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
+from lattice.transport.types import Request, Response, Role
 
 
 @dataclasses.dataclass(slots=True)
@@ -144,138 +144,6 @@ class CacheArbitrageOptimizer(ReversibleSyncTransform):
                 _cache_arbitrage_stability_score=stability_score,
             )
         )
-
-    # ------------------------------------------------------------------
-    # Legacy process()
-    # ------------------------------------------------------------------
-
-    def process(
-        self,
-        request: Request,
-        context: TransformContext,
-    ) -> Result[Request, TransformError]:
-        # Skip for tool/assistant tool_call conversations — ordering is structural
-        if any(
-            (m.tool_calls is not None and m.tool_calls) or m.tool_call_id is not None
-            for m in request.messages
-        ):
-            return Ok(request)
-
-        original_order = [
-            (m.role.value if isinstance(m.role, Role) else m.role, m.content, m.name)
-            for m in request.messages
-        ]
-
-        # Step 1 — classify messages into stability buckets
-        system_msgs: list[Message] = []
-        tool_msgs: list[Message] = []
-        static_doc_msgs: list[Message] = []
-        variable_msgs: list[Message] = []
-
-        for msg in request.messages:
-            role = msg.role.value if isinstance(msg.role, Role) else msg.role
-            if role == "system":
-                system_msgs.append(msg)
-            elif role == "tool":
-                tool_msgs.append(msg)
-            elif role == "assistant" and msg.metadata.get("is_static_doc"):
-                static_doc_msgs.append(msg)
-            else:
-                variable_msgs.append(msg)
-
-        # Step 2 — canonical ordering: system → tools → static docs → variable
-        ordered = system_msgs + tool_msgs + static_doc_msgs + variable_msgs
-        request.messages = [m.copy() for m in ordered]
-
-        # Step 3 — annotate static/stable content metadata on the new copies
-        for msg in request.messages:
-            role = msg.role.value if isinstance(msg.role, Role) else msg.role
-            if (
-                role == "system"
-                or role == "tool"
-                or role == "assistant"
-                and msg.metadata.get("is_static_doc")
-            ):
-                msg.metadata.setdefault("_cache_stable", True)
-            else:
-                msg.metadata.setdefault("_cache_stable", False)
-
-        # Initialize normalized outcome as the source of truth
-        outcome = CacheArbitrageOutcome()
-
-        # Step 4 — provider-specific cache annotations via cache_planner if available
-        if _CACHE_PLANNER_AVAILABLE:
-            self._apply_provider_cache_plan(request, context, outcome)
-        else:
-            outcome.skip_reason = "cache_planner_unavailable"
-
-        # Step 5 — compute prefix stability score
-        stable_token_count = sum(
-            m.token_estimate for m in request.messages if m.metadata.get("_cache_stable")
-        )
-        total_tokens = request.token_estimate or 1
-        stability_score = stable_token_count / total_tokens
-        outcome.stability_score = stability_score
-        outcome.stable_tokens = stable_token_count
-
-        # Step 6 — track cache hit/miss for feedback loop
-        state = context.get_transform_state(self.name)
-        if self.track_hits:
-            previous_hash = state.get("prefix_hash")
-            current_hash = self._compute_prefix_hash(request)
-            cache_hit = bool(previous_hash and previous_hash == current_hash)
-
-            if not cache_hit:
-                state["prefix_hash"] = current_hash
-                state["miss_count"] = state.get("miss_count", 0) + 1
-            else:
-                state["hit_count"] = state.get("hit_count", 0) + 1
-
-            context.record_metric(self.name, "cache_hit", cache_hit)
-            context.record_metric(self.name, "hit_count", state.get("hit_count", 0))
-            context.record_metric(self.name, "miss_count", state.get("miss_count", 0))
-
-        # Save original order for reverse
-        new_order = [
-            (m.role.value if isinstance(m.role, Role) else m.role, m.content, m.name)
-            for m in request.messages
-        ]
-        state["original_order"] = original_order
-        state["reordered"] = new_order != original_order
-
-        outcome.prefix_hash = state.get("prefix_hash", "")
-        outcome.reordered = state.get("reordered", False)
-
-        context.record_metric(self.name, "stability_score", stability_score)
-        context.record_metric(self.name, "stable_tokens", stable_token_count)
-
-        # Store normalized outcome as the authoritative payload
-        request.metadata["_cache_arbitrage_outcome"] = outcome.to_dict()
-
-        # Derive legacy metadata from outcome for backward compatibility
-        legacy: dict[str, Any] = {}
-        if outcome.manifest_source:
-            legacy["manifest_source"] = outcome.manifest_source
-        if outcome.plan_applied:
-            legacy["plan_applied"] = outcome.plan_applied
-        if outcome.plan_summary:
-            legacy["plan_summary"] = outcome.plan_summary
-        if outcome.expected_cached_tokens:
-            legacy["expected_cached_tokens"] = outcome.expected_cached_tokens
-        if outcome.breakpoints:
-            legacy["breakpoints"] = outcome.breakpoints
-        if outcome.annotations:
-            legacy["annotations"] = outcome.annotations
-        if outcome.stability_score:
-            legacy["stability_score"] = outcome.stability_score
-        if outcome.stable_tokens:
-            legacy["stable_tokens"] = outcome.stable_tokens
-        if outcome.skip_reason:
-            legacy["skip_reason"] = outcome.skip_reason
-        if outcome.planner_failure is not None:
-            legacy["planner_failure"] = outcome.planner_failure
-        request.metadata["_cache_arbitrage"] = legacy
-        return Ok(request)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         # Metadata-only transform; nothing to restore in response body.

@@ -19,9 +19,9 @@ import re
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.transport.types import Request, Response
 
 _CAUSAL_EXPLICIT = re.compile(
@@ -91,39 +91,6 @@ class CausalChainExtractor(ReversibleSyncTransform):
             new_sections.append(sec.with_spans(tuple(new_spans)))
         context.record_metric(self.name, "spans_annotated", chains_found)
         return Ok(ir.with_sections(tuple(new_sections)))
-
-    # ------------------------------------------------------------------
-    # Legacy process()
-    # ------------------------------------------------------------------
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        chains_found = 0
-        for msg in request.messages:
-            if msg.role not in ("user", "assistant", "system"):
-                continue
-            content = msg.content
-            if not content or len(content) < 30:
-                continue
-            has_causal = (
-                _CAUSAL_EXPLICIT.search(content)
-                or _CAUSAL_IMPLICIT.search(content)
-                or _ERROR_CAUSE.search(content)
-            )
-            if not has_causal:
-                continue
-            chains = _extract_chains(content)
-            if not chains:
-                continue
-            if _has_chains_in_output(content, chains):
-                continue
-            annotated = _format_chain_output(content, chains)
-            msg.content = annotated
-            chains_found += 1
-
-        context.record_metric(self.name, "chains_extracted", chains_found)
-        return Ok(request)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response

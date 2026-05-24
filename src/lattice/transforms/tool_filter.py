@@ -19,9 +19,9 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.transport.types import Message, Request, Response
 
 _INTERNAL_FIELDS = frozenset(
@@ -113,26 +113,6 @@ class ToolOutputFilter(ReversibleSyncTransform):
 
     def __init__(self) -> None:
         pass
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        modified = 0
-        saved_chars = 0
-
-        for msg in request.messages:
-            if not self._is_tool_output(msg):
-                continue
-            original = msg.content
-            cleaned = self._scrub(original)
-            if cleaned != original and len(cleaned) > 0:
-                msg.content = cleaned
-                modified += 1
-                saved_chars += max(0, len(original) - len(cleaned))
-
-        context.record_metric(self.name, "modified_count", modified)
-        context.record_metric(self.name, "chars_saved", saved_chars)
-        return Ok(request)
 
     def optimize(
         self, ir: PromptIRV2, request: Request, context: TransformContext

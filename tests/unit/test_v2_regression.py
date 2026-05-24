@@ -191,7 +191,7 @@ class TestReachability:
             pipeline = build_default_pipeline(config)
             req = Request(messages=[Message(role="user", content="Compress this text. " * 20)])
             ctx = TransformContext()
-            result = await pipeline.process(req, ctx)
+            result = pipeline.compress(req, ctx)
             assert is_ok(result)
             mod = unwrap(result)
             reach = mod.metadata.get("_lattice_reachability", {})
@@ -213,7 +213,7 @@ class TestReachability:
             pipeline = build_default_pipeline(config)
             req = Request(messages=[Message(role="user", content="Test")])
             ctx = TransformContext()
-            result = await pipeline.process(req, ctx)
+            result = pipeline.compress(req, ctx)
             assert is_ok(result)
             mod = unwrap(result)
             safety = mod.metadata.get("_lattice_safety_decision", {})
@@ -247,7 +247,7 @@ class TestProductionGuards:
                 ]
             )
             ctx = TransformContext()
-            result = await pipeline.process(req, ctx)
+            result = pipeline.compress(req, ctx)
             # Should not crash even on REASONING-classified prompt
             assert is_ok(result)
 

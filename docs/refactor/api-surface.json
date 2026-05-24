@@ -291,7 +291,6 @@
         "Transform",
         "SyncTransform",
         "ReversibleSyncTransform",
-        "CompressorPipeline",
         "LatticeError",
         "ConfigurationError",
         "ProviderError",

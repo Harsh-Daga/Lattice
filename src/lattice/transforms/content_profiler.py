@@ -43,7 +43,6 @@ from lattice.core.context import (
 )
 from lattice.core.errors import TransformError
 from lattice.core.optimizer_scheduler import OptimizerSchedule, schedule_to_dict
-from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import (
     get_canonical_request_value,
@@ -60,6 +59,7 @@ from lattice.ir.builder import build_ir
 from lattice.ir.normalizer import normalize_ir
 from lattice.ir.primitives import freeze_value, prompt_ir_v2_from_legacy
 from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.planner.provider_strategy import (
     build_cache_plan_for_provider,
     simulate_provider_cache,

@@ -136,5 +136,5 @@ class TestPipelineV2Reverse:
         ctx = TransformContext()
 
         # Should not crash even without corresponding forward pass
-        result = pipeline.reverse(response, plan, ctx)
+        result = pipeline.reverse(response, ctx, plan=plan)
         assert result is not None

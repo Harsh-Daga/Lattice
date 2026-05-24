@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
 from lattice.runtime.router import RuntimeRouter
 from lattice.transport.types import Request, Response
 
@@ -29,21 +29,6 @@ class RuntimeContractTransform(ReversibleSyncTransform):
 
     def __init__(self, router: RuntimeRouter | None = None) -> None:
         self.router = router or RuntimeRouter()
-
-    def process(
-        self,
-        request: Request,
-        context: TransformContext,
-    ) -> Result[Request, TransformError]:
-        decision = self.router.classify(request)
-        request.metadata["_lattice_runtime"] = decision.to_dict()
-        request.metadata["_lattice_runtime_contract"] = decision.contract
-        context.record_metric(self.name, "tier_score", decision.score)
-        context.record_metric(self.name, "confidence", decision.confidence)
-        context.record_metric(
-            self.name, "transform_budget_ms", decision.contract["max_transform_latency_ms"]
-        )
-        return Ok(request)
 
     def optimize(
         self,

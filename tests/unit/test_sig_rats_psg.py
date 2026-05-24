@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from lattice.core.scheduler import decide_schedule
 from lattice.core.task_classifier import ExecutionTier, TaskClass, TaskClassification, classify_task
+from lattice.core.transform_reputation import get_reputation_registry
 from lattice.ir.semantic_graph import SemanticImportanceGraph, SemanticSpan
 from lattice.pipeline.guardrails import (
     GuardAction,
@@ -14,6 +17,14 @@ from lattice.pipeline.guardrails import (
 )
 from lattice.transport.types import Message, Request
 from lattice.utils.validation import SemanticRiskScore
+
+
+@pytest.fixture(autouse=True)
+def _reset_reputation() -> None:
+    """The scheduler reads a process-global reputation registry; isolate it per test."""
+    registry = get_reputation_registry()
+    with registry._lock:
+        registry._reputations.clear()
 
 
 class TestSemanticSpan:

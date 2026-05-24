@@ -29,7 +29,6 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result, is_ok
 from lattice.core.runtime_state import get_canonical_state_value, thaw_value
 from lattice.ir.primitives import PromptIRV2, prompt_ir_v2_from_legacy
@@ -39,6 +38,7 @@ from lattice.ir.transform import (
     LegacyRequestTransformAdapter,
 )
 from lattice.optimizer import _OPTIMIZER_CLASSES
+from lattice.pipeline.base import ReversibleSyncTransform
 from lattice.transport.types import Request, Response
 
 

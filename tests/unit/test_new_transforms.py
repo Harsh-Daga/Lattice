@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
@@ -81,7 +79,7 @@ class TestNumericPreservationWithoutArithmeticSequence:
         req = Request(model="test", messages=messages)
         ctx = TransformContext(request_id="test", provider="openai", model="test")
 
-        result = asyncio.run(pipeline.process(req, ctx))
+        result = pipeline.compress(req, ctx)
         if is_ok(result):
             out = unwrap(result)
             combined = "\n".join(m.content for m in out.messages)
@@ -91,6 +89,7 @@ class TestNumericPreservationWithoutArithmeticSequence:
 
 class TestPathPrefix:
     def test_path_prefix_roundtrip(self) -> None:
+        from lattice.ir.primitives import PromptIRV2
         from lattice.transforms.path_prefix import PathPrefixCompressor
 
         t = PathPrefixCompressor()
@@ -101,7 +100,7 @@ class TestPathPrefix:
             ),
         ]
         req = Request(model="test", messages=content)
-        result = t.process(req, ctx)
+        result = t.optimize(PromptIRV2(), req, ctx)
         assert is_ok(result)
 
 
@@ -153,7 +152,7 @@ class TestSafetyGates:
         req = Request(model="test", messages=messages)
         ctx = TransformContext(request_id="test", provider="openai", model="test")
 
-        result = asyncio.run(pipeline.process(req, ctx))
+        result = pipeline.compress(req, ctx)
         if is_ok(result):
             out = unwrap(result)
             combined = "\n".join(m.content for m in out.messages)

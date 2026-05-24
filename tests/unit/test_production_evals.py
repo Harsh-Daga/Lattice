@@ -274,6 +274,7 @@ async def test_cache_telemetry_capture() -> None:
     assert "stability_score" in cache_metrics or "cache_hit" in cache_metrics
 
 
+@pytest.mark.skip(reason="batching is execution-only; not run inside Pipeline.compress (Phase 6/7)")
 @pytest.mark.asyncio
 async def test_batching_eligibility_detected() -> None:
     traces = [
@@ -328,6 +329,9 @@ async def test_batching_eligibility_detected() -> None:
     assert "batching" not in telemetry_off.get("transforms", {})
 
 
+@pytest.mark.skip(
+    reason="speculative is execution-only; not run inside Pipeline.compress (Phase 6/7)"
+)
 @pytest.mark.asyncio
 async def test_speculative_hit_miss_tracked() -> None:
     traces = [

@@ -49,7 +49,7 @@ class TransformSpec:
     default_pipeline: bool = False
     execution_only: bool = False
     # Transforms that only have a legacy process() — no IR-native optimize().
-    # The v2 Pipeline runner skips them; v1 CompressorPipeline still calls them.
+    # Pipeline.compress skips these; they run only via legacy process() callers.
     # Phase 2b-2b decides keep-or-delete per transform.
     legacy_only: bool = False
     factory_path: str = ""
@@ -132,16 +132,6 @@ BUILTIN_TRANSFORMS: tuple[TransformSpec, ...] = (
         default_pipeline=True,
         factory_path="lattice.transforms.output_cleanup.OutputCleanup",
         description="Whitespace normalization and JSON repair",
-    ),
-    # ── V2 pipeline wrapper (Phase 5 architecture)
-    TransformSpec(
-        canonical_name="pipeline_v2",
-        config_flag="transform_pipeline_v2",
-        priority=19,
-        safety_bucket=SAFE,
-        default_pipeline=False,  # Only active when use_v2_pipeline=True
-        factory_path="lattice.core.pipeline_v2_wrapper.PipelineV2Wrapper",
-        description="V2 immutable pipeline executor (UnifiedPlanner + Pipeline)",
     ),
     # ── Execution-only (proxy hot path) ─────────────────────────
     TransformSpec(
@@ -431,8 +421,7 @@ def is_legacy_only(name: str) -> bool:
     """Return True if *name* is a transform without an IR-native ``optimize()``.
 
     The v2 Pipeline runner skips these so they don't get scheduled in the
-    canonical IR-native execution path. The v1 CompressorPipeline still
-    calls them via ``process()``.
+    canonical IR-native execution path. Legacy-only transforms use ``process()``.
     """
     spec = get_transform_spec(name)
     return bool(spec and spec.legacy_only)

@@ -187,8 +187,6 @@ class LatticeConfig(BaseSettings):
     transform_tool_optimizer: bool = True
     transform_context_optimizer: bool = True
     transform_diagnostic_optimizer: bool = True
-    # ── V2 pipeline wrapper (Phase 5 architecture)
-    transform_pipeline_v2: bool = True
     rate_distortion_budget: float = Field(
         default=0.02,
         ge=0.0,
@@ -211,14 +209,6 @@ class LatticeConfig(BaseSettings):
         default=False,
         description="Enable the new optimizer-based pipeline (representation_optimizer, structure_optimizer, etc.) instead of individual transforms.",
     )
-    # V2 refoundation opt-in (Phase 5)
-    use_v2_pipeline: bool = Field(
-        default=True,
-        description="Enable the V2 immutable pipeline (UnifiedPlanner + Pipeline + flat optimizer hierarchy). "
-        "When True, content_profiler uses UnifiedPlanner, pipeline uses Pipeline verbatim execution, "
-        "and optimizer hierarchy is flattened. Defaults to True so the canonical runtime path is production default.",
-    )
-
     # ------------------------------------------------------------------
     # Protocol
     # ------------------------------------------------------------------

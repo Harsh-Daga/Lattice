@@ -323,7 +323,7 @@ async def run_feature_eval(
             "iterations": iterations,
             "warmup": warmup,
             "scenario_count": len(selected),
-            "transforms": [t.name for t in pipeline.transforms],
+            "transforms": pipeline.registry.get_transform_names(),
             "live_provider": not dry_run,
         },
     )
@@ -1821,7 +1821,7 @@ async def run_provider_validation(
                             from lattice.transport.types import Response
 
                             resp_obj = Response(content=optimized_output, model=target.model)
-                            restored = await pipeline.reverse(resp_obj, ctx)
+                            restored = pipeline.reverse(resp_obj, ctx)
                             optimized_output = restored.content or optimized_output
                         except Exception:
                             pass  # Non-fatal

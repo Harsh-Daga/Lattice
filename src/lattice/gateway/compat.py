@@ -694,7 +694,7 @@ async def compress_anthropic_body(
     original_tokens = pseudo_request.token_estimate
 
     ctx = TransformContext(request_id=str(time.time()), provider=provider_name, model=model)
-    result = await pipeline.process(pseudo_request, ctx)
+    result = pipeline.compress(pseudo_request, ctx)
     if is_err(result):
         if config.graceful_degradation:
             logger.warning("anthropic_content_compression_degraded", error=str(result))
@@ -767,7 +767,7 @@ async def compress_responses_body(
     original_tokens = pseudo_request.token_estimate
 
     ctx = TransformContext(request_id=str(time.time()), provider="openai", model=model)
-    result = await pipeline.process(pseudo_request, ctx)
+    result = pipeline.compress(pseudo_request, ctx)
     if is_err(result):
         if config.graceful_degradation:
             logger.warning("responses_content_compression_degraded", error=str(result))
@@ -1439,7 +1439,7 @@ async def chat_completions_websocket_passthrough(
 
     provider_name = model.split("/")[0] if "/" in model else "openai"
     ctx = TransformContext(request_id=f"ws-chat-{model}", provider=provider_name, model=model)
-    result = await pipeline.process(request, ctx)
+    result = pipeline.compress(request, ctx)
 
     if is_err(result):
         await websocket.send_text(_json.dumps({"error": "pipeline_failed"}))
@@ -1733,7 +1733,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         if x_lattice_disable_transforms:
             compressed_request = request
         else:
-            result = await deps.pipeline.process(request, ctx)
+            result = deps.pipeline.compress(request, ctx)
             if is_err(result):
                 if deps.config.graceful_degradation:
                     compressed_request = request
@@ -1853,7 +1853,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                     )
                     # Run reverse transforms on cached response
                     if not x_lattice_disable_transforms:
-                        cached_response = await deps.pipeline.reverse(cached_response, ctx)
+                        cached_response = deps.pipeline.reverse(cached_response, ctx)
                     response_body = deps.serialize_openai_response(
                         cached_response, compressed_request
                     )
@@ -2359,7 +2359,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             )
 
         if not x_lattice_disable_transforms:
-            internal_response = await deps.pipeline.reverse(internal_response, ctx)
+            internal_response = deps.pipeline.reverse(internal_response, ctx)
 
         # ---- Production MILV enforcement ----
         # Check blank-output post-response for flagged high-risk requests.
@@ -2513,7 +2513,7 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
         )
         ctx.session_state["client_profile"] = "default"
 
-        result = await deps.pipeline.process(request, ctx)
+        result = deps.pipeline.compress(request, ctx)
         if is_err(result):
             if deps.config and getattr(deps.config, "graceful_degradation", False):
                 if deps.logger:
@@ -2647,7 +2647,7 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
                 resp_json = {}
             if resp_json and http_resp.is_success and deps.pipeline:
                 internal_response = deserialize_anthropic_response(resp_json)
-                internal_response = await deps.pipeline.reverse(internal_response, ctx)
+                internal_response = deps.pipeline.reverse(internal_response, ctx)
                 resp_json = serialize_anthropic_response(internal_response, compressed_request)
                 response_body = json.dumps(resp_json).encode("utf-8")
             else:
@@ -2856,7 +2856,7 @@ def make_responses_handler(deps: ResponsesCompatDeps) -> Handler:
             model=internal_request.model,
         )
 
-        result = await deps.pipeline.process(internal_request, ctx)
+        result = deps.pipeline.compress(internal_request, ctx)
         if is_err(result):
             if deps.config and getattr(deps.config, "graceful_degradation", False):
                 if deps.logger:
@@ -3000,7 +3000,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
             "status": "ready" if live else "not_ready",
             "checks": {
                 "config": True,
-                "pipeline": len(deps.pipeline.transforms) > 0,
+                "pipeline": len(deps.pipeline.registry.get_transform_names()) > 0,
                 "provider": live,
                 "provider_detail": detail,
                 "http2_pools": deps.provider.pool.pool_count,
@@ -3023,7 +3023,7 @@ def register_operational_routes(app: Any, deps: OperationalRouteDeps) -> None:
 
         result: dict[str, Any] = {
             "version": deps.version,
-            "transforms": [t.name for t in deps.pipeline.transforms],
+            "transforms": deps.pipeline.registry.get_transform_names(),
             "pipeline": pipeline_summary(deps.pipeline),
             "sessions": deps.store.session_count if hasattr(deps.store, "session_count") else 0,
             "provider": "direct_http",

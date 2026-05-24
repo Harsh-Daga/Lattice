@@ -16,10 +16,10 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform, TransformClass
 from lattice.core.result import Ok, Result
 from lattice.ir.primitives import PromptIRV2
-from lattice.transport.types import Message, Request, Response
+from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
+from lattice.transport.types import Request, Response
 
 _DEFAULT_REQUIRED_FIELDS = frozenset(
     {
@@ -104,42 +104,6 @@ class QueryAwareProjection(ReversibleSyncTransform):
             new_sections.append(sec.with_spans(tuple(new_spans)))
         context.record_metric(self.name, "chars_saved", total_saved)
         return Ok(ir.with_sections(tuple(new_sections)))
-
-    # ------------------------------------------------------------------
-    # Legacy process()
-    # ------------------------------------------------------------------
-
-    def process(
-        self, request: Request, context: TransformContext
-    ) -> Result[Request, TransformError]:
-        user_query = _extract_user_query(request)
-        new_messages: list[Message] = []
-        saved = 0
-        tool_output_seen = False
-
-        for msg in request.messages:
-            if msg.role not in ("tool", "function") and not msg.tool_call_id:
-                new_messages.append(msg)
-                continue
-
-            projected, saved_delta = _project_tool_output(msg.content, user_query)
-            saved += saved_delta
-            if projected.strip():
-                if saved_delta > 0 and saved_delta > len(msg.content) * 0.05:
-                    projected = _TOOL_OUTPUT_HEADER + projected
-                elif not tool_output_seen and saved_delta > 0:
-                    projected = _TOOL_OUTPUT_HEADER + projected
-
-            tool_output_seen = saved_delta > 0 or tool_output_seen
-
-            new_msg = msg.copy()
-            new_msg.content = projected
-            new_messages.append(new_msg)
-
-        context.record_metric(self.name, "chars_saved", saved)
-        new_req = request.copy()
-        new_req.messages = new_messages
-        return Ok(new_req)
 
     def reverse(self, response: Response, _context: TransformContext) -> Response:
         return response

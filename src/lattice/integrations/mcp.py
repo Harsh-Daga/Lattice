@@ -24,15 +24,11 @@ from typing import Any
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import is_err, unwrap, unwrap_err
 from lattice.core.runtime_state import get_canonical_request_value
 from lattice.core.session import MemorySessionStore, Session
-from lattice.pipeline.factory import (
-    build_default_pipeline,
-    build_v2_pipeline,
-    pipeline_summary,
-)
+from lattice.pipeline.factory import build_default_pipeline, pipeline_summary
+from lattice.pipeline.runner import Pipeline
 from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.types import Request
 
@@ -62,10 +58,8 @@ class LatticeMCPTools:
         self.store = MemorySessionStore()
         self.pipeline = self._build_pipeline()
 
-    def _build_pipeline(self) -> CompressorPipeline:
+    def _build_pipeline(self) -> Pipeline:
         """Build the full compression pipeline."""
-        if getattr(self.config, "use_v2_pipeline", False):
-            return build_v2_pipeline(self.config)
         return build_default_pipeline(self.config)
 
     # ------------------------------------------------------------------
@@ -96,42 +90,28 @@ class LatticeMCPTools:
             model=model,
         )
 
-        async def _run() -> dict[str, Any]:
-            result = await self.pipeline.process(request, context)
-            if is_err(result):
-                err = unwrap_err(result)
-                return {"error": err.message, "compressed_messages": messages}
-            compressed = unwrap(result)
-            compressed_messages = [message_to_dict(m) for m in compressed.messages]
-            return {
-                "compressed_messages": compressed_messages,
-                "tokens_before": request.token_estimate,
-                "tokens_after": compressed.token_estimate,
-                "compression_ratio": round(
-                    (request.token_estimate - compressed.token_estimate)
-                    / max(request.token_estimate, 1),
-                    4,
-                ),
-                "transforms_applied": context.transforms_applied,
-                "content_profile": context.session_state.get("content_profile"),
-                "runtime": get_canonical_request_value(compressed, None, "_lattice_runtime", {}),
-                "runtime_budget": get_canonical_request_value(
-                    compressed, None, "_lattice_runtime_budget", {}
-                ),
-            }
-
-        import asyncio
-
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(_run())
-        # In an async context — schedule in a thread pool to avoid deadlock
-        import concurrent.futures
-
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            future = pool.submit(asyncio.run, _run())
-            return future.result()
+        result = self.pipeline.compress(request, context)
+        if is_err(result):
+            err = unwrap_err(result)
+            return {"error": err.message, "compressed_messages": messages}
+        compressed = unwrap(result)
+        compressed_messages = [message_to_dict(m) for m in compressed.messages]
+        return {
+            "compressed_messages": compressed_messages,
+            "tokens_before": request.token_estimate,
+            "tokens_after": compressed.token_estimate,
+            "compression_ratio": round(
+                (request.token_estimate - compressed.token_estimate)
+                / max(request.token_estimate, 1),
+                4,
+            ),
+            "transforms_applied": context.transforms_applied,
+            "content_profile": context.session_state.get("content_profile"),
+            "runtime": get_canonical_request_value(compressed, None, "_lattice_runtime", {}),
+            "runtime_budget": get_canonical_request_value(
+                compressed, None, "_lattice_runtime_budget", {}
+            ),
+        }
 
     # ------------------------------------------------------------------
     # lattice_session_start
@@ -193,7 +173,7 @@ class LatticeMCPTools:
 
         return {
             "version": __version__,
-            "available_transforms": [t.name for t in self.pipeline.transforms],
+            "available_transforms": self.pipeline.registry.get_transform_names(),
             "pipeline": pipeline_summary(self.pipeline),
             "session_count": self.store.session_count,
         }

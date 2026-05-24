@@ -18,7 +18,6 @@ Usage::
 
 from __future__ import annotations
 
-import asyncio
 import dataclasses
 import secrets
 import time
@@ -26,14 +25,10 @@ from typing import Any
 
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
 from lattice.core.result import is_err, unwrap
 from lattice.core.runtime_state import get_canonical_request_value
-from lattice.pipeline.factory import (
-    build_default_pipeline,
-    build_v2_pipeline,
-    pipeline_summary,
-)
+from lattice.pipeline.factory import build_default_pipeline, pipeline_summary
+from lattice.pipeline.runner import Pipeline
 from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.types import Request, Response
 
@@ -51,10 +46,8 @@ class CompressResult:
     runtime_budget: dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
-def _build_pipeline(config: LatticeConfig) -> CompressorPipeline:
+def _build_pipeline(config: LatticeConfig) -> Pipeline:
     """Build the standard local compression pipeline."""
-    if getattr(config, "use_v2_pipeline", False):
-        return build_v2_pipeline(config)
     return build_default_pipeline(config)
 
 
@@ -98,7 +91,7 @@ class LatticeClient:
 
         request = Request(messages=[message_from_dict(m) for m in messages], model=model)
         original_tokens = request.token_estimate
-        compressed = asyncio.run(self._process_request(request))
+        compressed = self._process_request(request)
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         compressed_tokens = compressed.token_estimate
@@ -107,7 +100,11 @@ class LatticeClient:
             compressed_messages=[message_to_dict(m) for m in compressed.messages],
             original_tokens=original_tokens,
             compressed_tokens=compressed_tokens,
-            transforms_applied=[t.name for t in self._pipeline.transforms],
+            transforms_applied=(
+                list(self._last_compress_ctx.transforms_applied)
+                if self._last_compress_ctx is not None
+                else []
+            ),
             elapsed_ms=elapsed_ms,
             runtime=dict(get_canonical_request_value(compressed, None, "_lattice_runtime", {})),
             runtime_budget=dict(
@@ -137,7 +134,7 @@ class LatticeClient:
             return response_text  # No compression was performed
         try:
             resp = Response(content=response_text, model=model)
-            restored = asyncio.run(self._pipeline.reverse(resp, self._last_compress_ctx))
+            restored = self._pipeline.reverse(resp, self._last_compress_ctx)
             return restored.content or response_text
         except Exception:
             return response_text  # Non-fatal: return raw response
@@ -174,7 +171,7 @@ class LatticeClient:
             stream=stream,
             metadata=metadata,
         )
-        return asyncio.run(self._process_request(request, provider_name=provider_name))
+        return self._process_request(request, provider_name=provider_name)
 
     async def compress_request_async(
         self,
@@ -204,14 +201,14 @@ class LatticeClient:
             stream=stream,
             metadata=metadata,
         )
-        return await self._process_request(request, provider_name=provider_name)
+        return self._process_request(request, provider_name=provider_name)
 
     def health(self) -> dict[str, Any]:
         """Return client health and configuration summary."""
         return {
             "status": "healthy",
             "compression_mode": self.config.compression_mode,
-            "transforms": [t.name for t in self._pipeline.transforms],
+            "transforms": self._pipeline.registry.get_transform_names(),
             "pipeline": pipeline_summary(self._pipeline),
             "config_source": "auto",
         }
@@ -289,7 +286,7 @@ class LatticeClient:
             request.metadata.update(metadata)
         return request
 
-    async def _process_request(
+    def _process_request(
         self,
         request: Request,
         *,
@@ -301,7 +298,7 @@ class LatticeClient:
             provider=provider,
             model=request.model,
         )
-        result = await self._pipeline.process(request, ctx)
+        result = self._pipeline.compress(request, ctx)
         self._last_compress_ctx = ctx  # Save for decompress_response()
         if is_err(result):
             if self.config.graceful_degradation:

@@ -53,7 +53,7 @@ The authoritative architecture document is [`docs/architecture/runtime_v2.md`](d
 1. Extend `ReversibleSyncTransform` with `name` and `priority`
 2. Implement `process(Request, TransformContext) → Result[Request, TransformError]` (legacy path)
 3. Implement `optimize(PromptIRV2, Request, TransformContext) → Result[PromptIRV2, TransformError]` (v2 IR-native path)
-4. Register in `transform_registry.py` and `pipeline_v2.py._IR_NATIVE_TRANSFORMS`
+4. Register in `transform_registry.py` and `pipeline/runner.py` `_IR_NATIVE_TRANSFORMS`
 
 ## Testing
 

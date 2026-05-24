@@ -32,11 +32,11 @@ from typing import Any
 
 from lattice.core.context import TransformContext
 from lattice.core.errors import TransformError
-from lattice.core.pipeline import ReversibleSyncTransform
 from lattice.core.result import Ok, Result
 from lattice.core.runtime_state import get_canonical_request_value
 from lattice.ir.primitives import PromptIRV2, prompt_ir_from_v2
 from lattice.ir.types import PromptIR, SectionType
+from lattice.pipeline.base import ReversibleSyncTransform
 from lattice.transport.types import Request, Response
 
 

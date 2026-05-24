@@ -22,9 +22,8 @@ from benchmarks.framework.types import (
 from benchmarks.metrics.quality import evaluate_response
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
-from lattice.core.pipeline import CompressorPipeline
-from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.core.result import unwrap
+from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.transforms.batching import BatchingTransform
 from lattice.transforms.cache_arbitrage import CacheArbitrageOptimizer
 from lattice.transforms.format_conv import FormatConverter
@@ -129,9 +128,9 @@ def _build_pipeline(config: LatticeConfig) -> Any:
     """Build a compression pipeline that respects all feature flags."""
     pipeline = build_benchmark_pipeline(config)
     if config.transform_batching:
-        pipeline.register(BatchingTransform())
+        pipeline.registry.register_instance("batching", BatchingTransform())
     if config.transform_speculation:
-        pipeline.register(SpeculativeTransform())
+        pipeline.registry.register_instance("speculative", SpeculativeTransform())
     return pipeline
 
 
@@ -328,7 +327,7 @@ async def run_trace_replay(
             trace_model: str = trace_model,
             trace_messages: list[dict[str, Any]] = trace_messages,
         ) -> TransformContext:
-            await pipeline.process(
+            pipeline.compress(
                 Request(
                     messages=[message_from_dict(m) for m in trace_messages],
                     model=trace_model,
@@ -346,7 +345,7 @@ async def run_trace_replay(
         # Compute optimized tokens after all passes (warmup + measured)
         ctx = await _run_once()
         compressed = unwrap(
-            await pipeline.process(
+            pipeline.compress(
                 Request(
                     messages=[message_from_dict(m) for m in trace_messages],
                     model=trace_model,
@@ -576,34 +575,24 @@ async def _transform_breakdown(
         ("reference_sub", ReferenceSubstitution()),
         ("tool_filter", ToolOutputFilter()),
         ("output_cleanup", OutputCleanup()),
-        ("format_conv", FormatConverter(validate_roundtrip=False)),
+        ("format_conversion", FormatConverter(validate_roundtrip=False)),
     ]
     if cfg.transform_cache_arbitrage:
         transforms_to_measure.append(("cache_arbitrage", CacheArbitrageOptimizer()))
     if cfg.transform_message_dedup:
         transforms_to_measure.append(("message_dedup", MessageDeduplicator()))
+    from lattice.optimizer._dispatch import run_constituent
+
     for name, transform in transforms_to_measure:
-        pipeline = CompressorPipeline(config=cfg)
-        pipeline.register(transform)
         request = Request(messages=[message_from_dict(m) for m in messages], model=model)
         ctx = TransformContext(model=model, provider="openai")
         # PrefixOptimizer requires two-pass to show cache-hit savings.
         # Simulate multi-turn session: first pass stores prefix hash.
-        compressed = unwrap(
-            await pipeline.process(
-                request,
-                ctx,
-            )
-        )
+        compressed = unwrap(run_constituent(name, transform, request, ctx))
         # Second pass: reuse same context to get cache-hit reduction
         if name == "prefix_opt":
-            # Process again with same context to trigger cache-hit logic
-            compressed2 = unwrap(
-                await pipeline.process(
-                    Request(messages=[message_from_dict(m) for m in messages], model=model),
-                    ctx,
-                )
-            )
+            request2 = Request(messages=[message_from_dict(m) for m in messages], model=model)
+            compressed2 = unwrap(run_constituent(name, transform, request2, ctx))
             compressed = compressed2
             # For prefix optimization, we compute virtual savings by removing
             # the prefix tokens from the count (simulating provider-side cache hit)

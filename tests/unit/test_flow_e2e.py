@@ -152,17 +152,14 @@ class TestMCPSerialization:
         # (common under pytest-asyncio).  Force the simple asyncio.run path
         # so the mock is visible.
         captured_context = None
-        original_process = tools.pipeline.process
+        original_compress = tools.pipeline.compress
 
-        async def _capture_process(request: Request, ctx: Any) -> Any:
+        def _capture_compress(request: Request, ctx: Any) -> Any:
             nonlocal captured_context
             captured_context = ctx
-            return await original_process(request, ctx)
+            return original_compress(request, ctx)
 
-        with (
-            patch.object(tools.pipeline, "process", side_effect=_capture_process),
-            patch("asyncio.get_running_loop", side_effect=RuntimeError("no loop")),
-        ):
+        with patch.object(tools.pipeline, "compress", side_effect=_capture_compress):
             tools.lattice_compress(messages, model="groq/llama-3.1-70b")
 
         assert captured_context is not None
