@@ -16,6 +16,7 @@ Usage::
 
 from __future__ import annotations
 
+import atexit
 import os
 import shutil
 import signal
@@ -195,6 +196,7 @@ def lace_agent(
             previous_sigint(signum, frame)
 
     signal.signal(signal.SIGINT, _sigint_cleanup)
+    atexit.register(_clear_transient)
 
     try:
         # 1. Ensure proxy is running

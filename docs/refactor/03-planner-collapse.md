@@ -748,9 +748,9 @@ Removed from the contract (these were never public; document in MIGRATION.md):
 
 ## 7. Cross-phase coordination
 
-Phase 3 leaves `core/` with: `config.py`, `context.py`, `errors.py`, `result.py`, `maintenance.py`, `metrics.py`, `telemetry.py`, `agent_stats.py`, `cost_estimator.py`, `semantic_cache.py`, `session.py`, `store.py`, `tunnel_sidecar.py`, `transform_registry.py`, `transform_reputation.py`, `segmentation.py`. **Sixteen files.** Phase 4 moves transform_registry/reputation; Phase 8 moves metrics/telemetry/agent_stats/cost_estimator/maintenance/semantic_cache/session/store. After Phase 8, `core/` is at six files (the leaf primitives).
+Phase 3 leaves `core/` with: `config.py`, `context.py`, `errors.py`, `result.py`, `maintenance.py`, `metrics.py`, `telemetry.py`, `agent_stats.py`, `cost_estimator.py`, `semantic_cache.py`, `session.py`, `store.py`, `tunnel_sidecar.py`, `transform_registry.py`, `transform_reputation.py`, `segmentation.py`. **Sixteen files.** Phase 4 moves transform_registry/reputation; STATUS Phase 9 (observability) moves metrics/telemetry/agent_stats/cost_estimator/maintenance/semantic_cache/session/store. After that phase, `core/` is six leaf files.
 
-Phase 3 does **not** touch `tunnel_sidecar.py`. Phase 7 (integrations) decides whether it moves to `integrations/` or stays in `core/`.
+Phase 3 does **not** touch `tunnel_sidecar.py`. STATUS Phase 8 moved it to `integrations/tunnel.py` (historical path name in this doc).
 
 The dependency graph after Phase 3:
 

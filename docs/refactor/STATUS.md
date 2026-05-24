@@ -144,8 +144,8 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ Done     | —                |
 | 6         | 5         | Providers + Transport split                | ✅ Done     | PR #11           |
 | 7         | 6         | Proxy + SDK + CLI                          | ✅ Done     | branch `refactor/phase-7-proxy-sdk-cli` |
-| 8         | 7         | Integrations (MCP, agent wrappers)         | ⏳ Next     | 1 day            |
-| 9         | 8         | Observability + State                      | ⏳ Pending  | 1–2 days         |
+| 8         | 7         | Integrations (tunnel, doctor, mutation store) | ✅ Done     | PR #13           |
+| 9         | 8         | Observability + State                      | ⏳ Next     | 1–2 days         |
 | 10        | 9         | Benchmarks                                 | ⏳ Pending  | 1 day            |
 | 11        | 10        | Tests reorg                                | ⏳ Pending  | 1 day            |
 | 12        | 11        | Docs + Release                             | ⏳ Pending  | 1 day            |
@@ -379,8 +379,8 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 - **Phase 5 (Transforms cleanup)** — ✅ Shipped (5a–5c on `refactor/phase-5-transforms-cleanup`). See `docs/refactor/phase-5-decisions.md` for benchmark-gated deletions (canonical bench skipped without API key; default DELETE applied).
 - **Phase 6 (Providers + Transport)** — ✅ Shipped on PR #11. Monolith `providers/transport.py` → `providers/transport/` package + `providers/adapters/`.
 - **Phase 7 (Proxy + SDK + CLI)** — ✅ Shipped on `refactor/phase-7-proxy-sdk-cli`. Health routes, `proxy/middleware.py`, top-level SDK exports, `sdk/client.py` deprecation shim.
-- **Phase 8 (Integrations)** — MCP + agent wrappers consolidation. ~1 day. **Next.**
-- **Phase 9 (Observability + State)** — `core/session.py`, `core/store.py`, `core/metrics.py`, `core/telemetry.py`, `core/cost_estimator.py`, `core/agent_stats.py`, `core/maintenance.py`, `core/semantic_cache.py` → `state/`, `telemetry/`, `cache/`. (`providers/credentials.py` already moved in Phase 4.) ~1–2 days.
+- **Phase 8 (Integrations)** — ✅ Shipped on PR #13. Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. (MCP module unchanged — out of scope for 07-integrations.md.)
+- **Phase 9 (Observability + State)** — `core/session.py`, `core/store.py`, metrics/telemetry modules → `state/`, `telemetry/`, `cache/`, `safety/`. **Next.** See `08-observability-state.md`.
 - **Phase 10 (Benchmarks)** — bench framework cleanup, drop dead scenarios, doc bench surface. ~1 day.
 - **Phase 11 (Tests)** — reorg into `tests/unit/{ir,pipeline,transport,planner,...}/`; drop `--use-v2-pipeline` CLI flag (originally scoped here). ~1 day.
 - **Phase 12 (Docs + Release)** — README + CHANGELOG + MIGRATION.md + tag v1.0.0. ~1 day.

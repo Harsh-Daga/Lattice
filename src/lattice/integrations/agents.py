@@ -1477,7 +1477,11 @@ class CopilotIntegration(AgentIntegration):
                 backup_path=None,
                 message=f"Would patch Copilot config at {self._config_path()}",
             )
-        apply_provider_scope(port=self.lattice_config.proxy_port)
+        from lattice.integrations.mutation_store import store_mutation
+
+        mutation = apply_provider_scope(port=self.lattice_config.proxy_port)
+        if mutation:
+            store_mutation("copilot", mutation)
         return AgentConfig(
             agent_name=self.name,
             patched=True,

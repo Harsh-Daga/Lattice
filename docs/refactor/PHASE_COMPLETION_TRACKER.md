@@ -144,6 +144,11 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | ruff / mypy / pytest / contract | ✅ |
 | Registry: `copilot` in `_AGENT_REGISTRY`; `list_supported_agents()` = `list_primary_agents()` | ✅ |
 | `vscode` / `generic` remain wrap aliases only (not primary doctor targets) | ✅ documented |
+| `init.run_init` catches `AgentNotInstalledError`; `lace` uses `atexit` + signals for transient cleanup | ✅ |
+| `test_registry_primary_agents.py`, `test_lace_transient.py` | ✅ |
+| Deferred: split `agents.py` (>800 LoC) | Phase 11 |
+| Deferred: `integrations/mcp.py` → pipeline import cycle | pre-existing |
+| Deferred: `AgentNotInstalledError` CHANGELOG entry | Phase 12 |
 
 ---
 

@@ -20,6 +20,7 @@ from typing import Any
 
 import structlog
 
+from lattice.integrations.agents import AgentNotInstalledError
 from lattice.integrations.mutation_store import get_mutation, remove_mutation, store_mutation
 from lattice.integrations.registry import (
     apply_provider_scope,
@@ -148,29 +149,39 @@ def run_init(
     """
     results: dict[str, dict[str, Any]] = {}
     mutations: list[dict[str, Any]] = []
+    all_ok = True
 
     _envs = build_install_target_envs(port=port, targets=targets)
     for target in targets:
         logger.debug("init_target", target=target, port=port)
-        if target == "claude":
-            result = _init_claude(port=port)
-        elif target == "codex":
-            result = _init_codex(port=port)
-        elif target == "opencode":
-            result = _init_opencode(port=port)
-        elif target == "cursor":
-            result = _init_cursor(port=port)
-        elif target == "copilot":
-            result = _init_copilot(port=port)
-        else:
-            result = {"success": False, "message": f"Unknown target: {target}", "mutation": None}
+        try:
+            if target == "claude":
+                result = _init_claude(port=port)
+            elif target == "codex":
+                result = _init_codex(port=port)
+            elif target == "opencode":
+                result = _init_opencode(port=port)
+            elif target == "cursor":
+                result = _init_cursor(port=port)
+            elif target == "copilot":
+                result = _init_copilot(port=port)
+            else:
+                result = {
+                    "success": False,
+                    "message": f"Unknown target: {target}",
+                    "mutation": None,
+                }
+        except AgentNotInstalledError as exc:
+            result = {"success": False, "message": str(exc), "mutation": None}
+        if not result.get("success", False):
+            all_ok = False
         results[target] = result
         mutation = result.get("mutation")
         if mutation:
             store_mutation(target, mutation)
             mutations.append(mutation)
 
-    return {"success": True, "results": results, "mutations": mutations}
+    return {"success": all_ok, "results": results, "mutations": mutations}
 
 
 def run_uninit(targets: list[str]) -> dict[str, Any]:
