@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import time
@@ -26,9 +27,13 @@ from typing import Any
 import structlog
 
 from lattice.core.config import LatticeConfig
-from lattice.core.tunnel_sidecar import SidecarThread, TunnelSidecar
-from lattice.integrations.mutation_store import get_mutation
+from lattice.integrations.mutation_store import (
+    clear_transient_lace,
+    get_mutation,
+    record_transient_lace,
+)
 from lattice.integrations.registry import build_launch_env
+from lattice.integrations.tunnel import SidecarThread, TunnelSidecar
 from lattice.proxy.lifecycle import PIDManager
 
 logger = structlog.get_logger()
@@ -168,6 +173,28 @@ def lace_agent(
 
     we_started_proxy = False
     sidecar_runner: SidecarThread | None = None
+    recorded_transient = False
+
+    def _clear_transient() -> None:
+        nonlocal recorded_transient
+        if recorded_transient:
+            clear_transient_lace(agent)
+            recorded_transient = False
+
+    def _signal_cleanup(_signum: int, _frame: object) -> None:
+        _clear_transient()
+
+    record_transient_lace(agent, pid=os.getpid())
+    recorded_transient = True
+    signal.signal(signal.SIGTERM, _signal_cleanup)
+    previous_sigint = signal.getsignal(signal.SIGINT)
+
+    def _sigint_cleanup(signum: int, frame: Any) -> None:
+        _clear_transient()
+        if callable(previous_sigint):
+            previous_sigint(signum, frame)
+
+    signal.signal(signal.SIGINT, _sigint_cleanup)
 
     try:
         # 1. Ensure proxy is running
@@ -227,6 +254,8 @@ def lace_agent(
         return 130
 
     finally:
+        _clear_transient()
+
         # Stop sidecar if running
         if sidecar_runner is not None:
             try:

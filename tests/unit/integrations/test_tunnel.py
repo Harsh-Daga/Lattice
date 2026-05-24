@@ -17,7 +17,7 @@ import contextlib
 import json
 import time
 
-from lattice.core.tunnel_sidecar import (
+from lattice.integrations.tunnel import (
     HTTPProxyServer,
     LocalSocketServer,
     ReplayBuffer,
@@ -372,7 +372,7 @@ class TestHTTPProxyServer:
         await proxy.stop()
 
     async def test_is_streaming_request(self) -> None:
-        from lattice.core.tunnel_sidecar import _HTTPRequest
+        from lattice.integrations.tunnel import _HTTPRequest
 
         proxy = HTTPProxyServer(proxy_url="http://127.0.0.1:1")
         req = _HTTPRequest(

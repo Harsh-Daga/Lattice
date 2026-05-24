@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after Phase 7 on `refactor/phase-7-proxy-sdk-cli` (2026-05-24).
+> Last updated after Phase 8 on `refactor/phase-8-integrations` (2026-05-24).
 > See **[PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md)** for line-by-line acceptance vs each phase doc.
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
@@ -26,8 +26,9 @@
 | **5**       | ✅ Done             | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) (`05dfd2f`) | Transforms cleanup merged to `main`. See `PHASE_COMPLETION_TRACKER.md`. |
 | **6**       | ✅ Done             | `4798bfb` — PR [#11](https://github.com/Harsh-Daga/Lattice/pull/11) merged | Adapters under `providers/adapters/`; `providers/transport/` package; unified `_stream`. Benchmark `phase-6.json` operator-run. |
 | **7**       | ✅ Done (merge PR #12) | `refactor/phase-7-proxy-sdk-cli` | HealthManager + middleware; top-level imports; sdk deprecation shim; doc/MIGRATION slice. |
+| **8**       | ✅ Done             | `refactor/phase-8-integrations` | Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. |
 
-**Current totals.** 1741 passed, 196 skipped, contract green. **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** 1752 passed, 196 skipped, contract green. **Next:** Phase 9 (observability / `08-observability-state.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 
@@ -84,7 +85,7 @@ Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.c
 
 ```
 agent_stats, config, context, cost_estimator, errors, maintenance, metrics, result,
-segmentation, semantic_cache, session, store, telemetry, tunnel_sidecar
+segmentation, semantic_cache, session, store, telemetry
 ```
 
 **`src/lattice/transforms/`** (registry + reputation + patterns moved from `core/` / `utils/` in Phase 5):

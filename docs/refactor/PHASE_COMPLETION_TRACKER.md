@@ -1,9 +1,9 @@
-# Phase completion tracker (Phases 0–7)
+# Phase completion tracker (Phases 0–8)
 
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `refactor/phase-7-proxy-sdk-cli` — **1741 passed**, contract green.
+**Last verified:** `refactor/phase-8-integrations` — **1752 passed**, contract green.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -15,6 +15,7 @@
 | **5** | ✅ | Transforms cleanup + §6.3 tests |
 | **6** | ✅ | Providers/adapters + transport split; see §6 below |
 | **7** | ✅ | Proxy health routes, header middleware, SDK surface; see §7 below |
+| **8** | ✅ | Integrations tunnel move, doctor, mutation store; see §8 below |
 
 ---
 
@@ -122,6 +123,27 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | `docs/refactor/MIGRATION.md` Phase 7 `sdk.client` section | ✅ |
 | Doc sync (`06-proxy-sdk-cli` §7, FINAL_LAYOUT, api-surface) | ✅ |
 | Benchmark `phase-7-proxy.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) |
+
+---
+
+## Phase 8 — `07-integrations.md` §7
+
+| Criterion | Status |
+|-----------|--------|
+| `core/tunnel_sidecar.py` deleted; `integrations/tunnel.py` exists | ✅ |
+| `pyproject.toml` ruff per-file-ignores updated | ✅ |
+| `from lattice.integrations.tunnel import TunnelSidecar, TunnelState, SidecarThread` | ✅ |
+| `AgentNotInstalledError`, `AgentIntegrationProtocol`, `AgentDoctorReport` | ✅ |
+| All integration classes: `patch` / `unpatch` / `is_patched` / `doctor` / `name` / `proxy_url` | ✅ |
+| `JsonFileIntegration.patch()` raises when config missing (non–dry-run) | ✅ |
+| `lattice doctor <agent>` exit 0 for five primary agents | ✅ |
+| `lattice doctor` (no args) reports all five | ✅ |
+| `mutation_store.list_all_active()` = durable ∪ transient | ✅ |
+| Lace records/clears transient state | ✅ |
+| §5.1 tests under `tests/unit/integrations/` | ✅ |
+| ruff / mypy / pytest / contract | ✅ |
+| Registry: `copilot` in `_AGENT_REGISTRY`; `list_supported_agents()` = `list_primary_agents()` | ✅ |
+| `vscode` / `generic` remain wrap aliases only (not primary doctor targets) | ✅ documented |
 
 ---
 

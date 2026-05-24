@@ -1,5 +1,7 @@
 # Phase 7 (REFACTOR_PLAN) / STATUS Phase 8 — Agent Integrations
 
+> **STATUS Phase 8** (this file is REFACTOR_PLAN Phase 7 in the original numbering).
+
 > **Goal.** The five agent integrations (Claude Code, Codex, Cursor, OpenCode, GitHub Copilot) are already well-decomposed via `EnvFileIntegration` / `JsonFileIntegration` base classes in `agents.py`. Phase 7 verifies that decomposition holds, surfaces a couple of latent issues found in the audit (`mutation_store` not consistently used by every concrete class; one agent integration silently no-ops on patch when its config file is missing instead of raising), tightens the `AgentIntegration` Protocol so mypy can prove every subclass is complete, ensures `lattice doctor <agent>` covers all five, and decides the fate of `core/tunnel_sidecar.py` (784 LoC).
 >
 > **Outcome.** `from lattice.integrations import AgentIntegration, ClaudeCodeIntegration, CodexIntegration, CursorIntegration, OpenCodeIntegration, CopilotIntegration` works. Each concrete integration has identical lifecycle (patch / unpatch / is_patched / status). `lattice doctor <agent>` runs a per-agent health check matrix. `tunnel_sidecar.py` moves to `integrations/tunnel.py`.

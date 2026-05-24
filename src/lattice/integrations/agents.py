@@ -73,14 +73,111 @@ import re
 import shutil
 import sys
 import time
+import urllib.error
+import urllib.request
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
 from lattice.core.config import LatticeConfig
+from lattice.integrations.mutation_store import (
+    get_mutation,
+    list_transient_laced,
+)
 
 logger = structlog.get_logger()
+
+_PRIMARY_AGENTS: tuple[str, ...] = ("claude", "codex", "cursor", "opencode", "copilot")
+
+
+class AgentNotInstalledError(Exception):
+    """Raised when an integration target (config file, env file, executable) is not present."""
+
+
+@runtime_checkable
+class AgentIntegrationProtocol(Protocol):
+    """Stable protocol every integration subclass must satisfy."""
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def proxy_url(self) -> str: ...
+
+    def patch(self, dry_run: bool = False) -> "AgentConfig": ...
+
+    def unpatch(self, dry_run: bool = False) -> "AgentConfig": ...
+
+    def is_patched(self) -> bool: ...
+
+    def doctor(self) -> "AgentDoctorReport": ...
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class AgentDoctorReport:
+    """Per-agent health matrix for ``lattice doctor``."""
+
+    agent: str
+    is_installed: bool
+    is_patched_durable: bool
+    is_patched_transient: bool
+    proxy_reachable: bool
+    diagnostic_lines: list[str] = dataclasses.field(default_factory=list)
+
+
+def list_primary_agents() -> list[str]:
+    """Return the five product agents (doctor / init targets)."""
+    return list(_PRIMARY_AGENTS)
+
+
+def _proxy_reachable(lattice_config: LatticeConfig) -> bool:
+    url = f"http://{lattice_config.proxy_host}:{lattice_config.proxy_port}/healthz"
+    try:
+        with urllib.request.urlopen(url, timeout=2) as resp:
+            return resp.status == 200
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        return False
+
+
+def build_agent_doctor_report(
+    integration: "AgentIntegration",
+    *,
+    is_installed: bool,
+) -> AgentDoctorReport:
+    """Shared doctor checks for any integration instance."""
+    name = integration.name
+    durable = get_mutation(name) is not None or integration.is_patched()
+    transient = name in {r.agent for r in list_transient_laced()}
+    proxy_ok = _proxy_reachable(integration.lattice_config)
+    lines: list[str] = []
+    if not is_installed:
+        lines.append(f"{name}: agent or config not found on this machine.")
+    if durable:
+        lines.append(f"{name}: durable routing configured (init or env/config patch).")
+    elif transient:
+        lines.append(f"{name}: transient lace session active.")
+    else:
+        lines.append(
+            f"{name}: not routed through LATTICE — run `lattice init {name}` or `lattice lace {name}`."
+        )
+    if proxy_ok:
+        lines.append(
+            f"Proxy reachable at http://{integration.lattice_config.proxy_host}:"
+            f"{integration.lattice_config.proxy_port}/healthz"
+        )
+    else:
+        lines.append(
+            "Proxy not reachable — start with `lattice proxy run` or `lattice lace <agent>`."
+        )
+    return AgentDoctorReport(
+        agent=name,
+        is_installed=is_installed,
+        is_patched_durable=durable,
+        is_patched_transient=transient,
+        proxy_reachable=proxy_ok,
+        diagnostic_lines=lines,
+    )
 
 
 # =============================================================================
@@ -170,6 +267,19 @@ class AgentIntegration:
     def is_patched(self) -> bool:
         """Return ``True`` if currently routed through LATTICE."""
         raise NotImplementedError
+
+    def _agent_binary_name(self) -> str | None:
+        """Optional PATH binary used to detect installation."""
+        return None
+
+    def _is_agent_installed(self) -> bool:
+        binary = self._agent_binary_name()
+        if binary is None:
+            return True
+        return shutil.which(binary) is not None
+
+    def doctor(self) -> AgentDoctorReport:
+        return build_agent_doctor_report(self, is_installed=self._is_agent_installed())
 
 
 # =============================================================================
@@ -294,6 +404,9 @@ class ClaudeCodeIntegration(EnvFileIntegration):
     def name(self) -> str:
         return "claude"
 
+    def _agent_binary_name(self) -> str | None:
+        return "claude"
+
 
 class CodexIntegration(EnvFileIntegration):
     """Codex CLI — comprehensive TOML + env-file integration.
@@ -334,6 +447,14 @@ class CodexIntegration(EnvFileIntegration):
     @property
     def name(self) -> str:
         return "codex"
+
+    def _agent_binary_name(self) -> str | None:
+        return "codex"
+
+    def _is_agent_installed(self) -> bool:
+        if shutil.which("codex") is not None:
+            return True
+        return self._codex_user_config().exists()
 
     # ------------------------------------------------------------------ paths
 
@@ -748,21 +869,25 @@ class JsonFileIntegration(AgentIntegration):
             return False
         return _load_json(path).get(self._MARKER_WRAPPED) is True
 
+    def _is_agent_installed(self) -> bool:
+        path = self._config_path()
+        return path is not None and path.exists()
+
     def patch(self, dry_run: bool = False) -> AgentConfig:
         path = self._config_path()
-        if path is None:
-            return AgentConfig(
-                agent_name=self.name,
-                patched=False,
-                backup_path=None,
-                message=f"Could not determine config path for {self.name}.",
-            )
-        if not path.exists():
-            return AgentConfig(
-                agent_name=self.name,
-                patched=False,
-                backup_path=None,
-                message=f"Config not found at {path}.",
+        if path is None or not path.exists():
+            if dry_run:
+                return AgentConfig(
+                    agent_name=self.name,
+                    patched=False,
+                    backup_path=None,
+                    message=f"Config not found at {path}.",
+                )
+            raise AgentNotInstalledError(
+                f"{self.name}: config file not found "
+                f"({path or 'no path returned'}). "
+                f"Is the agent installed? "
+                f"Run `which {self.name}` to verify."
             )
 
         if self.is_patched():
@@ -920,6 +1045,12 @@ class CursorIntegration(JsonFileIntegration):
         data.pop("cursor.openai.baseURL", None)
         return data
 
+    def _is_agent_installed(self) -> bool:
+        path = self._config_path()
+        if path is None:
+            return False
+        return path.parent.parent.exists()
+
     def is_patched(self) -> bool:
         path = self._config_path()
         if path is None or not path.exists():
@@ -929,11 +1060,8 @@ class CursorIntegration(JsonFileIntegration):
     def patch(self, dry_run: bool = False) -> AgentConfig:
         path = self._config_path()
         if path is None:
-            return AgentConfig(
-                agent_name=self.name,
-                patched=False,
-                backup_path=None,
-                message=f"Could not determine config path for {self.name}.",
+            raise AgentNotInstalledError(
+                f"{self.name}: could not determine config path on this platform."
             )
 
         # Create settings.json if it doesn't exist yet (user never customised)
@@ -1164,17 +1292,28 @@ class OpenCodeIntegration(JsonFileIntegration):
     def _inject_url(self, data: dict[str, Any], _url: str) -> dict[str, Any]:
         return data  # overridden in patch / unpatch
 
+    def _is_agent_installed(self) -> bool:
+        path = self._config_path()
+        return path is not None and path.exists()
+
     def is_patched(self) -> bool:
         return self._state_path().exists()
 
     def patch(self, dry_run: bool = False) -> AgentConfig:
         path = self._config_path()
         if path is None or not path.exists():
-            return AgentConfig(
-                agent_name=self.name,
-                patched=False,
-                backup_path=None,
-                message=f"Config not found at {path}.",
+            if dry_run:
+                return AgentConfig(
+                    agent_name=self.name,
+                    patched=False,
+                    backup_path=None,
+                    message=f"Config not found at {path}.",
+                )
+            raise AgentNotInstalledError(
+                f"{self.name}: config file not found "
+                f"({path or 'no path returned'}). "
+                f"Is the agent installed? "
+                f"Run `which {self.name}` to verify."
             )
 
         if self.is_patched():
@@ -1300,6 +1439,86 @@ class OpenCodeIntegration(JsonFileIntegration):
         )
 
 
+class CopilotIntegration(AgentIntegration):
+    """GitHub Copilot — durable hooks in ``~/.copilot/config.json`` via init."""
+
+    @property
+    def name(self) -> str:
+        return "copilot"
+
+    def _config_path(self) -> pathlib.Path:
+        return pathlib.Path.home() / ".copilot" / "config.json"
+
+    def _agent_binary_name(self) -> str | None:
+        return "copilot"
+
+    def is_patched(self) -> bool:
+        mutation = get_mutation("copilot")
+        if mutation is not None:
+            return True
+        path = self._config_path()
+        if not path.exists():
+            return False
+        hooks = _load_json(path).get("hooks")
+        return isinstance(hooks, dict) and hooks.get("lattice_init") is True
+
+    def patch(self, dry_run: bool = False) -> AgentConfig:
+        if not dry_run and not self._is_agent_installed():
+            raise AgentNotInstalledError(
+                f"{self.name}: `copilot` binary not found on PATH. "
+                "Install GitHub Copilot CLI, then retry."
+            )
+        from lattice.integrations.copilot.install import apply_provider_scope
+
+        if dry_run:
+            return AgentConfig(
+                agent_name=self.name,
+                patched=False,
+                backup_path=None,
+                message=f"Would patch Copilot config at {self._config_path()}",
+            )
+        apply_provider_scope(port=self.lattice_config.proxy_port)
+        return AgentConfig(
+            agent_name=self.name,
+            patched=True,
+            backup_path=None,
+            changes=["hooks"],
+            message=f"Patched Copilot config at {self._config_path()}",
+        )
+
+    def unpatch(self, dry_run: bool = False) -> AgentConfig:
+        from lattice.integrations.copilot.install import revert_provider_scope
+
+        mutation = get_mutation("copilot")
+        if mutation is None and not self.is_patched():
+            return AgentConfig(
+                agent_name=self.name,
+                patched=False,
+                backup_path=None,
+                message="Copilot is not routed through LATTICE.",
+            )
+        if dry_run:
+            return AgentConfig(
+                agent_name=self.name,
+                patched=False,
+                backup_path=None,
+                message="Would restore Copilot configuration",
+            )
+        if mutation:
+            revert_provider_scope(mutation)
+        elif self._config_path().exists():
+            revert_provider_scope(
+                {"target": "copilot", "kind": "json-hooks", "path": str(self._config_path())}
+            )
+        return AgentConfig(
+            agent_name=self.name,
+            patched=False,
+            backup_path=None,
+            changes=["hooks"],
+            message="Restored Copilot configuration",
+        )
+
+
 # =============================================================================
 # 3. Registry
 # =============================================================================
@@ -1310,6 +1529,7 @@ _AGENT_REGISTRY: dict[str, Callable[[LatticeConfig | None], AgentIntegration]] =
     "codex": CodexIntegration,
     "cursor": CursorIntegration,
     "opencode": OpenCodeIntegration,
+    "copilot": CopilotIntegration,
     "vscode": VSCodeIntegration,
     "generic": GenericIntegration,
 }
@@ -1323,6 +1543,18 @@ _AGENT_REGISTRY: dict[str, Callable[[LatticeConfig | None], AgentIntegration]] =
 def list_agents() -> list[str]:
     """Return all supported agent names."""
     return list(_AGENT_REGISTRY.keys())
+
+
+def get_agent_integration(
+    agent_name: str,
+    lattice_config: LatticeConfig | None = None,
+) -> AgentIntegration:
+    """Instantiate a registered integration by CLI name."""
+    lattice_config = lattice_config or LatticeConfig.auto()
+    lower = agent_name.lower()
+    if lower not in _AGENT_REGISTRY:
+        raise ValueError(f"Unknown agent '{agent_name}'. Supported: {', '.join(list_agents())}")
+    return _AGENT_REGISTRY[lower](lattice_config)
 
 
 def wrap_agent(
@@ -1422,7 +1654,17 @@ def wrap_all(
         if integration.name in seen:
             continue
         seen.add(integration.name)
-        results.append(integration.patch(dry_run=dry_run))
+        try:
+            results.append(integration.patch(dry_run=dry_run))
+        except AgentNotInstalledError as exc:
+            results.append(
+                AgentConfig(
+                    agent_name=integration.name,
+                    patched=False,
+                    backup_path=None,
+                    message=str(exc),
+                )
+            )
     return results
 
 
