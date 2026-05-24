@@ -19,9 +19,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from lattice.providers.base import _strip_provider_prefix
-from lattice.providers.openai import OpenAIAdapter
 from lattice.transport.types import Request, Response
+
+from .base import _strip_provider_prefix
+from .openai import OpenAIAdapter
 
 # =============================================================================
 # Generic base

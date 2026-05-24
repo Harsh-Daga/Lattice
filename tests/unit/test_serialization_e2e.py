@@ -388,7 +388,7 @@ class TestOpenAIAdapterSerialization:
     """OpenAIAdapter correctly serializes messages with content_parts."""
 
     def test_serialize_multimodal(self) -> None:
-        from lattice.providers.openai import OpenAIAdapter
+        from lattice.providers.adapters.openai import OpenAIAdapter
 
         adapter = OpenAIAdapter()
         msg = Message(role="user", content="")
@@ -407,7 +407,7 @@ class TestOpenAIAdapterSerialization:
         assert serialized_msg["content"][1]["type"] == "image_url"
 
     def test_serialize_simple_text(self) -> None:
-        from lattice.providers.openai import OpenAIAdapter
+        from lattice.providers.adapters.openai import OpenAIAdapter
 
         adapter = OpenAIAdapter()
         req = Request(messages=[Message(role="user", content="Hello")], model="gpt-4")
@@ -415,7 +415,7 @@ class TestOpenAIAdapterSerialization:
         assert body["messages"][0]["content"] == "Hello"
 
     def test_serialize_tool_calls(self) -> None:
-        from lattice.providers.openai import OpenAIAdapter
+        from lattice.providers.adapters.openai import OpenAIAdapter
 
         adapter = OpenAIAdapter()
         req = Request(

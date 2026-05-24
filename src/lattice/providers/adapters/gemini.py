@@ -15,8 +15,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from lattice.providers.openai_compatible import OpenAICompatibleAdapter
 from lattice.transport.types import Request
+
+from .openai_compatible import OpenAICompatibleAdapter
 
 
 class GeminiAdapter(OpenAICompatibleAdapter):

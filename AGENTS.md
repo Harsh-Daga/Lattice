@@ -19,7 +19,7 @@ uv run python benchmarks/evals/cli.py --suite feature
 
 ## Architecture
 
-LATTICE is a **unified optimization + transport system** with one canonical runtime (Phases 0–4 complete on `refactor/phase-4-planner-collapse`):
+LATTICE is a **unified optimization + transport system** with one canonical runtime (Phases 0–6 complete on `refactor/phase-6c-providers-transport-split`):
 
 ```
 Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress/process → Provider
@@ -36,12 +36,12 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 | `ir/` | PromptIRV2, builder, primitives, native optimizer base, quality, validation |
 | `planner/` | **UnifiedPlanner** (sole scheduler), task classifier, execution plan builder, runtime state bridges |
 | `pipeline/` | `Pipeline`, safety gates, policy, guardrails, MILV, representation_optimizer (beam search) |
-| `transforms/` | Individual transforms — IR-native via `optimize(ir, ...)`; orchestrators in `transforms/optimizers/` |
+| `transforms/` | Individual transforms — IR-native via `optimize(ir, ...)`; orchestrators in `transforms/optimizers/`; registry in `transforms/registry.py` |
 | `transforms/optimizers/` | Per-domain optimizer orchestrators (`ir_structure`, reference, tool, diagnostic, context) |
 | `runtime/` | **TierClassifier** (workload complexity — not a provider router) |
 | `transport/` | Request/Response types, serialization, delta wire, congestion |
 | `protocol/` | Prefix canonicalization, cache planners, binary framing, manifest |
-| `providers/` | Per-provider adapters, transport, **credentials** |
+| `providers/` | `adapters/` (17 providers), `transport/` (HTTP dispatch), **credentials** |
 | `proxy/` | FastAPI server with OpenAI-compatible endpoints |
 | `gateway/` | HTTP compatibility layer, routing headers |
 
@@ -60,11 +60,11 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 
 1. Extend `ReversibleSyncTransform` with `name` and `priority`
 2. Implement `optimize(PromptIRV2, Request, TransformContext) → Result[PromptIRV2, TransformError]` (canonical path)
-3. Register in `core/transform_registry.py` and `pipeline/runner.py` `PipelineTransformRegistry._FACTORIES`
+3. Register in `transforms/registry.py` and `pipeline/runner.py` `PipelineTransformRegistry._FACTORIES`
 
 ## Testing
 
-- Unit tests: `tests/unit/` — **1706 passed**, 196 skipped, 1903 collected (Phase 11 full reorg pending)
+- Unit tests: `tests/unit/` — **1712 passed**, 196 skipped (Phase 11 full reorg pending)
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
 - Contract tests: `tests/contract/` — **27 passed**
@@ -95,7 +95,7 @@ Suites: `all`, `feature`, `feature-matrix`, `provider`, `protocol`, `transport`,
 
 | Metric | Value |
 |--------|-------|
-| Tests passed | **1706/1706** executable (+ 196 skipped, 1903 collected) |
+| Tests passed | **1712/1712** executable (+ 196 skipped) |
 | Contract tests | **27/27** |
 | ruff / format / mypy | **0 errors** |
 

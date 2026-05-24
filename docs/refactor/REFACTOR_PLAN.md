@@ -15,7 +15,7 @@ Today the repo carries **at least three parallel implementations** of each major
 | IR construction | `core/ir.py`, `core/ir_builder.py`, `core/ir_normalizer.py`, `core/ir_serializer.py`, `core/ir_transform.py`, `core/primitives.py`, `core/compiler.py` (7 files) |
 | Pipeline | `core/pipeline.py` (v1), `core/pipeline_v2.py`, `core/pipeline_v2_wrapper.py`, `core/pipeline_factory.py` (4 files) |
 | Scheduler / planner | `core/scheduler.py`, `core/optimizer_scheduler.py`, `core/unified_planner.py`, `planner/execution_builder.py` (4 files) |
-| Transport | `core/transport.py` (types), `providers/transport.py` (1539 LoC — HTTP), `transport/congestion.py` (TACC), `protocol/` (binary framing) |
+| Transport | `transport/types.py` (Request/Response), `providers/transport/` (HTTP dispatch), `transport/congestion.py` (TACC), `protocol/` (binary framing) |
 | Optimizers vs transforms | `optimizer/structure_optimizer.py` vs `optimizer/ir_structure_optimizer.py`; `optimizer/*` orchestrating `transforms/*` |
 
 The result is a "feature-rich" codebase whose internal flow is impossible to summarise on one page. README claims **18 transforms**; the registry exposes **25**; some are no-op wrappers (`prefix_opt`), some aren't transforms at all (`semantic_segmenter`), some are misnamed (`runtime/router.py` — the README explicitly says "LATTICE is not a router").
@@ -69,7 +69,7 @@ Three files exceed 700 LoC and conflate orthogonal concerns. Each becomes a pack
 |---|---|---|---|
 | `transforms/content_profiler.py` | 985 | profile classification · risk scoring · task classification · IR build · prefix canonicalisation · manifest building · cache plan simulation · execution plan derivation · scheduler bridge · segmenter glue | `transforms/content_profiler/{__init__.py,classifier.py,risk_scorer.py,task_classifier_bridge.py,planner_bridge.py}` |
 | `transforms/format_conv.py` | 794 | Markdown↔CSV · JSON↔YAML · format detection · IR-native optimize · reverse | `transforms/format_converter/{__init__.py,table_converter.py,json_converter.py}` |
-| `providers/transport.py` | 1539 | provider registry · HTTP pool · rate-limit tracker · DirectHTTPProvider · two near-duplicate streaming methods (~600 LoC overlap) · SSE helpers | `providers/transport/{__init__.py,registry.py,pool.py,rate_limits.py,completion.py,streaming.py,helpers.py}` |
+| ~~`providers/transport.py`~~ | — | **Shipped Phase 6:** split into `providers/transport/{registry,pool,rate_limits,helpers,completion,streaming,stall_detector}.py` + `providers/adapters/` |
 
 ### 1.4 What v1.0.0 *moves* (no behavior change, layout only)
 

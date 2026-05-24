@@ -27,9 +27,9 @@ from lattice.providers import (
     OpenAIAdapter,
     ProviderRegistry,
 )
-from lattice.providers.base import _pop_system, _remap_tool_choice, _remap_tools
-from lattice.providers.gemini import GeminiAdapter, VertexAdapter
-from lattice.providers.openai_compatible import (
+from lattice.providers.adapters.base import _pop_system, _remap_tool_choice, _remap_tools
+from lattice.providers.adapters.gemini import GeminiAdapter, VertexAdapter
+from lattice.providers.adapters.openai_compatible import (
     FireworksAdapter,
     GroqAdapter,
     OpenRouterAdapter,

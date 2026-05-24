@@ -1,9 +1,9 @@
-# Phase completion tracker (Phases 0–5)
+# Phase completion tracker (Phases 0–6)
 
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `refactor/phase-5-transforms-cleanup` — **1706 passed**, 196 skipped, 1903 collected, contract green.
+**Last verified:** `refactor/phase-6c-providers-transport-split` @ `f938d64`+ — **1712+ passed**, contract green, CI green on PR #11.
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -12,7 +12,8 @@
 | **2** | ✅ | Layout; `test_no_legacy_process_paths.py` (IR-native scope per Phase 3/5) |
 | **3** | ✅ | V1 kill; `Pipeline.compress()` |
 | **4** | ✅ | Planner collapse; `_normalize_legacy_execution_plan` documented as persisted-plan bridge only |
-| **5** | ✅ code | Transforms cleanup + §6.3 tests; **benchmark + merge to main** still operator actions |
+| **5** | ✅ | Transforms cleanup + §6.3 tests |
+| **6** | ✅ | Providers/adapters + transport split; see §10 below |
 
 ---
 
@@ -78,7 +79,28 @@ All import/layout criteria ✅. Benchmark lines excluded.
 
 ---
 
+## Phase 6 — `05-providers-transport.md` §10
+
+| Criterion | Status |
+|-----------|--------|
+| `providers/transport.py` monolith deleted | ✅ |
+| `providers/transport/` package (7 modules + `__init__`) | ✅ |
+| `providers/adapters/` (8 files) | ✅ |
+| `stall_detector.py` at providers root deleted | ✅ |
+| `base.py` at providers root deleted | ✅ |
+| No file in `providers/` > 850 LoC | ✅ (max `streaming.py` ~495) |
+| Unified `_stream`; thin `completion_stream*` wrappers | ✅ |
+| All 17 adapters at `lattice.providers` | ✅ |
+| TTL `RateLimitTracker` + tests | ✅ |
+| §9.2–9.3 new tests (all 17 adapters in contract) | ✅ |
+| §9.1 test moves (`test_stall_detector`, `test_transport_resilience` → `providers/transport/`) | ✅ |
+| ruff / pytest / contract | ✅ |
+| Docs (`STATUS`, `providers.md`, `AGENTS.md`) | ✅ |
+| Benchmark `phase-6.json` ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) or waiver below |
+
+---
+
 ## Remaining operator actions (not code)
 
-1. Run canonical benchmark → `phase-5.json` when `OLLAMA_CLOUD_API_KEY` is set.
-2. Merge `refactor/phase-5-transforms-cleanup` → `main`.
+1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`).
+2. Merge PR #11 to `main` and record merge SHA in `STATUS.md`.

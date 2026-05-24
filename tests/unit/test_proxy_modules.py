@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from lattice.core.config import LatticeConfig
-from lattice.providers.anthropic import AnthropicAdapter
-from lattice.providers.openai import OpenAIAdapter
+from lattice.providers.adapters.anthropic import AnthropicAdapter
+from lattice.providers.adapters.openai import OpenAIAdapter
 from lattice.proxy.health import HealthManager
 from lattice.proxy.server import create_app
 from lattice.transport.types import Message, Request

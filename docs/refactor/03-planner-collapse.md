@@ -35,7 +35,7 @@ The last group is the leftover after Phases 1+2. They belong with the transforms
 
 `runtime/router.py` is a workload-tier classifier (SIMPLE → MEDIUM → COMPLEX → REASONING) for setting optimisation budgets. It's not a provider router. The audit confirmed the code is correct but the **file name lies**. Rename.
 
-`core/credentials.py` is the provider credential resolver. It only ever services `providers/transport.py` and the adapter layer. It belongs with the providers, not in `core/`.
+`core/credentials.py` is the provider credential resolver. It only ever services `providers/transport/` and the adapter layer. It belongs with the providers, not in `core/` (moved to `providers/credentials.py` in Phase 4).
 
 ---
 

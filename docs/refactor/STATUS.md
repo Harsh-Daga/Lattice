@@ -1,6 +1,6 @@
 # Refactor Status & Revised Forward Plan
 
-> Last updated after Phase 0–5 doc-compliance audit on `refactor/phase-5-transforms-cleanup` (2026-05-24).
+> Last updated after Phase 6 providers/transport split on `refactor/phase-6c-providers-transport-split` (2026-05-24).
 > See **[PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md)** for line-by-line acceptance vs each phase doc.
 >
 > The original 12-phase plan (`REFACTOR_PLAN.md` + `00-audit-baseline.md` …
@@ -24,8 +24,9 @@
 | **3**       | ✅ Done           | `refactor/revised-plan` | V1 Kill: deleted `CompressorPipeline` + wrapper; `Pipeline.compress()` + gates; factory/client/proxy rewired; 10 IR-native `process()` deleted. |
 | **4**       | ✅ Done           | `refactor/phase-4-planner-collapse` | Planner Collapse: `UnifiedPlanner` only; `planner/` package; `transforms/optimizers/`; `TierClassifier`; deleted RATS schedulers + text `StructureOptimizer`. |
 | **5**       | ✅ Done             | PR [#10](https://github.com/Harsh-Daga/Lattice/pull/10) (`05dfd2f`) | Transforms cleanup merged to `main`. See `PHASE_COMPLETION_TRACKER.md`. |
+| **6**       | ✅ Done             | PR [#11](https://github.com/Harsh-Daga/Lattice/pull/11) `refactor/phase-6c-providers-transport-split` | Adapters under `providers/adapters/`; `providers/transport/` package; unified `_stream`. Benchmark `phase-6.json` operator-run. |
 
-**Current totals.** 1706 passed, 196 skipped, 1903 collected, 27 contract tests; ruff/format/mypy clean on branch. **Benchmark gates** (`phase-2` … `phase-5.json`) remain operator-run when API key available.
+**Current totals.** 1712 passed, 196 skipped, contract green on Phase 6 branch. **Benchmark gates** (`phase-6.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 
@@ -117,7 +118,7 @@ diagnostic_optimizer, context_optimizer
 
 **`src/lattice/runtime/`** — `tier_classifier.py` (renamed from `router.py`; not a provider router)
 
-**`src/lattice/providers/`** — includes `credentials.py` (moved from `core/` in Phase 4)
+**`src/lattice/providers/`** — `adapters/` (17 providers), `transport/` (`registry`, `pool`, `rate_limits`, `helpers`, `completion`, `streaming`, `stall_detector`), `credentials.py`
 
 **Deleted in Phases 3–4:** `core/pipeline.py`, `core/pipeline_v2_wrapper.py`, `core/scheduler.py`, `core/optimizer_scheduler.py`, `core/unified_planner.py`, `core/task_classifier.py`, `core/runtime_state.py`, `core/credentials.py`, `optimizer/` (entire package), text `structure_optimizer.py`, `runtime/router.py`.
 
@@ -139,8 +140,8 @@ The original `REFACTOR_PLAN.md` listed phases 0–11. We're collapsing Phase 2 (
 | **3 (NEW)** | (split from 2) | **V1 Kill** — port safety machinery, rewire client/factory, delete `CompressorPipeline` + wrapper | ✅ Done     | —                |
 | 4         | 3         | Planner Collapse                           | ✅ Done     | —                |
 | 5         | 4         | Transforms cleanup (`process()` deletion, file splits) | ✅ Done     | —                |
-| 6         | 5         | Providers + Transport split                | ⏳ Next     | 3 days (doc est.) |
-| 7         | 6         | Proxy + SDK + CLI                          | ⏳ Pending  | 2 days           |
+| 6         | 5         | Providers + Transport split                | ✅ Done     | PR #11           |
+| 7         | 6         | Proxy + SDK + CLI                          | ⏳ Next     | 2 days           |
 | 8         | 7         | Integrations (MCP, agent wrappers)         | ⏳ Pending  | 1 day            |
 | 9         | 8         | Observability + State                      | ⏳ Pending  | 1–2 days         |
 | 10        | 9         | Benchmarks                                 | ⏳ Pending  | 1 day            |
@@ -374,8 +375,8 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 
 - **Phase 4 (Planner Collapse)** — ✅ Shipped on `refactor/phase-4-planner-collapse`. Deleted RATS schedulers; `UnifiedPlanner` only; `planner/` + `transforms/optimizers/`; `TierClassifier`; credentials → `providers/`.
 - **Phase 5 (Transforms cleanup)** — ✅ Shipped (5a–5c on `refactor/phase-5-transforms-cleanup`). See `docs/refactor/phase-5-decisions.md` for benchmark-gated deletions (canonical bench skipped without API key; default DELETE applied).
-- **Phase 6 (Providers + Transport)** — `providers/transport.py` (1539 LoC) split into `providers/transport/{dispatcher,pool,negotiation,...}.py`. ~1–2 days.
-- **Phase 7 (Proxy + SDK + CLI)** — `proxy/` cleanup, SDK wrappers consolidation, CLI restructure. ~2 days.
+- **Phase 6 (Providers + Transport)** — ✅ Shipped on PR #11. Monolith `providers/transport.py` → `providers/transport/` package + `providers/adapters/`.
+- **Phase 7 (Proxy + SDK + CLI)** — `06-proxy-sdk-cli.md`. Wire health routes, header middleware, top-level SDK surface. ~1–2 days.
 - **Phase 8 (Integrations)** — MCP + agent wrappers consolidation. ~1 day.
 - **Phase 9 (Observability + State)** — `core/session.py`, `core/store.py`, `core/metrics.py`, `core/telemetry.py`, `core/cost_estimator.py`, `core/agent_stats.py`, `core/maintenance.py`, `core/semantic_cache.py` → `state/`, `telemetry/`, `cache/`. (`providers/credentials.py` already moved in Phase 4.) ~1–2 days.
 - **Phase 10 (Benchmarks)** — bench framework cleanup, drop dead scenarios, doc bench surface. ~1 day.
@@ -427,12 +428,24 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 | `transform_prefix_opt` / `transform_constraint_lifting` / `transform_strategy_selector` config no-ops | ✅ carryover until Phase 12 MIGRATION.md |
 | Canonical bench A/B/C + `phase-5.json` ±2%                               | ⏳ CI / local key   |
 
+### Phase 6 (providers + transport) — shipped
+
+| Item                                                                     | Status              |
+| ------------------------------------------------------------------------ | ------------------- |
+| `providers/adapters/` + `providers/transport/` package                     | ✅ PR #11           |
+| Unified `_stream()`; TTL `RateLimitTracker`                              | ✅                  |
+| All 17 adapters at `lattice.providers`                                   | ✅ contract test    |
+| Tests under `tests/unit/providers/transport/`                            | ✅                  |
+| Docs (`STATUS`, `PHASE_COMPLETION_TRACKER`, `providers.md`, `AGENTS.md`)   | ✅                  |
+| Canonical bench → `phase-6.json` ±2%                                     | ⏳ see `phase-6-benchmark.md` |
+
 ### Still pending (later phases)
 
 | Item                                                                     | Target phase        |
 | ------------------------------------------------------------------------ | ------------------- |
 | Remove `--use-v2-pipeline` CLI flag                                      | Phase 11            |
 | Canonical bench vs phase-0 baseline (±2%) → `phase-5.json`               | CI / local key      |
+| Canonical bench vs phase-0 baseline (±2%) → `phase-6.json`               | CI / local key      |
 
 ---
 
