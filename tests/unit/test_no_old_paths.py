@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import subprocess
+import pathlib
 
 OLD_PATHS = [
     "lattice.core.metrics",
@@ -72,25 +72,32 @@ OLD_PATHS = [
     "lattice.sdk.client",
 ]
 
+_SRC_ROOT = pathlib.Path("src/lattice")
+
+
+def _line_uses_old_path(line: str, path: str) -> bool:
+    if f"from {path} import" in line or f"from {path}." in line:
+        return True
+    needle = f"import {path}"
+    idx = line.find(needle)
+    if idx == -1:
+        return False
+    end = idx + len(needle)
+    if end >= len(line):
+        return True
+    # Avoid prefix false positives (e.g. format_conv vs format_converter).
+    return line[end] not in "._abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
 
 def test_no_old_imports_in_src() -> None:
     """Production source code must not import from deprecated paths."""
+    violations: list[str] = []
     for path in OLD_PATHS:
         if path == "lattice.sdk.client":
             continue
-        hits: list[str] = []
-        for pattern in (
-            f"from {path} import",
-            f"from {path}.",
-            f"import {path}",
-        ):
-            result = subprocess.run(
-                ["rg", "-F", "-c", pattern, "src/lattice/"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode == 0:
-                hits.append(f"{pattern}:\n{result.stdout.strip()}")
-        if hits:
-            raise AssertionError(f"OLD PATH STILL USED: {path}\n" + "\n".join(hits))
+        for py_file in _SRC_ROOT.rglob("*.py"):
+            for line_no, line in enumerate(py_file.read_text().splitlines(), start=1):
+                if _line_uses_old_path(line, path):
+                    rel = py_file.relative_to(pathlib.Path.cwd())
+                    violations.append(f"{path} at {rel}:{line_no}: {line.strip()}")
+    assert not violations, "OLD PATH STILL USED:\n" + "\n".join(violations)
