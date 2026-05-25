@@ -50,8 +50,7 @@ def test_version_global() -> None:
 
 
 # Commands whose `--help` does NOT follow the standard usage banner shape
-# today. `health` tries to reach a running proxy on --help; `benchmark` is
-# a stub awaiting Phase 9. These commands are still verified to *exit 0*.
+# today. `health` tries to reach a running proxy on --help.
 _NONSTANDARD_HELP = {"health", "benchmark"}
 
 
@@ -98,6 +97,33 @@ def test_doctor_no_args_lists_all_agents() -> None:
     combined = (result.stdout or "") + (result.stderr or "")
     for agent in ("claude", "codex", "cursor", "opencode", "copilot"):
         assert agent in combined
+
+
+def test_lattice_benchmark_runs() -> None:
+    """`lattice benchmark` must delegate to benchmarks/evals/cli.py without crashing."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "lattice.cli",
+            "benchmark",
+            "--suite",
+            "feature",
+            "--providers",
+            "ollama-cloud",
+            "--provider-model",
+            "ollama-cloud=kimi-k2.6:cloud",
+            "--iterations",
+            "1",
+            "--warmup",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode in (0, 1)
+    assert "Traceback" not in (result.stderr or "")
 
 
 def test_supported_agent_args_present_in_lace_help(api_surface) -> None:

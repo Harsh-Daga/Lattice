@@ -52,8 +52,9 @@
 | **7**       | ✅ Done (merge PR #12) | `refactor/phase-7-proxy-sdk-cli` | HealthManager + middleware; top-level imports; sdk deprecation shim; doc/MIGRATION slice. |
 | **8**       | ✅ Done             | `refactor/phase-8-integrations` | Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. |
 | **9**       | ✅ Done             | `refactor/phase-9-observability-state` | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` (6 files); `utils/` → `token_count` only. |
+| **10**      | ✅ Done             | `refactor/phase-10-benchmarks` | `lattice benchmark` wrapper; `src/lattice/evals/` deleted; `CLAIMS.md`; `v1.0.0` artifacts; `run_canonical_benchmark.sh`. |
 
-**Current totals.** 1760 passed, 196 skipped, contract green. **Next:** Phase 10 (benchmarks / `09-benchmarks.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** 1760 passed, 196 skipped, contract green. **Next:** Phase 11 (tests / `10-tests.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 

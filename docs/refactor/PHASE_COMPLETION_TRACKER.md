@@ -1,9 +1,9 @@
-# Phase completion tracker (Phases 0–9)
+# Phase completion tracker (Phases 0–10)
 
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `main` @ merge PR [#14](https://github.com/Harsh-Daga/Lattice/pull/14) (`800a24c`) — **1760 passed**, contract green.
+**Last verified:** Phase 10 branch — **1764 passed**, contract green (see §10).
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -17,6 +17,7 @@
 | **7** | ✅ | Proxy health routes, header middleware, SDK surface; see §7 below |
 | **8** | ✅ | Integrations tunnel move, doctor, mutation store; see §8 below |
 | **9** | ✅ | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/`; see §9 below |
+| **10** | ✅ | Benchmark wrapper, CLAIMS, v1.0.0 artifacts; see §10 below |
 
 ---
 
@@ -172,6 +173,23 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | ruff / mypy / pytest / contract | ✅ |
 | `tests/integration/test_redis_store_integration.py` | ✅ (full suite) |
 | Benchmark `phase-9-observability.json` vs baseline ±2% | ⏳ operator (`OLLAMA_CLOUD_API_KEY`) |
+
+---
+
+## Phase 10 — `09-benchmarks.md` §7
+
+| Criterion | Status |
+|-----------|--------|
+| `src/lattice/evals/` deleted | ✅ |
+| No `lattice.evals` imports (rg) | ✅ |
+| No `--use-v2-pipeline` (rg) | ✅ |
+| `lattice benchmark` → `benchmarks/evals/cli.py` | ✅ |
+| `benchmarks/results/CLAIMS.md` | ✅ |
+| `benchmarks/results/v1.0.0.{json,md}` | ✅ operator run |
+| `scripts/run_canonical_benchmark.sh` + CI reference | ✅ |
+| Script audit (`profile_format_conv`, `test_e2e_real`) | ✅ headers |
+| ruff / mypy / pytest / contract | ✅ |
+| `compare_benchmarks.py` vs baseline ±5% | ⏳ operator |
 
 ---
 

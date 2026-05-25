@@ -1,4 +1,6 @@
-# Phase 9 — Benchmarks & Evals
+# Phase 10 — Benchmarks & Evals (STATUS Phase 10; REFACTOR_PLAN historical Phase 9)
+
+> **STATUS:** Phase 10 on `main` per `09-benchmarks.md` acceptance (wrapper, CLAIMS, v1.0.0 artifacts).
 
 > **Goal.** Delete the dead `src/lattice/evals/` directory; make `benchmarks/` the single canonical evaluation system; produce a `benchmarks/results/v1.0.0.json` reference run; ensure every claim made in `README.md`, `AGENTS.md`, and `docs/` is backed by a measured number in `benchmarks/results/`; add a `lattice benchmark` CLI subcommand that wraps `benchmarks/evals/cli.py` (currently the subcommand just prints a redirect message); remove the now-meaningless `--use-v2-pipeline` flag in `benchmarks/evals/cli.py` (after Phase 2 there's only one pipeline).
 >
@@ -310,20 +312,20 @@ This is the gate that ensures the `lattice benchmark` wrapper is wired correctly
 
 ## 7. Acceptance criteria
 
-- [ ] `src/lattice/evals/` directory does not exist.
-- [ ] `rg "from lattice.evals|import lattice.evals" src/ tests/ benchmarks/` returns 0 matches.
-- [ ] `--use-v2-pipeline` flag does not exist in `benchmarks/evals/cli.py`.
-- [ ] `rg "use_v2_pipeline" src/ tests/ benchmarks/` returns 0 matches.
-- [ ] `lattice benchmark --help` runs the real benchmarks CLI.
-- [ ] `lattice benchmark --suite feature` runs to completion (locally; CI may skip if no provider).
-- [ ] `benchmarks/results/v1.0.0.json` and `v1.0.0.md` exist with the canonical release run.
-- [ ] `benchmarks/results/CLAIMS.md` exists and includes one row per public-doc claim.
-- [ ] `scripts/run_canonical_benchmark.sh` exists, is executable, and is referenced by `.github/workflows/refactor-gate.yml`.
-- [ ] `scripts/profile_format_conv.py` and `scripts/test_e2e_real.py` — auditdecision applied (kept with header or deleted).
-- [ ] `uv run ruff check src/ tests/ benchmarks/` clean.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `uv run pytest tests/contract/ -q` passes.
-- [ ] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/v1.0.0.json --tolerance-pct 5` — ideally improves on baseline; tolerance is wider because release run uses 3 iterations vs Phase 0's 1.
+- [x] `src/lattice/evals/` directory does not exist.
+- [x] `rg "from lattice.evals|import lattice.evals" src/ tests/ benchmarks/` returns 0 matches.
+- [x] `--use-v2-pipeline` flag does not exist in `benchmarks/evals/cli.py`.
+- [x] `rg "use_v2_pipeline" src/ tests/ benchmarks/` returns 0 matches.
+- [x] `lattice benchmark --help` runs the real benchmarks CLI.
+- [x] `lattice benchmark --suite feature` runs to completion (locally; CI may skip if no provider).
+- [x] `benchmarks/results/v1.0.0.json` and `v1.0.0.md` exist with the canonical release run.
+- [x] `benchmarks/results/CLAIMS.md` exists and includes one row per public-doc claim.
+- [x] `scripts/run_canonical_benchmark.sh` exists, is executable, and is referenced by `.github/workflows/refactor-gate.yml`.
+- [x] `scripts/profile_format_conv.py` and `scripts/test_e2e_real.py` — audit decision applied (kept with header).
+- [x] `uv run ruff check src/ tests/ benchmarks/` clean.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `uv run pytest tests/contract/ -q` passes.
+- [x] `python scripts/compare_benchmarks.py benchmarks/results/phase-0-baseline.json benchmarks/results/v1.0.0.json --tolerance-pct 5` — operator-run vs release JSON.
 
 ---
 

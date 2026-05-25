@@ -1,4 +1,4 @@
-"""Profile FormatConverter to isolate latency bottleneck."""
+"""Dev-only: profile FormatConverter latency (cProfile). Not used in CI."""
 from __future__ import annotations
 
 import cProfile

@@ -109,7 +109,7 @@ def main() -> None:
         lattice unlace claude
         lattice info
         lattice config
-        lattice benchmark --phase 0
+        lattice benchmark --suite feature
     """
     args = sys.argv[1:]
     if not args or args[0] in ("-h", "--help", "help"):
@@ -824,10 +824,19 @@ def _cmd_config(args: list[str]) -> None:
 
 
 def _cmd_benchmark(args: list[str]) -> None:
-    """Benchmark entrypoint now routes to the production eval suite."""
-    _ = args
-    console.print("[bold]Benchmarking has moved to benchmarks/evals/cli.py[/bold]")
-    console.print("Run: uv run python benchmarks/evals/cli.py --suite all")
+    """Run the LATTICE benchmark suite (wraps benchmarks/evals/cli.py)."""
+    import subprocess
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    bench_cli = repo_root / "benchmarks" / "evals" / "cli.py"
+    if not bench_cli.exists():
+        console.print("[red]benchmarks/ not packaged with this install.[/red]")
+        console.print("Run from a source checkout, or install with `pip install -e '.[dev]'`.")
+        sys.exit(1)
+
+    result = subprocess.run([sys.executable, str(bench_cli), *args], check=False)
+    sys.exit(result.returncode)
 
 
 # =============================================================================
