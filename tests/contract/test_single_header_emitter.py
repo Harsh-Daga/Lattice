@@ -21,7 +21,7 @@ def test_response_headers_x_lattice_only_in_middleware() -> None:
     root = repo_root(__file__)
     hits = files_with_line_match(
         src_lattice(root),
-        re.compile(r'response\.headers\[[^\]]*x-lattice'),
+        re.compile(r"response\.headers\[[^\]]*x-lattice"),
         repo=root,
     )
     assert hits <= {"src/lattice/proxy/middleware.py"}, hits

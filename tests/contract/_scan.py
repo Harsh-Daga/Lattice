@@ -24,7 +24,9 @@ def iter_py_under(base: Path, *, skip_rel: Iterable[str] = ()) -> Iterable[Path]
         yield path
 
 
-def count_lines_matching(base: Path, pattern: re.Pattern[str], *, skip_rel: Iterable[str] = ()) -> int:
+def count_lines_matching(
+    base: Path, pattern: re.Pattern[str], *, skip_rel: Iterable[str] = ()
+) -> int:
     n = 0
     for path in iter_py_under(base, skip_rel=skip_rel):
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
