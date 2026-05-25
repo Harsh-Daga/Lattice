@@ -9,7 +9,10 @@ from lattice.integrations.lace import lace_agent
 
 
 def test_lace_records_and_clears_transient(tmp_path: Any, monkeypatch: Any) -> None:
+    cfg = tmp_path / ".config"
+    cfg.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(cfg))
     events: list[tuple[str, str]] = []
 
     def track_record(agent: str, pid: int) -> None:
