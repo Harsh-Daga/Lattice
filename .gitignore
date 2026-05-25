@@ -69,5 +69,3 @@ benchmarks/results/*
 !benchmarks/results/v1.0.0.json
 !benchmarks/results/v1.0.0.md
 !benchmarks/results/CLAIMS.md
-!benchmarks/results/production_evals.json
-!benchmarks/results/production_evals.md

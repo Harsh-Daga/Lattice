@@ -294,15 +294,16 @@ class TestProxyNonStreamingMetadata:
         """Verify metadata forwarding in proxy/compat non-streaming paths."""
         import inspect
 
-        from lattice.gateway import compat as compat_mod
+        import importlib
+        import pkgutil
+
         from lattice.proxy import bootstrap as bootstrap_mod
         from lattice.proxy import server as server_mod
 
-        source = (
-            inspect.getsource(server_mod)
-            + inspect.getsource(compat_mod)
-            + inspect.getsource(bootstrap_mod)
-        )
+        source = inspect.getsource(server_mod) + inspect.getsource(bootstrap_mod)
+        compat_pkg = importlib.import_module("lattice.gateway.compat")
+        for mod in pkgutil.walk_packages(compat_pkg.__path__, compat_pkg.__name__ + "."):
+            source += inspect.getsource(importlib.import_module(mod.name))
         # Verify that metadata=compressed_request.metadata appears in active implementation paths
         assert "metadata=compressed_request.metadata" in source
         # Verify speculative path also forwards metadata

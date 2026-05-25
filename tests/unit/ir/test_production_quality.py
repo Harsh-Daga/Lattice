@@ -249,27 +249,27 @@ class TestTransformReputationRuntime:
         assert not rep.is_high_risk("never_seen_before")
 
 
-class TestMILVTriggers:
-    def test_milv_triggers_on_high_compression(self) -> None:
-        from lattice.pipeline.milv import should_trigger_milv
+class TestPostTransformGuardTriggers:
+    def test_guard_triggers_on_high_compression(self) -> None:
+        from lattice.pipeline.post_transform_guard import should_trigger_post_transform_guard
         from lattice.planner.task_classifier import TaskClass, TaskClassification
 
         tc = TaskClassification(task_class=TaskClass.SIMPLE)
-        assert should_trigger_milv("test", tc, compression_ratio=0.35)
+        assert should_trigger_post_transform_guard("test", tc, compression_ratio=0.35)
 
-    def test_milv_triggers_on_reasoning(self) -> None:
-        from lattice.pipeline.milv import should_trigger_milv
+    def test_guard_triggers_on_reasoning(self) -> None:
+        from lattice.pipeline.post_transform_guard import should_trigger_post_transform_guard
         from lattice.planner.task_classifier import TaskClass, TaskClassification
 
         tc = TaskClassification(task_class=TaskClass.REASONING)
-        assert should_trigger_milv("test", tc, compression_ratio=0.15)
+        assert should_trigger_post_transform_guard("test", tc, compression_ratio=0.15)
 
-    def test_milv_skips_low_risk_simple(self) -> None:
-        from lattice.pipeline.milv import should_trigger_milv
+    def test_guard_skips_low_risk_simple(self) -> None:
+        from lattice.pipeline.post_transform_guard import should_trigger_post_transform_guard
         from lattice.planner.task_classifier import TaskClass, TaskClassification
 
         tc = TaskClassification(task_class=TaskClass.SIMPLE)
-        assert not should_trigger_milv("prefix_optimizer", tc, compression_ratio=0.05)
+        assert not should_trigger_post_transform_guard("path_prefix", tc, compression_ratio=0.05)
 
 
 class TestSchedulerGating:

@@ -11,9 +11,9 @@ import pytest
 from tests.contract.test_cli_contract import run_lattice
 
 ALL_CLI_SHAPES: list[tuple[list[str], int, str]] = [
-    ([], 0, "commands"),
-    (["--help"], 0, "commands"),
-    (["-h"], 0, "commands"),
+    ([], 0, "usage"),
+    (["--help"], 0, "usage"),
+    (["-h"], 0, "usage"),
     (["--version"], 0, "lattice"),
     (["-v"], 0, "lattice"),
     (["version"], 0, "lattice"),

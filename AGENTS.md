@@ -32,7 +32,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 | Doc | Purpose |
 |-----|---------|
 | [`docs/architecture/runtime.md`](docs/architecture/runtime.md) | Five lifecycles + module rules |
-| [`docs/refactor/FORWARD_PLAN.md`](docs/refactor/FORWARD_PLAN.md) | Post–v1.0.0 phases 12–27 (internal numbering) |
+| [`docs/refactor/FORWARD_PLAN.md`](docs/refactor/FORWARD_PLAN.md) | Post–v1.0.0 phases 13–34 (internal numbering) |
 | [`docs/refactor/PHASE_GUIDELINES.md`](docs/refactor/PHASE_GUIDELINES.md) | Template for forward phase docs |
 | [`docs/refactor/SINGLE_SOURCE_OF_TRUTH.md`](docs/refactor/SINGLE_SOURCE_OF_TRUTH.md) | One primitive → one file |
 | [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md) | Shipped vs pending |
@@ -45,7 +45,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 3. **Self-hosted OSS only** — no SaaS / Stripe / hosted cloud.
 4. **One implementation** — no duplicate algorithms in SDKs or adapters; update `SINGLE_SOURCE_OF_TRUTH.md`.
 5. **Code budget** — `src/lattice/` ≤ 35k LoC; declare delta per PR (`CODE_BUDGET.txt`).
-6. **Transport-first** — retry/timeout/pool/breaker live in `transport/` only ([Phase 27](docs/refactor/27-transport-layer-consolidation.md)).
+6. **Transport-first** — retry/timeout/pool/breaker live in `transport/` only ([Phase 14](docs/refactor/14-transport-layer-consolidation.md)).
 
 ### Key modules
 
@@ -61,7 +61,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 | `pipeline/` | `Pipeline`, policy, guardrails, MILV, representation_optimizer |
 | `transforms/` | Per-transform modules; `registry.py`; `optimizers/` orchestrators |
 | `runtime/` | **TierClassifier** (workload complexity — not a provider router) |
-| `transport/` | Wire types, serialization, delta_wire, TACC congestion (unified layer grows in Phase 27) |
+| `transport/` | Wire types, serialization, delta_wire, TACC congestion (unified layer in [Phase 14](docs/refactor/14-transport-layer-consolidation.md)) |
 | `protocol/` | Binary framing, manifest, segments |
 | `providers/` | `adapters/` (17 providers), `transport/` (HTTP dispatch), `credentials` |
 | `proxy/` | FastAPI server, health routes, `LatticeHeaderMiddleware` |
@@ -95,7 +95,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 - Integration: `tests/integration/`
 - E2E: `tests/e2e/`
 - Contract: `tests/contract/` — `uv run pytest tests/contract/ -q`; full live probes: `LATTICE_CONTRACT_FULL=1 uv run pytest tests/contract/ -q --run-contract`
-- **2016** tests collected (pinned in `tests/unit/test_test_count_pinned.py`); **1801** passed, **215** skipped (`uv run pytest tests/ -q`)
+- **2039** tests collected (pinned in `tests/unit/test_test_count_pinned.py`); update pass/skip counts when CI runs on this branch
 
 ## Key environment variables
 
@@ -124,8 +124,8 @@ Numeric README claims must match [`benchmarks/results/CLAIMS.md`](benchmarks/res
 
 | Metric | Value |
 |--------|-------|
-| Tests collected | **2016** (pinned) |
-| Tests passed | **1801** (215 skipped) |
+| Tests collected | **2039** (pinned) |
+| Tests passed | **1824** (215 skipped; refresh on CI) |
 | Contract tests | green (`tests/contract/`) |
 | ruff / format / mypy | **0 errors** |
 

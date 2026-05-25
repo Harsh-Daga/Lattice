@@ -308,7 +308,7 @@ def coerce_execution_plan(plan: Any) -> Any | None:
             return CoreExecutionPlan.from_dict(plan)
         except Exception:
             try:
-                from lattice.planner.execution_plan import ExecutionPlan as LegacyExecutionPlan
+                from lattice.planner.session_plan import SessionExecutionPlan as LegacyExecutionPlan
 
                 return LegacyExecutionPlan.from_dict(plan)
             except Exception:

@@ -25,17 +25,13 @@ Usage::
 from __future__ import annotations
 
 from lattice.core.config import LatticeConfig
-from lattice.planner.execution_plan import (
-    CachePlanEntry,
-    ExecutionPlan,
-    FallbackPlan,
-    TransportPlanEntry,
-)
+from lattice.planner.plan_types import CachePlanEntry, FallbackPlan, TransportPlanEntry
 from lattice.planner.provider_strategy import (
     build_cache_plan_for_provider,
     simulate_provider_cache,
 )
 from lattice.planner.request_classifier import RequestClassifier
+from lattice.planner.session_plan import SessionExecutionPlan
 from lattice.planner.task_classifier import TaskClass
 from lattice.planner.transport_planner import build_transport_plan
 from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
@@ -55,7 +51,7 @@ def build_execution_plan(
     estimated_tokens: int | None = None,
     fallback_strategy: str = "retry",
     allowed_optimizers: list[str] | None = None,
-) -> ExecutionPlan:
+) -> SessionExecutionPlan:
     """Build a complete ExecutionPlan from request + provider + session context.
 
     Steps:
@@ -175,7 +171,7 @@ def build_execution_plan(
         prefix_manifest=request.metadata.get("_prefix_manifest"),
     ).to_dict()
 
-    return ExecutionPlan(
+    return SessionExecutionPlan(
         request_id="",
         session_id=session_id,
         provider=provider_name,

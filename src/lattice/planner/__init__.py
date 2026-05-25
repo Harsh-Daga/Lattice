@@ -4,11 +4,15 @@ Single source of truth for runtime decisions: which transforms to run, in what
 order, with what quality floor and latency budget.
 """
 
+from lattice.ir.primitives import ExecutionPlan
 from lattice.planner.execution_builder import build_execution_plan
-from lattice.planner.execution_plan import (
+from lattice.planner.fallback_executor import (
+    execute_with_fallback,
+    execute_with_fallback_stream,
+)
+from lattice.planner.plan_types import (
     TIER_BUDGETS_MS,
     CachePlanEntry,
-    ExecutionPlan,
     ExecutionTier,
     FallbackPlan,
     OptimizerDecision,
@@ -16,10 +20,6 @@ from lattice.planner.execution_plan import (
     RiskLevel,
     TransportPlanEntry,
     tier_budget_ms,
-)
-from lattice.planner.fallback_executor import (
-    execute_with_fallback,
-    execute_with_fallback_stream,
 )
 from lattice.planner.provider_strategy import (
     CacheSimulation,
@@ -38,6 +38,7 @@ from lattice.planner.runtime_state import (
     persist_execution_plan_state,
     persist_session_plan_state,
 )
+from lattice.planner.session_plan import SessionExecutionPlan
 from lattice.planner.task_classifier import (
     ExecutionTier as TaskExecutionTier,
 )
@@ -57,8 +58,9 @@ from lattice.planner.unified_planner import (
 )
 
 __all__ = [
-    # plans
+    # plans (canonical ExecutionPlan is ir.primitives; session plan for gateway)
     "ExecutionPlan",
+    "SessionExecutionPlan",
     "ExecutionTier",
     "RiskLevel",
     "OptimizerDecision",

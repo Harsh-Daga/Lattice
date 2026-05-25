@@ -26,9 +26,9 @@ def coerce_execution_plan(plan: Any) -> Any | None:
         except Exception:
             pass
         try:
-            from lattice.planner.execution_plan import ExecutionPlan as LegacyExecutionPlan
+            from lattice.planner.session_plan import SessionExecutionPlan
 
-            legacy = LegacyExecutionPlan.from_dict(plan)
+            legacy = SessionExecutionPlan.from_dict(plan)
             return _normalize_legacy_execution_plan(legacy)
         except Exception:
             return None

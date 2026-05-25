@@ -19,19 +19,18 @@ is gone. Re-export the canonical entry points so callers can write::
         GuardAction,
         SafetyDecision,
         ValidationOutcome,
-        MILVResult,
+        PostTransformGuardResult,
         AutoContinuation,
         ContinuationResult,
-        BatchAccumulator,
-        BatchResult,
-        AccumulatedRequest,
+        RequestCoalescer,
+        CoalescedResult,
+        CoalescedRequest,
         RepresentationOptimizer,
     )
 """
 
 from lattice.pipeline.auto_continuation import AutoContinuation, ContinuationResult
 from lattice.pipeline.base import ReversibleSyncTransform, TransformClass
-from lattice.pipeline.batch_accumulator import AccumulatedRequest, BatchAccumulator, BatchResult
 from lattice.pipeline.factory import (
     build_benchmark_pipeline,
     build_default_pipeline,
@@ -49,9 +48,14 @@ from lattice.pipeline.guardrails import (
     check_negative_savings,
     check_placeholder_leakage,
 )
-from lattice.pipeline.milv import MILVResult, should_trigger_milv, validate_transform
 from lattice.pipeline.policy import Allow, OptimizationPolicy, Reject, Skip
+from lattice.pipeline.post_transform_guard import (
+    PostTransformGuardResult,
+    evaluate_post_transform,
+    should_trigger_post_transform_guard,
+)
 from lattice.pipeline.representation_optimizer import RepresentationOptimizer
+from lattice.pipeline.request_coalescer import CoalescedRequest, CoalescedResult, RequestCoalescer
 from lattice.pipeline.runner import Pipeline, PipelineTransformRegistry
 
 __all__ = [
@@ -80,17 +84,17 @@ __all__ = [
     "check_placeholder_leakage",
     "check_negative_savings",
     "check_blank_output",
-    # MILV
-    "MILVResult",
-    "should_trigger_milv",
-    "validate_transform",
+    # post-transform guard
+    "PostTransformGuardResult",
+    "should_trigger_post_transform_guard",
+    "evaluate_post_transform",
     # auto continuation
     "AutoContinuation",
     "ContinuationResult",
-    # batch accumulator
-    "BatchAccumulator",
-    "BatchResult",
-    "AccumulatedRequest",
+    # request coalescer
+    "RequestCoalescer",
+    "CoalescedResult",
+    "CoalescedRequest",
     # representation optimizer
     "RepresentationOptimizer",
 ]

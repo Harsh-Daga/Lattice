@@ -12,10 +12,22 @@ Loading order (highest priority wins):
 
 from __future__ import annotations
 
+import logging
 import os
 import pathlib
 
 from pydantic import Field, field_validator, model_validator
+
+_logger = logging.getLogger(__name__)
+
+_DEPRECATED_TRANSFORM_FLAGS = frozenset(
+    {
+        "transform_prefix_opt",
+        "transform_constraint_lifting",
+        "transform_strategy_selector",
+        "transform_information_theoretic_selector",
+    }
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -160,16 +172,13 @@ class LatticeConfig(BaseSettings):
     transform_content_profiler: bool = True
     transform_runtime_contract: bool = True
     transform_cache_arbitrage: bool = True
-    transform_prefix_opt: bool = True
     transform_reference_sub: bool = True
     transform_tool_filter: bool = True
     transform_output_cleanup: bool = True
     # ── Useful extras ──
-    transform_constraint_lifting: bool = True
     transform_causal_chain: bool = True
     transform_message_dedup: bool = True
     transform_context_selector: bool = True
-    transform_strategy_selector: bool = True
     transform_format_conversion: bool = True
     transform_diagnostic_rle: bool = True
     transform_columnar_pack: bool = True
@@ -293,6 +302,20 @@ class LatticeConfig(BaseSettings):
     # ------------------------------------------------------------------
     # Validators
     # ------------------------------------------------------------------
+    @model_validator(mode="before")
+    @classmethod
+    def _strip_deprecated_transform_flags(cls, values: object) -> object:
+        if not isinstance(values, dict):
+            return values
+        for key in set(values) & _DEPRECATED_TRANSFORM_FLAGS:
+            _logger.warning(
+                "config: %r is deprecated and ignored; transform removed in v1.0.0 "
+                "(see docs/refactor/MIGRATION.md)",
+                key,
+            )
+            values.pop(key, None)
+        return values
+
     @field_validator("log_level")
     @classmethod
     def _validate_log_level(cls, v: str) -> str:
@@ -388,7 +411,6 @@ class LatticeConfig(BaseSettings):
         # ── Production core (always enabled) ──
         self.transform_content_profiler = True
         self.transform_runtime_contract = True
-        self.transform_prefix_opt = True
         self.transform_cache_arbitrage = True
         self.transform_reference_sub = True
         self.transform_tool_filter = True
@@ -396,7 +418,6 @@ class LatticeConfig(BaseSettings):
 
         # ── Conditional: extra transforms via mode ──
         # balanced + aggressive: enable additional useful transforms
-        self.transform_constraint_lifting = mode in ("balanced", "aggressive")
         self.transform_causal_chain = mode in ("balanced", "aggressive")
         self.transform_message_dedup = mode == "aggressive"
         self.transform_context_selector = mode == "aggressive"

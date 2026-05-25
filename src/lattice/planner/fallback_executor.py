@@ -41,7 +41,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from typing import Any, Awaitable, Callable
 
-from lattice.planner.execution_plan import ExecutionPlan
+from lattice.planner.session_plan import SessionExecutionPlan as ExecutionPlan
 
 
 def _is_retryable_error(exc: Exception, status_code: int | None) -> bool:

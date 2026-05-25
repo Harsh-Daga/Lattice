@@ -8,7 +8,8 @@ Covers:
 
 from __future__ import annotations
 
-from lattice.planner.execution_plan import ExecutionPlan, FallbackPlan
+from lattice.planner.plan_types import FallbackPlan
+from lattice.planner.session_plan import SessionExecutionPlan as ExecutionPlan
 from lattice.state.session import Session
 
 

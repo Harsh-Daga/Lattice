@@ -305,7 +305,6 @@ class TierClassifier:
         features = features or {}
         if tier == Tier.SIMPLE:
             skipped = (
-                "information_theoretic_selector",
                 "rate_distortion",
             )
             mode = "minimal"

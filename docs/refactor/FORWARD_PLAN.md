@@ -4,16 +4,16 @@
 >
 > Think of it the way TCP/HTTP/2/QUIC sit between an application and the network: invisible when it works, deterministic about what it does, replaces ad-hoc retry/throttle/timeout code scattered across every client.
 >
-> **Scope.** Everything after the v1.0.0 refactor (Phases 0-11) is captured in the per-phase docs below.
+> **Scope.** Everything after the v1.0.0 refactor (Phases 0–11) is captured in the v2 forward-plan docs **13–34** below. Historical v1 **Phase 12** is the docs release (`11-docs-release.md`), not the honesty pass.
 >
 > **Six hard constraints, in priority order.** These override every previously-stated design decision and reshape every phase doc. Every constraint has a CI gate.
 >
 > 1. **Lightweight.** The base install runs on a 4 GB laptop. No required model downloads. No background processes besides the proxy itself. Idle RSS < 100 MB, under load < 200 MB. *Enforced by:* `tests/integration/footprint/test_{4gb_laptop,2gb_vps,cold_start}.py`.
 > 2. **No external LLM dependency** beyond the one the user is already calling. We never load our own LLM at runtime; we never spin up our own embedding service; we never require an outside API key beyond what the user is paying for already. If a feature needs an embedding or a small model, it uses the *user's* configured provider's cheap model — no new dependency, no new bill. *Enforced by:* `tests/contract/test_default_install_no_external_services.py`, `tests/contract/test_default_install_no_models.py`.
 > 3. **Open source self-hostable. No cloud product.** There is no `lattice.cloud`, no hosted offering, no Stripe, no Terraform-managed managed-service deployment. Everything ships as a Python package + Docker image + npm package. Optional self-hosted features (auth, virtual keys, quotas) exist for small teams running one shared proxy; they are never required.
-> 4. **One algorithm, one implementation — across SDKs AND internally.** Reverse-pass, alias substitution, IR fingerprinting, streaming chunk buffering, transforms, retry policy, cost estimation, config loading, session state, framing, congestion control — each has exactly one home. Other surfaces (TypeScript SDK, edge runtime, optional native Python acceleration, all 17 provider adapters) consume that one implementation. *Enforced by:* `scripts/check_sdk_no_algorithm_duplication.sh` (SDK side), `scripts/check_internal_no_duplication.sh` (internal side, Phase 12 + [Phase 27](27-transport-layer-consolidation.md)), and the authoritative registry [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md).
-> 5. **Codebase shall not grow unbounded.** `src/lattice/` LoC budget at v2.0 is **35 000 lines** (currently ~22 000). Each phase declares its delta in its doc; CI compares actual delta against declared budget and blocks merge on overrun. Per-directory caps prevent silent inflation. *Enforced by:* `scripts/check_code_budget.sh` (Phase 12 lands the script; every later phase respects it).
-> 6. **Transport-first design.** Anything that crosses the proxy↔provider or client↔proxy boundary is the transport layer's responsibility. Retry, timeout, circuit-breaker, backpressure, framing, compression, multiplexing, observability — one configurable surface, one canonical implementation, one set of metrics. No per-adapter retry code. No per-endpoint timeout. No per-feature framing. *Established by:* [Phase 27 — Transport Layer Consolidation](27-transport-layer-consolidation.md).
+> 4. **One algorithm, one implementation — across SDKs AND internally.** Reverse-pass, alias substitution, IR fingerprinting, streaming chunk buffering, transforms, retry policy, cost estimation, config loading, session state, framing, congestion control — each has exactly one home. Other surfaces (TypeScript SDK, edge runtime, optional native Python acceleration, all 17 provider adapters) consume that one implementation. *Enforced by:* `scripts/check_sdk_no_algorithm_duplication.sh` (SDK side), `scripts/check_internal_no_duplication.sh` (internal side, [Phase 13](13-honesty-pass.md) + [Phase 14](14-transport-layer-consolidation.md)), and [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md).
+> 5. **Codebase shall not grow unbounded.** `src/lattice/` LoC budget at v2.0 is **35 000 lines** (currently ~49 000 post–Phase 13; ratchet in [CODE_BUDGET.txt](CODE_BUDGET.txt)). `enforce_phase_delta=1` on forward-plan PRs; directory caps at baseline+5%. *Enforced by:* `scripts/check_code_budget.sh` ([Phase 13](13-honesty-pass.md)).
+> 6. **Transport-first design.** Retry, timeout, circuit-breaker, backpressure, framing, streaming, observability — one surface in `src/lattice/transport/`. No per-adapter retry code. *Established by:* [Phase 14 — Transport Layer Consolidation](14-transport-layer-consolidation.md) (immediately after Phase 13).
 
 ---
 
@@ -23,15 +23,15 @@ The previous version of this index recommended things that violate the constrain
 
 | Cut | Why |
 |---|---|
-| Local SentenceTransformers as the default embedding backend in Phase 14 | ~80 MB model + ~1.5 GB install (torch). Default is now: embedding tier is **opt-in** and uses the **user's provider** (`openai/text-embedding-3-small`, etc.) — no new dependency, no model download. |
-| Presidio as the default PII detector in Phase 15 | ~1 GB install with spaCy + model. Default is now the rule-based regex detector (zero deps, ships in base). Presidio stays as a clearly-labeled opt-in extra for users who need higher recall. |
+| Local SentenceTransformers as the default embedding backend in Phase 20 | ~80 MB model + ~1.5 GB install (torch). Default is now: embedding tier is **opt-in** and uses the **user's provider** (`openai/text-embedding-3-small`, etc.) — no new dependency, no model download. |
+| Presidio as the default PII detector in Phase 21 | ~1 GB install with spaCy + model. Default is now the rule-based regex detector (zero deps, ships in base). Presidio stays as a clearly-labeled opt-in extra for users who need higher recall. |
 | ONNX DeBERTa injection classifier "lazy-downloaded on first use" | 5 MB model + ~80 MB onnxruntime install. The heuristic phrase detector (zero deps) is now the default; the ONNX classifier is opt-in. |
 | LLMLingua-2 implied as part of the standard compression story | ~500 MB ONNX model + onnxruntime. Now: explicit heavy opt-in extra (`pip install lattice-transport[llmlingua]`) with an explicit "this downloads 500 MB" warning at first run. Default compression story stays with our deterministic transforms — those already win the structural cases. |
-| Per-tenant LoRA distillation pipeline (Phase 25) | Requires GPU + training infra + corpora object storage. This is a research lab, not a product. Bandit-based online adaptation (Phase 23) covers 80% of the value with zero ML infra. |
+| Per-tenant LoRA distillation pipeline (Phase 32) | Requires GPU + training infra + corpora object storage. This is a research lab, not a product. Bandit-based online adaptation (Phase 28) covers 80% of the value with zero ML infra. |
 | Hosted `lattice.cloud`, Stripe billing, Cloudflare/Neon/Upstash Terraform | Pivots LATTICE into a SaaS product. You don't want that. Open-source self-hosted only. |
-| Hosted playground at `/lattice/playground` (Phase 25) | Was bundled with cloud. A local playground (just the proxy serving a static page for debugging) survives as a small dev-only utility in Phase 26, off by default. |
-| Per-SDK reimplementation of reverse-pass / hooks / streaming (Phase 13, 17) | Was the largest drift surface in the prior plan. Replaced by the single-core architecture in Phase 24. SDKs in proxy mode become URL redirectors with zero algorithm code; in in-process mode they call the shared core. |
-| VSCode-marketplace publish ceremony, Helm chart with HPA/PDB/NetworkPolicy, signed-wheel sigstore ritual (Phase 26) | Vendor-relations and ops-team theatre, not user value. Trimmed to: Docker image + PyPI wheel + npm package + Cursor extension as a sideload `.vsix`. That's it. |
+| Hosted playground at `/lattice/playground` (Phase 32) | Was bundled with cloud. A local playground (just the proxy serving a static page for debugging) survives as a small dev-only utility in Phase 34, off by default. |
+| Per-SDK reimplementation of reverse-pass / hooks / streaming (Phase 19, 17) | Was the largest drift surface in the prior plan. Replaced by the single-core architecture in Phase 31. SDKs in proxy mode become URL redirectors with zero algorithm code; in in-process mode they call the shared core. |
+| VSCode-marketplace publish ceremony, Helm chart with HPA/PDB/NetworkPolicy, signed-wheel sigstore ritual (Phase 34) | Vendor-relations and ops-team theatre, not user value. Trimmed to: Docker image + PyPI wheel + npm package + Cursor extension as a sideload `.vsix`. That's it. |
 
 What survives is everything that actually moves dollars or risk on a user's spreadsheet without adding install-cost or operational complexity.
 
@@ -39,27 +39,32 @@ What survives is everything that actually moves dollars or risk on a user's spre
 
 ## 2. The "would they pay?" / "can they install it on a laptop?" matrix
 
-Every remaining phase passes both tests:
+Every remaining phase passes both tests. **v1 Phase 12** = docs release only; **v2 forward plan = Phases 13–34**.
 
-| Phase | Doc | User benefit (the "would they pay?" claim) | Footprint added |
+| Phase | Doc | User benefit | Footprint |
 |---|---|---|---|
-| 12 | [Honesty Pass](12-honesty-pass.md) | Codebase says what it does; nothing dead; ExecutionPlan/Scoring/registry collapsed | -2300 LoC (net shrink) |
-| 13 | [SDK Thin-Client Architecture](13-python-sdk-quality.md) | `py.typed`, typed surfaces, sync wrappers, hooks, README quick-start that actually works — **with zero algorithm duplication** | + ~1 MB to Python wheel |
-| 14 | [Hybrid Semantic Cache (lightweight)](14-hybrid-semantic-cache.md) | 4-tier cache; first 3 tiers (exact / IR fingerprint / Jaccard) always on with no extra deps; embedding tier opt-in via user's provider | 0 new deps default; +Redis/pgvector if user wants distributed |
-| 15 | [Native Guardrails (lightweight)](15-native-guardrails.md) | Reversible PII tokenization, injection detection, JSON repair — all with rule/heuristic defaults (no model downloads); Presidio/ONNX opt-in | 0 new deps default |
-| 16 | [OpenTelemetry GenAI](16-otel-genai.md) | One env var sends standard `gen_ai.*` spans to Datadog / Honeycomb / Jaeger / Phoenix | + `opentelemetry-sdk` (~3 MB) if enabled |
-| 17 | [TypeScript SDK (thin client)](17-typescript-sdk.md) | `@lattice/sdk` for Node/Bun/Deno/Workers; wraps OpenAI/Anthropic/Vercel AI; **calls the proxy or the shared WASM core — no duplicated logic** | npm bundle ≤ 25 KB gzipped (edge) |
-| 18 | [MCP-Native Gateway](18-mcp-native-gateway.md) | Federate upstream MCP servers, compress tool output via existing transforms, cache tool calls, scan tool output for injection | Base install (already has FastAPI + httpx) |
-| 19 | [Compression Intelligence (lightweight default)](19-compression-intelligence.md) | Streaming-native compression on response chunks, tool-result diffing, JSON structural repair — all zero-dep; LLMLingua-2 separate opt-in with explicit warning | 0 new deps default; +500 MB if LLMLingua opted in |
-| 19.5 | [Segment-Aware Planning](19.5-segment-aware-planning.md) | Per-section transform policies fix `features not reached by pipeline`; utility-aware beam respects segment distortion budgets | 0 new deps |
-| 20 | [Non-Chat Surfaces](20-non-chat-surfaces.md) | `/v1/embeddings` (input dedup + cache reusing Phase 14's user-provider strategy), real OpenAI/Anthropic Batch APIs, audio + realtime + files | Base install |
-| 21 | [Agent Memory (lightweight)](21-agent-memory.md) | Context GC + summarization + token budget + inference-aware retry — relevance scoring is rule-based by default, embedding-based optional via user's provider | 0 new deps default |
-| 22 | [Cache Portability](22-cache-portability.md) | Cache survives **user-initiated** provider switches; cold-start warmer; KV-cache compatibility analyzer | Base install |
-| 23 | [Receipts + Bandit + Profiles + Hot Reload](23-receipts-bandit-profiles.md) | HMAC-signed audit receipts; Thompson-sampling bandit (pure numpy — no ML deps); per-route profiles; SIGHUP reload | +`pyjwt` (~100 KB) for receipts |
-| 24 | [Shared Core: Rust + PyO3 + WASM](24-edge-wasm-core.md) | **The architectural keystone.** One Rust core compiled to PyO3 wheel (3-5× Python speedup, optional) + WASM (powers Edge SDK, enforces zero SDK duplication) | Optional native wheel ~3 MB; WASM ≤200 KB |
-| 25 | [Optional Self-Hosted Auth, Keys, Quotas](25-cloud-multitenant.md) | For small teams running one shared proxy: API-key auth, virtual-key indirection, per-key quotas, optional Postgres for shared state. **No cloud product. No SaaS. No Stripe.** | All optional; SQLite by default, Postgres if user wants |
-| 26 | [Agent-Loop-Aware Compression, Cursor Visualizer, Minimal Release](26-agent-loop-aware.md) | Per-step compression profiles inside agent loops; Cursor extension that visualizes what LATTICE did; release as Docker + PyPI + npm + sideload Cursor `.vsix` | Cursor extension ~200 KB |
-| 27 | [Transport Layer Consolidation](27-transport-layer-consolidation.md) | **The phase that makes "LATTICE is the transport layer for LLMs" true.** Unified retry + circuit breaker, HTTP/2 multiplexing, connection pooling per provider, transport-level metrics (RTT / queue depth / breaker state / in-flight), end-to-end backpressure, stream resumption on connection drop. Kills duplicated retry/timeout code across 17 adapters. | Net **-1500 LoC** (consolidation); +0 new deps (httpx already supports HTTP/2 via `h2`) |
+| 13 | [Honesty Pass](13-honesty-pass.md) | Honest names; single ExecutionPlan/scoring/registry; CI gates | -1500 LoC |
+| 14 | [Transport](14-transport-layer-consolidation.md) | Unified retry/pool/breaker/stream | -1500 LoC |
+| 15 | [Chaos contract](15-chaos-failure-modes.md) | Evidence-backed failure modes | 0 src |
+| 16 | [Python SDK](16-python-sdk-quality.md) | Thin client; zero algo duplication | +1 MB wheel |
+| 17 | [Hybrid cache](17-hybrid-semantic-cache.md) | 4-tier cache | 0 deps default |
+| 18 | [Guardrails](18-native-guardrails.md) | PII/injection/repair | 0 deps default |
+| 19 | [OTel GenAI](19-otel-genai.md) | Standard spans | +otel optional |
+| 20 | [TypeScript SDK](20-typescript-sdk.md) | `@lattice/sdk` | npm ≤25 KB |
+| 21 | [MCP](21-mcp-native-gateway.md) | Federated MCP | base |
+| 22 | [Compression intel](22-compression-intelligence.md) | Streaming/tool-diff | 0 deps default |
+| 23 | [Segment planning](23-segment-aware-planning.md) | Per-section policies | 0 deps |
+| 24 | [Non-chat](24-non-chat-surfaces.md) | Embeddings/batch/audio | base |
+| 25 | [Competitive bench](25-competitive-benchmark.md) | vs Helicone/Portkey/etc. | 0 src |
+| 26 | [Agent memory](26-agent-memory.md) | Context GC | 0 deps default |
+| 27 | [Cache portability](27-cache-portability.md) | Provider-switch warmth | base |
+| 28 | [Receipts](28-receipts.md) | HMAC audit trail | +pyjwt |
+| 29 | [Bandit](29-bandit-routing.md) | Thompson routing | numpy |
+| 30 | [Profiles + reload](30-route-profiles-reload.md) | Per-route recipes | optional watchdog |
+| 31 | [Rust/WASM core](31-edge-wasm-core.md) | Shared core | optional wheel |
+| 32 | [Auth](32-cloud-multitenant.md) | Self-hosted keys/quotas | optional |
+| 33 | [Threat model](33-threat-model.md) | Credential boundary | doc+tests |
+| 34 | [Release](34-agent-loop-aware.md) | Agent-loop + Cursor + v2.0 | ~200 KB ext |
 
 ---
 
@@ -159,29 +164,29 @@ The check runs on `packages/typescript-sdk/src/**` and `bindings/wasm/pkg/`. Imp
 
 ## 5. Milestones (revised)
 
-### M2 — Honest & Lightweight (v1.1) — Phases 12-16
+### M2 — Honest & Lightweight (v1.1) — Phases 13–19
 
-Goal: a credible v1.1 that runs on any laptop. Every name is honest, the SDK quick-start works, cache hits 3-5× more often **with zero new model downloads**, PII never reaches the provider via rule-based detection, telemetry is standards-compliant.
+Goal: Phase 13 honesty pass shipped; **Phase 14 transport consolidation** makes the transport thesis true; Phase 15 chaos contract; then cache, guardrails, Python SDK, OTel — all on the unified transport surface.
 
-Footprint at end of M2: identical to v1.0 (≤ 25 MB default install).
+Footprint at end of M2: ≤ 25 MB default install (unchanged).
 
-Target: 4 weeks (faster than before because the heavy ML work is descoped to optional extras).
+Target: ~5 weeks.
 
-### M3 — Differentiate (v1.5) — Phases 17-20
+### M3 — Differentiate (v1.5) — Phases 20–25
 
-Goal: TypeScript / edge users get parity via the thin-client SDK; agent users get MCP federation with compressed tool output; non-chat surfaces (embeddings, batch, audio, realtime, files) work; compression intelligence improves for the workloads that ask for it (with LLMLingua as a flagged opt-in).
+Goal: TypeScript SDK, MCP, compression intelligence, segment-aware planning, non-chat surfaces, competitive benchmark matrix.
 
-Footprint at end of M3: still ≤ 25 MB default; optional LLMLingua adds 600 MB only if explicitly enabled.
+Footprint: still ≤ 25 MB default; LLMLingua opt-in only.
 
-Target: 6 weeks.
+Target: ~6 weeks.
 
-### M4 — Top-tier (v2.0) — Phases 21-27
+### M4 — Top-tier (v2.0) — Phases 26–34
 
-Goal: agents are first-class with context GC and inference-aware retry; cache portability survives user-initiated provider switches; bandit + receipts + per-route profiles make the system self-improving and auditable; Rust/WASM core ships and powers all SDKs; optional self-hosted auth covers small-team deployments; Cursor users see what LATTICE did per request; **transport layer consolidates into one coherent surface (Phase 27) — this is what turns LATTICE from "compression tool" into "transport layer for LLMs".**
+Goal: agent memory, cache portability, receipts/bandit/profiles (28–30), Rust core, optional auth, threat model, agent-loop + v2.0 release.
 
-Footprint at end of M4: ≤ 28 MB default. Native Rust wheel adds optional 3 MB for 3-5× speedup. **Codebase net-smaller than M3 thanks to Phase 27's consolidation** (-1500 LoC of duplicated transport code across adapters).
+Footprint: ≤ 28 MB default; **net-smaller `src/lattice/`** after Phases 13–14 and Phase 31 Rust migration.
 
-Target: 10 weeks (was 8 — added Phase 27).
+Target: ~10 weeks.
 
 ---
 
@@ -191,17 +196,17 @@ These constraints are CI-enforced where possible. Reviewer must reject any PR th
 
 | Rule | Enforcement |
 |---|---|
-| **No multi-provider routing.** | Contract test `tests/contract/test_no_multi_provider_routing.py` greps for `provider != ` patterns outside Phase 22's cache re-key. |
+| **No multi-provider routing.** | Contract test `tests/contract/test_no_multi_provider_routing.py` greps for `provider != ` patterns outside Phase 17's cache re-key. |
 | **No algorithm code in SDKs.** | `scripts/check_sdk_no_algorithm_duplication.sh` (above). |
 | **No internal duplication of canonical primitives.** | `scripts/check_internal_no_duplication.sh` walks every entry in [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) and verifies the symbol exists in exactly the declared file. Adds two new patterns per phase that introduces a new primitive. |
 | **No required model download.** | `tests/contract/test_default_install_no_models.py` verifies the default install never writes to `assets/models/` at startup. |
 | **No required external service.** | `tests/contract/test_default_install_no_external_services.py` runs the proxy with all network blocked except the configured upstream provider; default config must boot. |
-| **Code budget.** | `scripts/check_code_budget.sh` (lands with Phase 12): (a) `src/lattice/` total LoC ≤ declared per-phase budget; (b) per-directory caps; (c) net delta on every PR must match the phase doc's declared `LoC delta`. Phase docs without a declared delta block merge. |
+| **Code budget.** | `scripts/check_code_budget.sh` (lands with Phase 16): (a) `src/lattice/` total LoC ≤ declared per-phase budget; (b) per-directory caps; (c) net delta on every PR must match the phase doc's declared `LoC delta`. Phase docs without a declared delta block merge. |
 | **No file over 800 LoC.** | Existing R6 enforcement (file split required when a single file grows past 800 lines). |
 | **No raw user content in receipts/headers/spans by default.** | `tests/contract/test_no_user_content_in_telemetry.py` runs a sample workload, captures all telemetry, asserts no message-text substring leaks. |
 | **Footprint budget.** | `tests/integration/footprint/test_4gb_laptop.py` and `test_2gb_vps.py` block merge on regression. |
 | **Reversibility property.** | Property test in `tests/unit/transforms/test_reversibility_property.py` — for any transform, `reverse(apply(x)) == x` modulo allowed lossy fields. |
-| **Transport policies live in one place.** | After [Phase 27](27-transport-layer-consolidation.md): retry/timeout/circuit-breaker/backpressure logic exists exactly once in `src/lattice/transport/`. CI gate `tests/contract/test_transport_unification.py` greps for `httpx.AsyncClient(` outside the transport package — block merge on hit (adapters must go through the unified transport). |
+| **Transport policies live in one place.** | After [Phase 20](14-transport-layer-consolidation.md): retry/timeout/circuit-breaker/backpressure logic exists exactly once in `src/lattice/transport/`. CI gate `tests/contract/test_transport_unification.py` greps for `httpx.AsyncClient(` outside the transport package — block merge on hit (adapters must go through the unified transport). |
 
 ### 6.1 Code budget (per directory)
 
@@ -211,26 +216,26 @@ These constraints are CI-enforced where possible. Reviewer must reject any PR th
 | `src/lattice/ir/` | 2 500 | 3 500 | Canonical IR + builder + validation. |
 | `src/lattice/transforms/` | 4 200 | 6 500 | Includes optimizers + tool_diff + llmlingua (opt-in). |
 | `src/lattice/pipeline/` | 1 800 | 2 500 | Runner + gates + streaming. |
-| `src/lattice/planner/` | 1 500 | 2 800 | UnifiedPlanner + segment policy (19.5) + bandit. |
+| `src/lattice/planner/` | 1 500 | 2 800 | UnifiedPlanner + segment policy (23) + bandit. |
 | `src/lattice/cache/` | 700 | 2 500 | Layered cache + portability + warmer. |
 | `src/lattice/safety/` | 400 | 2 000 | PII + injection + output repair. |
-| `src/lattice/agent/` | 0 | 2 000 | New in Phase 21 + 26. |
-| `src/lattice/transport/` | 1 200 | 3 000 | **Net-smaller after Phase 27** — consolidates adapter duplication into one place. |
-| `src/lattice/providers/adapters/` | 4 800 | **2 500** | **Halves** after Phase 27 strips per-adapter retry/timeout/transport code. |
-| `src/lattice/proxy/` | 1 600 | 2 200 | Server + middleware + admin routes (Phase 25). |
-| `src/lattice/gateway/` | 2 200 | 3 200 | Compat splits + new endpoints (Phase 20). |
+| `src/lattice/agent/` | 0 | 2 000 | New in Phase 34 + 26. |
+| `src/lattice/transport/` | 1 200 | 3 000 | **Net-smaller after Phase 20** — consolidates adapter duplication into one place. |
+| `src/lattice/providers/adapters/` | 4 800 | **2 500** | **Halves** after Phase 20 strips per-adapter retry/timeout/transport code. |
+| `src/lattice/proxy/` | 1 600 | 2 200 | Server + middleware + admin routes (Phase 32). |
+| `src/lattice/gateway/` | 2 200 | 3 200 | Compat splits + new endpoints (Phase 31). |
 | `src/lattice/integrations/` | 1 200 | 1 800 | Tunnel + doctor + mutation_store + agent_stats. |
-| `src/lattice/telemetry/` | 1 100 | 1 700 | Add `otel/` (Phase 16). |
+| `src/lattice/telemetry/` | 1 100 | 1 700 | Add `otel/` (Phase 22). |
 | `src/lattice/state/` | 700 | 900 | Session + store + segment_store. |
-| `src/lattice/audit/` | 0 | 800 | New in Phase 23. |
-| `src/lattice/auth/` + `keys/` + `quotas/` + `tenants/` | 0 | 2 800 | New in Phase 25; **optional**. |
-| `src/lattice/mcp/` | 0 | 1 500 | New in Phase 18. |
+| `src/lattice/audit/` | 0 | 800 | New in Phase 28. |
+| `src/lattice/auth/` + `keys/` + `quotas/` + `tenants/` | 0 | 2 800 | New in Phase 32; **optional**. |
+| `src/lattice/mcp/` | 0 | 1 500 | New in Phase 26. |
 | **TOTAL `src/lattice/`** | **~22 000** | **≤ 35 000** | Hard cap. |
-| `bindings/python/` | 0 | 1 000 | PyO3 binding (Phase 24). |
-| `bindings/wasm/` | 0 | 500 | WASM binding (Phase 24). |
-| `crates/lattice-core/` (Rust) | 0 | 6 000 | Rust core (Phase 24). |
-| `packages/typescript-sdk/src/` | 0 | 2 500 | TS thin client (Phase 17). |
-| `tools/cursor-extension/src/` | 0 | 800 | Cursor visualizer (Phase 26). |
+| `bindings/python/` | 0 | 1 000 | PyO3 binding (Phase 31). |
+| `bindings/wasm/` | 0 | 500 | WASM binding (Phase 31). |
+| `crates/lattice-core/` (Rust) | 0 | 6 000 | Rust core (Phase 31). |
+| `packages/typescript-sdk/src/` | 0 | 2 500 | TS thin client (Phase 24). |
+| `tools/cursor-extension/src/` | 0 | 800 | Cursor visualizer (Phase 34). |
 
 If a phase needs to exceed its directory cap, the doc must justify in §1 ("Why this phase exists") and the cap is bumped in this table as part of the same PR. **No silent inflation.**
 
@@ -272,25 +277,20 @@ A senior engineer can take any phase and ship it without reading the others. The
 
 ```
 M2 — Credibility (v1.1)
-  12  Honesty + CI gates (code budget, internal dedup, SDK dedup shell)
-  → 14  Cache (lightweight)
-  → 15  Guardrails (lightweight)
-  → 13  Python SDK (thin client)
-  → 16  OTel (orthogonal)
+  13  Honesty pass + CI gates (shipped on branch; merge to main pending)
+  → 14  Transport consolidation FIRST   ← canonical transport surface
+  → 15  Chaos failure-mode contract
+  → 17  Hybrid cache | 18  Guardrails | 16  Python SDK | 19  OTel
 
 M3 — Differentiate (v1.5)
-  27  Transport consolidation FIRST     ← one retry/pool/breaker layer before more HTTP surfaces
-  → 24  Shared core (Rust / PyO3 / WASM)
-  → 17  TypeScript SDK (thin client)
-  → 18  MCP  |  19  Compression intel  |  20  Non-chat   (parallel after 17)
-  → 19.5 Segment-aware planning        ← after 19; fixes orchestration gaps from v1.0 evals
+  → 20  TypeScript SDK
+  → 21  MCP  |  22  Compression intel  |  23  Segment planning  |  24  Non-chat
+  → 25  Competitive benchmark
 
 M4 — Top-tier (v2.0)
-  21  Agent memory
-  → 22  Cache portability
-  → 23  Receipts + bandit + profiles + hot reload
-  → 25  Optional self-hosted auth (no SaaS)
-  → 26  Agent-loop + Cursor visualizer + release
+  26  Agent memory → 27  Cache portability
+  → 28  Receipts | 29  Bandit | 30  Profiles/reload   (independent PRs)
+  → 31  Rust/WASM core → 32  Optional auth → 33  Threat model → 34  Release
 ```
 
 One engineer full-time: M2 ~4 weeks, M3 ~6 weeks, M4 ~8 weeks. Two engineers: roughly halve.
@@ -303,7 +303,7 @@ One engineer full-time: M2 ~4 weeks, M3 ~6 weeks, M4 ~8 weeks. Two engineers: ro
 
 External architecture review + `v1.0.0.json` production evals are consolidated in [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md):
 
-- **Accept:** utility scoring, segment-aware planning (19.5), validation facade (12), transport/cache inputs to planner (22, 27)
+- **Accept:** utility scoring, segment-aware planning (23), validation facade (13), transport/cache inputs to planner (27, 14)
 - **Reject:** second “refound” deleting legacy pipeline (already removed), mutable-candidate rewrite, compression-% as sole KPI
 
 Runtime law: [docs/architecture/runtime.md](../architecture/runtime.md).
@@ -316,6 +316,7 @@ Runtime law: [docs/architecture/runtime.md](../architecture/runtime.md).
 - [REFACTOR_PLAN.md](REFACTOR_PLAN.md) — the v1.0.0 refactor master (Phases 0-11)
 - [STATUS.md](STATUS.md) — what shipped and when (updated with forward-plan reference + lightweight + transport-layer constraints)
 - [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) — **the authoritative registry of every primitive and its one canonical file.** CI gates check against this doc on every PR.
-- [FINAL_LAYOUT.md](FINAL_LAYOUT.md) — the post-v1.0 file layout (Phase 24 extends with `crates/` and `bindings/`; Phase 27 consolidates `providers/transport/`)
-- [MIGRATION.md](MIGRATION.md) — user-facing migration guide; each phase updates the section relevant to its renames/dep changes
+- [FINAL_LAYOUT.md](FINAL_LAYOUT.md) — the post-v1.0 file layout (Phase 31 extends with `crates/` and `bindings/`; Phase 20 consolidates `providers/transport/`)
+- [MIGRATION.md](MIGRATION.md) — v1.0.0 refactor import map
+- [MIGRATION-v1-to-v2.md](MIGRATION-v1-to-v2.md) — v1.x → v2 forward-plan user-visible changes
 - [docs/architecture/runtime.md](../architecture/runtime.md) — the architecture all phases extend

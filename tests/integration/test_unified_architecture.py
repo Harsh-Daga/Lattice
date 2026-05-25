@@ -13,9 +13,9 @@ from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
 from lattice.pipeline.factory import build_default_pipeline
-from lattice.planner.execution_plan import ExecutionPlan
 from lattice.planner.provider_strategy import get_provider_strategy
 from lattice.planner.request_classifier import RequestClassifier
+from lattice.planner.session_plan import SessionExecutionPlan as ExecutionPlan
 from lattice.planner.transport_planner import build_transport_plan
 from lattice.transport.types import Message, Request, Response
 

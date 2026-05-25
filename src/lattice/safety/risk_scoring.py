@@ -302,7 +302,6 @@ _TRANSFORM_SAFETY_MAP: dict[str, TransformSafetyBucket] = {
     "message_deduplicator": TransformSafetyBucket.CONDITIONAL,  # alias
     "format_conversion": TransformSafetyBucket.CONDITIONAL,
     "rate_distortion": TransformSafetyBucket.CONDITIONAL,
-    "information_theoretic_selector": TransformSafetyBucket.CONDITIONAL,
 }
 
 # Unknown transforms default to UNKNOWN — they must be explicitly registered

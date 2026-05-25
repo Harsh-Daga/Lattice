@@ -428,38 +428,38 @@ scripts/
 
 ---
 
-## 8. v2.0 extensions (Phases 12–27 — see [FORWARD_PLAN.md](FORWARD_PLAN.md))
+## 8. v2.0 extensions (Phases 16–27 — see [FORWARD_PLAN.md](FORWARD_PLAN.md))
 
 These paths are added by the forward plan. LoC caps: [CODE_BUDGET.txt](CODE_BUDGET.txt). Canonical homes: [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md).
 
 ```
 src/lattice/
-├── transport/                    # EXPANDED — Phase 27: dispatcher, pool, retry, breaker, backpressure, stream_resume, metrics
+├── transport/                    # EXPANDED — Phase 20: dispatcher, pool, retry, breaker, backpressure, stream_resume, metrics
 │   # providers/transport/ DELETED — merged here
-├── cache/layers/                 # Phase 14
-├── cache/embeddings/             # Phase 14 (user-provider default)
-├── cache/portability/            # Phase 22
-├── safety/pii/ | injection/ | output/   # Phase 15
-├── telemetry/otel/               # Phase 16
-├── agent/                        # Phase 21 + 26
-├── audit/                        # Phase 23
-├── auth/ | keys/ | quotas/ | tenants/   # Phase 25 (optional self-hosted; NOT cloud SaaS)
-├── mcp/                          # Phase 18
-├── policy/profiles.py            # Phase 23
-├── config/reload.py              # Phase 23
-├── pipeline/streaming/           # Phase 19
-├── planner/segment_policy.py     # Phase 19.5 — per-section transform policy
-├── transforms/tool_diff/ | llmlingua/   # Phase 19 (llmlingua opt-in)
-├── runtime/validation_engine.py  # Phase 12 — validation facade
-├── gateway/{embeddings,batch,audio,files,realtime}.py   # Phase 20
-└── sdk/                          # Phase 13 — thin client only
+├── cache/layers/                 # Phase 20
+├── cache/embeddings/             # Phase 20 (user-provider default)
+├── cache/portability/            # Phase 17
+├── safety/pii/ | injection/ | output/   # Phase 21
+├── telemetry/otel/               # Phase 22
+├── agent/                        # Phase 34 + 26
+├── audit/                        # Phase 28
+├── auth/ | keys/ | quotas/ | tenants/   # Phase 32 (optional self-hosted; NOT cloud SaaS)
+├── mcp/                          # Phase 26
+├── policy/profiles.py            # Phase 28
+├── config/reload.py              # Phase 28
+├── pipeline/streaming/           # Phase 27
+├── planner/segment_policy.py     # Phase 28 — per-section transform policy
+├── transforms/tool_diff/ | llmlingua/   # Phase 27 (llmlingua opt-in)
+├── runtime/validation_engine.py  # Phase 16 — validation facade
+├── gateway/{embeddings,batch,audio,files,realtime}.py   # Phase 31
+└── sdk/                          # Phase 19 — thin client only
 
-crates/lattice-core/              # Phase 24 — Rust canonical primitives
-bindings/python/ | bindings/wasm/ # Phase 24 — PyO3 + WASM
-packages/typescript-sdk/        # Phase 17 — thin client
-tools/cursor-extension/           # Phase 26
-openapi/lattice-proxy.yaml        # Phase 17 — single source for HTTP types
+crates/lattice-core/              # Phase 31 — Rust canonical primitives
+bindings/python/ | bindings/wasm/ # Phase 31 — PyO3 + WASM
+packages/typescript-sdk/        # Phase 24 — thin client
+tools/cursor-extension/           # Phase 34
+openapi/lattice-proxy.yaml        # Phase 24 — single source for HTTP types
 scripts/check_{code_budget,sdk_no_algorithm_duplication,internal_no_duplication}.sh
 ```
 
-**Product rule:** LATTICE is the **transport layer for LLMs**. Adapters after Phase 27 contain **no** `httpx.AsyncClient` — only `shape_request` / `parse_response` / `retry_policy`.
+**Product rule:** LATTICE is the **transport layer for LLMs**. Adapters after Phase 20 contain **no** `httpx.AsyncClient` — only `shape_request` / `parse_response` / `retry_policy`.

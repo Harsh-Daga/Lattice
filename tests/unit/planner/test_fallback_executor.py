@@ -6,8 +6,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from lattice.planner.execution_plan import ExecutionPlan, FallbackPlan
 from lattice.planner.fallback_executor import _is_retryable_error, execute_with_fallback
+from lattice.planner.plan_types import FallbackPlan
+from lattice.planner.session_plan import SessionExecutionPlan as ExecutionPlan
 
 
 class FakeLogger:
