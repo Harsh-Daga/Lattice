@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lattice-transport"
-version = "0.1.0"
+version = "1.0.0"
 description = "LLM Transport & Efficiency Layer — make LLM calls cheaper, faster, and smarter"
 readme = "README.md"
 license = {text = "MIT"}
@@ -18,7 +18,7 @@ keywords = [
     "context", "prompt", "cache", "sdk", "api"
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",

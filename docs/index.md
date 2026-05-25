@@ -12,8 +12,8 @@
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](concepts/architecture.md) | System design, data flow, thread safety |
-| [Proxy Server](concepts/proxy.md) | Endpoints, headers, config, /stats schema |
+| [Runtime Architecture](architecture/runtime.md) | Module boundaries, lifecycles, request flow |
+| [Proxy & agents](operations/integrations.md) | Lace, init, tunnel, five agents |
 | [SDK](concepts/sdk.md) | LatticeClient API |
 | [Observability](concepts/observability.md) | /stats, /metrics, headers, telemetry |
 | [Safety](concepts/safety.md) | Risk scoring, transform buckets, gating |
@@ -33,7 +33,7 @@
 
 | Document | Description |
 |----------|-------------|
-| [All 18 Transforms](compression/transforms.md) | Priority-ordered pipeline |
+| [All 20 Transforms](compression/transforms.md) | Registry-ordered pipeline |
 | [Caching](compression/caching.md) | Semantic cache + KV-cache alignment |
 | [Protocol](compression/protocol.md) | Manifests, delta, multiplex |
 
@@ -54,3 +54,14 @@
 | Document | Description |
 |----------|-------------|
 | [Agent Integrations](operations/integrations.md) | lace, unlace, init |
+
+## Contributors & release
+
+| Document | Description |
+|----------|-------------|
+| [Refactor & forward plan index](refactor/README.md) | Phases 0–12 shipped + v2.0 plan (12–27) |
+| [Migration guide](refactor/MIGRATION.md) | v0.x → v1.0.0 import map |
+| [Feature parity](refactor/FEATURE_PARITY.md) | 61-row shipped-feature checklist |
+| [CHANGELOG](../CHANGELOG.md) | Release notes |
+
+Historical phase specs (`docs/refactor/00-*.md` … `11-docs-release.md`) stay for audit traceability; user-facing narrative is **README**, **AGENTS.md**, and the sections above.

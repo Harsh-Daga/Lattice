@@ -1,6 +1,6 @@
 # Transforms
 
-LATTICE's pipeline runs 18 transforms in priority order on every request. Each transform has a safety classification and runs through config checks, policy gates, risk gating, and expansion guardrails before execution.
+LATTICE's registry defines **20 transforms** (`list_transform_names()`); six run in the default pipeline, with others selected by `UnifiedPlanner` or marked execution-only. See [runtime architecture](../architecture/runtime.md). Each transform has a safety classification and runs through config checks, policy gates, risk gating, and expansion guardrails before execution.
 
 ## Pipeline Order
 

@@ -304,4 +304,4 @@ One engineer full-time: M2 ~4 weeks, M3 ~6 weeks, M4 ~8 weeks. Two engineers: ro
 - [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) — **the authoritative registry of every primitive and its one canonical file.** CI gates check against this doc on every PR.
 - [FINAL_LAYOUT.md](FINAL_LAYOUT.md) — the post-v1.0 file layout (Phase 24 extends with `crates/` and `bindings/`; Phase 27 consolidates `providers/transport/`)
 - [MIGRATION.md](MIGRATION.md) — user-facing migration guide; each phase updates the section relevant to its renames/dep changes
-- [docs/architecture/runtime_v2.md](../architecture/runtime_v2.md) — the architecture all phases extend
+- [docs/architecture/runtime.md](../architecture/runtime.md) — the architecture all phases extend
