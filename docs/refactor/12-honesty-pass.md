@@ -73,6 +73,27 @@ The script is ~80 LoC of bash + awk. Lives at `scripts/check_code_budget.sh`. No
 
 ---
 
+## 1.5 Validation engine consolidation + replay contract
+
+Production evals and the architecture review surfaced **scattered validation** (MILV, guardrails, `ir/validation`, per-optimizer checks) without a single operator-facing story. Phase 12 adds a **facade only**:
+
+| File | Role |
+|---|---|
+| `src/lattice/runtime/validation_engine.py` | **New.** `validate_ir()`, `validate_post_transform()`, `validate_output()` — delegate to existing modules; no duplicate logic |
+| `src/lattice/pipeline/milv.py` | Renamed from misleading `MILV`; still owns post-transform checks |
+| `src/lattice/ir/validation.py` | IR structural rules unchanged |
+
+**Replay determinism** (eval hardening, not a new feature):
+
+- `tests/contract/test_replay_determinism.py` — fixed `(request, profile, ExecutionPlan)` → identical `PromptIRV2.canonical_fingerprint()` and transform trace hash
+- Documented in [`docs/architecture/runtime.md`](../architecture/runtime.md) § Validation facade
+
+**Scoring honesty:** collapse `Candidate.score` / `CandidateScorer` to the utility formula in [`runtime.md`](../architecture/runtime.md#the-scoring-rule). Remove duplicate `_estimate_utility` bonus tables from call sites; Phase 23 bandit learns weights — Phase 12 only ensures **one formula home**.
+
+Cross-ref: [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md).
+
+---
+
 ## 1. Why this phase exists
 
 A three-way audit on `refactor/phase-9-observability-state` surfaced the following items where the *name* of a thing in the repo does not match what it does, or where two implementations of the same thing exist side-by-side. None of these are user-visible bugs; all of them are credibility bugs. A user who reads the source code today and trusts the names ends up surprised.
@@ -512,7 +533,8 @@ These belong to later phases and must **not** be smuggled into this PR:
 | Topic | Phase |
 |---|---|
 | Real OpenAI/Anthropic Batch API integration | [Phase 20](20-non-chat-surfaces.md) |
-| `_estimate_utility` → real expected-utility optimization | [Phase 23](23-receipts-bandit-profiles.md) (bandit) |
+| `_estimate_utility` → real expected-utility optimization | [Phase 23](23-receipts-bandit-profiles.md) (bandit); inputs from [22](22-cache-portability.md), [27](27-transport-layer-consolidation.md) |
+| Segment-aware planning | [Phase 19.5](19.5-segment-aware-planning.md) |
 | LLMLingua-2 plug-in | [Phase 19](19-compression-intelligence.md) |
 | TypeScript SDK | [Phase 17](17-typescript-sdk.md) |
 

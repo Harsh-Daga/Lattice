@@ -14,6 +14,25 @@ Compression is one capability of that layer, not the product definition. SDKs ar
 
 Forward plan constraints (lightweight, no external LLM, self-hosted, code budget): [`docs/refactor/FORWARD_PLAN.md`](../refactor/FORWARD_PLAN.md).
 
+**Eval-driven v2 additions:** [ARCHITECTURE_EVAL_INSIGHTS.md](../refactor/ARCHITECTURE_EVAL_INSIGHTS.md) (what production evals prove, what we reject from the external critique).
+
+---
+
+## Architecture reality (v1.0 production evals)
+
+Pinned benchmark: `benchmarks/results/v1.0.0.json` ([CLAIMS.md](../../benchmarks/results/CLAIMS.md)).
+
+| Layer | Strength | Weakness |
+|---|---|---|
+| **Structural transforms** | Tables, JSON, grammar scenarios — high reduction with quality preserved | None on structural workloads |
+| **Semantic summarization** | — | Long-form / API-doc scenarios — quality ~0.64–0.67 |
+| **Orchestration** | Reasoning paths conservative and strong | `features not reached by pipeline` when global tier blocks the right transform |
+| **Transport economics** | Delta, prefix, cache transforms exist | Gains not yet fully wired into planner utility (Phases 22, 27) |
+
+**Implication:** v2 optimizes **utility** (cost, latency, cache, stability, quality) — not headline compression %. See [The Scoring Rule](#the-scoring-rule) and [ARCHITECTURE_EVAL_INSIGHTS.md](../refactor/ARCHITECTURE_EVAL_INSIGHTS.md).
+
+**Not re-founding:** Legacy `CompressorPipeline`, `strategy_selector`, and parallel schedulers were removed in refactor Phases 3–5. Do not schedule a second “delete legacy” rewrite.
+
 ---
 
 ## The Fundamental Insight
@@ -154,6 +173,18 @@ def search(initial: Candidate, transforms: list[Transform]) -> Candidate:
 ```
 
 **Critical Rule:** No transform mutates in place. `cand.apply()` creates a NEW candidate.
+
+### Segment-aware planning (Phase 19.5)
+
+Mixed prompts are not one global tier. After [19.5-segment-aware-planning.md](../refactor/19.5-segment-aware-planning.md):
+
+```
+PromptIR sections → SegmentPlan (per-section policy)
+    → allowed_transforms, distortion_budget, transport_hint
+    → UnifiedPlanner + pipeline gates + beam search respect per-section allowlists
+```
+
+This fixes “transform exists but planner never activated it” without adding transforms.
 
 ---
 
@@ -307,17 +338,40 @@ class IRTransform:
 
 ## The Scoring Rule
 
-**Old Model (being replaced):**
-- `quality_estimator.py` computes one score
-- `guardrails.py` computes another
-- `validation.py` validates separately
-- Each optimizer has its own `_Candidate.score`
+**Old Model (removed or consolidated in Phases 3–5 and 12):**
+- Per-optimizer `_Candidate.score` formulas
+- `planner/unified_planner._estimate_utility` fixed bonus table (not a real objective — honesty pass in Phase 12 documents this)
 
-**Current model:**
-- **ONE** `CandidateScorer` computes the canonical score
-- Formula: `expected_utility = cost_reduction + cache_gain + transport_gain - semantic_risk - latency_cost - instability_penalty`
-- All components computed from the same `Candidate.metrics` dict
-- No per-optimizer scoring. No duplication.
+**Target model (Phase 12 lands formula home; Phases 19 / 19.5 / 22 / 27 feed inputs):**
+- **ONE** `CandidateScorer` in `ir/quality.py` (or `pipeline/scoring.py` per [SINGLE_SOURCE_OF_TRUTH.md](../refactor/SINGLE_SOURCE_OF_TRUTH.md))
+- **ONE** composite:
+
+```
+expected_utility =
+    + semantic_quality
+    + provider_cache_probability    # Phase 22 analyzer → planner
+    + transport_gain                # Phase 27 delta_wire + stable prefix metrics
+    - normalized_token_cost
+    - latency_p95_estimate
+    - instability_penalty           # replay / placeholder leakage
+```
+
+- Weights are profile-configurable ([Phase 23](../refactor/23-receipts-bandit-profiles.md)), not hard-coded.
+- Compression ratio is **one term**, never the sole success metric in docs or CLAIMS.
+
+---
+
+## Validation facade (Phase 12)
+
+All validation entrypoints route through **`runtime/validation_engine.py`** (facade only — no new algorithms):
+
+| Concern | Canonical module |
+|---|---|
+| IR structural validation | `ir/validation.py` |
+| Post-transform MILV checks | `pipeline/milv.py` (renamed from misleading `MILV` name) |
+| Output / JSON repair | `safety/output/` ([Phase 15](../refactor/15-native-guardrails.md), extended in [Phase 19](../refactor/19-compression-intelligence.md)) |
+
+**Contract:** `tests/contract/test_replay_determinism.py` — same request + profile + plan → same `canonical_fingerprint()` and transform trace (operator replay gate).
 
 ---
 

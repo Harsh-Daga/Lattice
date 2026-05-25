@@ -108,6 +108,7 @@ M3 — Differentiate (v1.5)
   → 24 Shared core (Rust/PyO3/WASM)
   → 17 TypeScript SDK (thin client)
   → 18 MCP | 19 Compression intel | 20 Non-chat  (parallel after 17)
+  → 19.5 Segment-aware planning  ← after 19; see ARCHITECTURE_EVAL_INSIGHTS.md
 
 M4 — Top-tier (v2.0)
   21 Agent memory
@@ -126,6 +127,7 @@ M4 — Top-tier (v2.0)
 | File | Note |
 |---|---|
 | `25-cloud-multitenant.md` | **Historical filename.** Content is *Optional Self-Hosted Auth* only — no cloud product. Do not add SaaS content to match the filename. |
+| `19.5-segment-aware-planning.md` | Decimal phase id (between 19 and 20). Same template as integer phases. |
 
 ---
 

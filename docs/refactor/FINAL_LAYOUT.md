@@ -448,7 +448,9 @@ src/lattice/
 ├── policy/profiles.py            # Phase 23
 ├── config/reload.py              # Phase 23
 ├── pipeline/streaming/           # Phase 19
+├── planner/segment_policy.py     # Phase 19.5 — per-section transform policy
 ├── transforms/tool_diff/ | llmlingua/   # Phase 19 (llmlingua opt-in)
+├── runtime/validation_engine.py  # Phase 12 — validation facade
 ├── gateway/{embeddings,batch,audio,files,realtime}.py   # Phase 20
 └── sdk/                          # Phase 13 — thin client only
 

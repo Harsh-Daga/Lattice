@@ -16,6 +16,14 @@
 >
 > **Estimated effort.** 5 days (1 PR, ~+2400 LoC — smaller than prior because LLMLingua becomes a self-contained opt-in package rather than a "default ML feature").
 
+### Utility scoring (eval-aligned)
+
+Beam search and LLMLingua branches use the **canonical utility** from [runtime.md](../architecture/runtime.md#the-scoring-rule), not compression ratio alone:
+
+- **Structural wins** (tool-diff, JSON repair, streaming reverse) increase `transport_gain` and reduce retry `instability_penalty`.
+- **LLMLingua** runs only when opted in **and** `expected_utility` beats the deterministic branch on the same segment ([Phase 19.5](19.5-segment-aware-planning.md) distortion budget).
+- Summarization-style transforms stay off default profiles for `reasoning` segments per [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md).
+
 ---
 
 ## 1. Why this phase exists, and what changed from the prior draft
