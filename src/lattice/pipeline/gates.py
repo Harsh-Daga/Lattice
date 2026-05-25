@@ -10,7 +10,7 @@ Gate inventory (matches docs/refactor/STATUS.md §5.2):
     3. Semantic-risk gate — transform_allowed_at_risk(name, risk)
     4. Protected-span DANGEROUS veto — bucket==DANGEROUS + non-empty protected spans
     5. Scheduler blocking — _lattice_schedule blocked/allowed sets (with optimizer alias)
-    6. MILV post-transform validation — runtime judge on lossy transforms
+    6. Post-transform guard — rule-based checks on lossy transforms
     7. Transform reputation tracking — record per-transform success/failure
     8. Expansion guard / rollback — bloat threshold; plus negative-savings,
        compression-limit (tier+task), placeholder-leakage, PSG numeric/entity/
@@ -371,7 +371,7 @@ def check_psg_preservation(
     return PostCheckResult()
 
 
-def should_run_milv(
+def should_run_post_transform_guard(
     name: str,
     text_before: str,
     text_after: str,

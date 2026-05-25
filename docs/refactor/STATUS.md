@@ -11,7 +11,7 @@
 >
 > **Doc index:** [docs/refactor/README.md](README.md) · **Forward plan:** [FORWARD_PLAN.md](FORWARD_PLAN.md) · **Eval → v2 mapping:** [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md) · **Phase template:** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) · **Registry:** [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) · **LoC caps:** [CODE_BUDGET.txt](CODE_BUDGET.txt)
 >
-> The v2.0 forward plan is the source of truth for Phases 12–27. The product thesis: **LATTICE is the transport / network layer for LLM traffic.** Compression, caching, guardrails, agent memory, MCP federation, telemetry, auth — these are policies the transport layer enforces on each request. The transport layer itself owns connections, retries, timeouts, backpressure, framing, streaming, and resumption. ([Phase 27](27-transport-layer-consolidation.md) is the phase that makes this true; before it, LATTICE is "a compression pipeline with a proxy in front of it".)
+> The v2.0 forward plan is the source of truth for Phases **13–34** ([FORWARD_PLAN.md](FORWARD_PLAN.md)). **v1 Phase 12** is the docs release only. The product thesis: **LATTICE is the transport / network layer for LLM traffic.** [Phase 14](14-transport-layer-consolidation.md) (transport consolidation, immediately after Phase 13) makes that true on the wire; before it, adapters still carry duplicated retry/timeout code.
 >
 > The plan lives under six hard constraints, every one CI-enforced:
 >
@@ -19,19 +19,19 @@
 > 2. **No external LLM dependency** beyond the user's chosen provider.
 > 3. **Open source self-hosted only.** No cloud product.
 > 4. **One algorithm, one implementation — across SDKs AND internally.** Enforced by `scripts/check_sdk_no_algorithm_duplication.sh` and `scripts/check_internal_no_duplication.sh` (the latter walks [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md)).
-> 5. **Codebase shall not grow unbounded.** `src/lattice/` LoC cap at v2.0 is **35 000** lines. Per-directory caps. Every PR declares its LoC delta; CI rejects overrun. Enforced by `scripts/check_code_budget.sh` ([Phase 12](12-honesty-pass.md)).
-> 6. **Transport-first design.** After [Phase 27](27-transport-layer-consolidation.md): retry / timeout / circuit-breaker / backpressure / pooling / multiplexing exist exactly once in `src/lattice/transport/`. Adapters become declarative-only (~150 LoC each). Enforced by `tests/contract/test_transport_unification.py`.
+> 5. **Codebase shall not grow unbounded.** Per-directory caps + 800-LoC/file + no-dup gates (`scripts/check_code_budget.sh`, `check_internal_no_duplication.sh`). Total cap 35 000 at v2.0 (`enforce_total_v2` flips Phase 31). No per-phase net LoC gate.
+> 6. **Transport-first design.** After [Phase 14](14-transport-layer-consolidation.md): retry / timeout / circuit-breaker / backpressure / pooling / multiplexing exist exactly once in `src/lattice/transport/`. Enforced by `tests/contract/test_transport_unification.py`.
 >
 > What's been cut from the prior forward-plan draft (full rationale in [FORWARD_PLAN.md §1](FORWARD_PLAN.md)):
 >
 > - Hosted `lattice.cloud`, Stripe billing, Cloudflare/Neon/Upstash Terraform, hosted playground, per-tenant LoRA distillation training pipeline.
-> - Local SentenceTransformers as **default** embedding backend (Phase 14): now opt-in `[embeddings-local]` extra (~1.5 GB). Default embedding tier uses the user's provider.
-> - Presidio as **default** PII detector (Phase 15): now opt-in `[pii]` extra (~1 GB). Default detector is regex-based (zero deps).
-> - ONNX injection classifier as default (Phase 15): now opt-in `[injection]` extra. Default is heuristic phrase matcher (zero deps).
-> - LLMLingua-2 in the default compression story (Phase 19): now opt-in `[llmlingua]` extra (~600 MB) with an explicit first-run footprint warning.
-> - Per-SDK reimplementation of reverse-pass / hooks / streaming (Phase 13, 17): replaced by the single-core architecture in Phase 24.
-> - Per-adapter retry / timeout / `httpx.AsyncClient` instantiation (~17 copies of nearly-identical transport code): replaced by the single transport layer in [Phase 27](27-transport-layer-consolidation.md). Net **-1500 LoC**.
-> - VSCode marketplace ceremony, Helm chart, signed-wheel sigstore ritual (Phase 26): trimmed to Docker + PyPI + npm + sideload `.vsix`.
+> - Local SentenceTransformers as **default** embedding backend (Phase 20): now opt-in `[embeddings-local]` extra (~1.5 GB). Default embedding tier uses the user's provider.
+> - Presidio as **default** PII detector (Phase 21): now opt-in `[pii]` extra (~1 GB). Default detector is regex-based (zero deps).
+> - ONNX injection classifier as default (Phase 21): now opt-in `[injection]` extra. Default is heuristic phrase matcher (zero deps).
+> - LLMLingua-2 in the default compression story (Phase 27): now opt-in `[llmlingua]` extra (~600 MB) with an explicit first-run footprint warning.
+> - Per-SDK reimplementation of reverse-pass / hooks / streaming (Phase 19, 17): replaced by the single-core architecture in Phase 31.
+> - Per-adapter retry / timeout / `httpx.AsyncClient` instantiation (~17 copies of nearly-identical transport code): replaced by the single transport layer in [Phase 14](14-transport-layer-consolidation.md). Shrink target ~1500 LoC (dir caps + transport unification tests, not a net-LoC gate).
+> - VSCode marketplace ceremony, Helm chart, signed-wheel sigstore ritual (Phase 34): trimmed to Docker + PyPI + npm + sideload `.vsix`.
 
 ---
 
@@ -56,7 +56,7 @@
 | **11**      | ✅ Done             | Phase 11 branch | `tests/unit/` mirrors `src/lattice/`; `FEATURE_PARITY.md` (61 rows); contract matrices; `pytest-xdist`; pinned count. |
 | **12**      | ✅ Done             | v1.0.0 docs release | README/AGENTS rewrite, CHANGELOG, MIGRATION, `runtime.md`, version `1.0.0`, doc dedup. |
 
-**Current totals.** 2016 tests collected (pinned); **1801** passed, **215** skipped. **Phases 0–12** ✅ on main. **Next:** v2.0 forward plan Phase 12 (`12-honesty-pass.md` per `FORWARD_PLAN.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** **2042** tests collected (pinned on honesty branch); **Phases 0–12** ✅ on `main`. **Phase 13** (honesty pass) ✅ on branch `refactor/forward-plan-phase-12-honesty` — merge to `main` pending. Code budget: **dir caps + 800-LoC/file + no-dup** (per-phase net LoC gate removed). **Next:** [Phase 14 — Transport consolidation](14-transport-layer-consolidation.md). See [MIGRATION-v1-to-v2.md](MIGRATION-v1-to-v2.md). **Benchmark gates** remain operator-run when `OLLAMA_CLOUD_API_KEY` is set.
 
 ---
 
@@ -420,7 +420,7 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 - **Phase 9 (Observability + State)** — ✅ Shipped on `refactor/phase-9-observability-state`. `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/token_count`. See `08-observability-state.md`.
 - **Phase 10 (Benchmarks)** — ✅ Shipped PR [#16](https://github.com/Harsh-Daga/Lattice/pull/16); completion fixes on `refactor/phase-10-completion` (provider_validation `compress()`, `--provider-detect`, doc sync).
 - **Phase 11 (Tests)** — ✅ Shipped. `tests/unit/` mirrors `src/lattice/`; `FEATURE_PARITY.md` (61 rows); contract matrices; `pytest-xdist`; `test_test_count_pinned.py`.
-- **Phase 12 (Docs + release)** — **Next.** `11-docs-release.md`: README rewrite, CHANGELOG, full MIGRATION import map, version 1.0.0, tag, PyPI dry-run.
+- **Phase 16 (Docs + release)** — **Next.** `11-docs-release.md`: README rewrite, CHANGELOG, full MIGRATION import map, version 1.0.0, tag, PyPI dry-run.
 
 ---
 
@@ -464,7 +464,7 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 | Split `content_profiler/` + `optimize()` on IR path                      | ✅ Phase 5b         |
 | Split `format_converter/`; delete `prefix_opt`, `constraint_lifting`     | ✅ Phase 5b         |
 | Delete `strategy_selector`, `information_theoretic_selector` (gated)   | ✅ Phase 5c         |
-| `transform_prefix_opt` / `transform_constraint_lifting` / `transform_strategy_selector` config no-ops | ✅ carryover until Phase 12 MIGRATION.md |
+| `transform_prefix_opt` / `transform_constraint_lifting` / `transform_strategy_selector` config no-ops | ✅ carryover until Phase 16 MIGRATION.md |
 | Canonical bench A/B/C + `phase-5.json` ±2%                               | ⏳ CI / local key   |
 
 ### Phase 6 (providers + transport) — shipped
@@ -505,29 +505,29 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 
 ---
 
-## 9. v2.0 forward plan — Phases 12–26
+## 9. v2.0 forward plan — Phases 16–26
 
 The forward plan lives in **[FORWARD_PLAN.md](FORWARD_PLAN.md)**. Quick reference:
 
 | Phase | Doc | Milestone | Footprint impact |
 |---|---|---|---|
-| 12 | [Honesty Pass](12-honesty-pass.md) | M2 v1.1 | -2300 LoC (net shrink) |
-| 13 | [Python SDK (thin client)](13-python-sdk-quality.md) | M2 | +1 MB; zero new runtime deps |
-| 14 | [Hybrid Semantic Cache (lightweight)](14-hybrid-semantic-cache.md) | M2 | 0 new deps default; embedding tier uses user's provider |
-| 15 | [Native Guardrails (lightweight)](15-native-guardrails.md) | M2 | 0 new deps default; rule-based PII + heuristic injection + pure-Python repair |
-| 16 | [OpenTelemetry GenAI](16-otel-genai.md) | M2 | + opentelemetry-sdk (~3 MB) only when enabled |
-| 17 | [TypeScript SDK (thin client)](17-typescript-sdk.md) | M3 v1.5 | npm ≤ 25 KB gz (edge); zero algorithm code; consumes Phase 24 WASM core |
-| 18 | [MCP-Native Gateway](18-mcp-native-gateway.md) | M3 | Base install |
-| 19 | [Compression Intelligence](19-compression-intelligence.md) | M3 | 0 new deps default (streaming + tool-diff + JSON repair); LLMLingua-2 opt-in `[llmlingua]` (~600 MB) |
-| 19.5 | [Segment-Aware Planning](19.5-segment-aware-planning.md) | M3 | 0 new deps; fixes eval `features not reached by pipeline` |
-| 20 | [Non-Chat Surfaces](20-non-chat-surfaces.md) | M3 | Base install |
-| 21 | [Agent Memory (lightweight)](21-agent-memory.md) | M4 v2.0 | 0 new deps default; rule-based relevance scoring; user's cheap model for summarization |
-| 22 | [Cache Portability](22-cache-portability.md) | M4 | Base install |
-| 23 | [Receipts + Bandit + Profiles + Hot Reload](23-receipts-bandit-profiles.md) | M4 | + pyjwt (~100 KB); bandit is pure numpy (no ML deps) |
-| 24 | [Shared Core: Rust + PyO3 + WASM](24-edge-wasm-core.md) | M4 | Optional native wheel ~3 MB; WASM ≤ 200 KB gz; **architectural keystone — prevents SDK duplication** |
-| 25 | [Optional Self-Hosted Auth, Keys, Quotas](25-cloud-multitenant.md) | M4 | All optional; SQLite default; **no cloud, no SaaS, no Stripe** |
-| 26 | [Agent-Loop-Aware + Cursor Visualizer + Minimal Release](26-agent-loop-aware.md) | M4 | Cursor extension ~200 KB; Docker + PyPI + npm + sideload `.vsix` — **no marketplace ceremony, no Helm** |
-| 27 | [Transport Layer Consolidation](27-transport-layer-consolidation.md) | M4 | **Net -1500 LoC.** Unified retry/timeout/CB, HTTP/2 multiplexing, connection pool per provider, transport metrics, backpressure, stream resumption. **The phase that makes "LATTICE is a transport layer for LLMs" true.** |
+| 12 | [Honesty Pass](13-honesty-pass.md) | M2 v1.1 | -2300 LoC (net shrink) |
+| 13 | [Python SDK (thin client)](16-python-sdk-quality.md) | M2 | +1 MB; zero new runtime deps |
+| 14 | [Hybrid Semantic Cache (lightweight)](17-hybrid-semantic-cache.md) | M2 | 0 new deps default; embedding tier uses user's provider |
+| 15 | [Native Guardrails (lightweight)](18-native-guardrails.md) | M2 | 0 new deps default; rule-based PII + heuristic injection + pure-Python repair |
+| 16 | [OpenTelemetry GenAI](19-otel-genai.md) | M2 | + opentelemetry-sdk (~3 MB) only when enabled |
+| 17 | [TypeScript SDK (thin client)](20-typescript-sdk.md) | M3 v1.5 | npm ≤ 25 KB gz (edge); zero algorithm code; consumes Phase 31 WASM core |
+| 18 | [MCP-Native Gateway](21-mcp-native-gateway.md) | M3 | Base install |
+| 19 | [Compression Intelligence](22-compression-intelligence.md) | M3 | 0 new deps default (streaming + tool-diff + JSON repair); LLMLingua-2 opt-in `[llmlingua]` (~600 MB) |
+| 23 | [Segment-Aware Planning](23-segment-aware-planning.md) | M3 | 0 new deps; fixes eval `features not reached by pipeline` |
+| 20 | [Non-Chat Surfaces](24-non-chat-surfaces.md) | M3 | Base install |
+| 21 | [Agent Memory (lightweight)](26-agent-memory.md) | M4 v2.0 | 0 new deps default; rule-based relevance scoring; user's cheap model for summarization |
+| 22 | [Cache Portability](27-cache-portability.md) | M4 | Base install |
+| 23 | [Receipts + Bandit + Profiles + Hot Reload](28-receipts.md) | M4 | + pyjwt (~100 KB); bandit is pure numpy (no ML deps) |
+| 24 | [Shared Core: Rust + PyO3 + WASM](31-edge-wasm-core.md) | M4 | Optional native wheel ~3 MB; WASM ≤ 200 KB gz; **architectural keystone — prevents SDK duplication** |
+| 25 | [Optional Self-Hosted Auth, Keys, Quotas](32-cloud-multitenant.md) | M4 | All optional; SQLite default; **no cloud, no SaaS, no Stripe** |
+| 26 | [Agent-Loop-Aware + Cursor Visualizer + Minimal Release](34-agent-loop-aware.md) | M4 | Cursor extension ~200 KB; Docker + PyPI + npm + sideload `.vsix` — **no marketplace ceremony, no Helm** |
+| 27 | [Transport Layer Consolidation](14-transport-layer-consolidation.md) | M4 | **Net -1500 LoC.** Unified retry/timeout/CB, HTTP/2 multiplexing, connection pool per provider, transport metrics, backpressure, stream resumption. **The phase that makes "LATTICE is a transport layer for LLMs" true.** |
 
 ### Suggested execution order (matches dependencies)
 
@@ -535,7 +535,7 @@ See [PHASE_GUIDELINES.md §7](PHASE_GUIDELINES.md) and [docs/refactor/README.md]
 
 ```
 M2: 12 → 14 → 15 → 13 → 16
-M3: 27 → 24 → 17 → {18, 19, 20} → 19.5   ← Phase 27 FIRST in M3; 19.5 after compression intel
+M3: 27 → 24 → 17 → {18, 19, 20} → 23   ← Phase 20 FIRST in M3; 23 after compression intel
 M4: 21 → 22 → 23 → 25 → 26
 ```
 
@@ -546,8 +546,8 @@ M4: 21 → 22 → 23 → 25 → 26
 | No multi-provider routing | `tests/contract/test_no_multi_provider_routing.py` |
 | No algorithm code in SDKs | `scripts/check_sdk_no_algorithm_duplication.sh` |
 | **No internal duplication of canonical primitives** | `scripts/check_internal_no_duplication.sh` walks [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) |
-| **Code budget (total + per-directory + per-PR delta)** | `scripts/check_code_budget.sh` (Phase 12 lands it) |
-| **Transport policies live in one place** | `tests/contract/test_transport_unification.py` + `test_no_per_adapter_httpx_client.py` (Phase 27) |
+| **Code budget (total + per-directory + per-PR delta)** | `scripts/check_code_budget.sh` (Phase 16 lands it) |
+| **Transport policies live in one place** | `tests/contract/test_transport_unification.py` + `test_no_per_adapter_httpx_client.py` (Phase 20) |
 | No required model download in default install | `tests/contract/test_default_install_no_models.py` |
 | No required external service in default install | `tests/contract/test_default_install_no_external_services.py` |
 | No file > 800 LoC | Existing R6 |

@@ -26,5 +26,10 @@ jobs:
       - run: uv run mypy src/lattice/ --ignore-missing-imports
       - run: uv run pytest tests/ -q --tb=short
       - run: uv run pytest tests/contract/ -q --tb=short
+      - run: uv run python scripts/generate_factories.py
+      - run: git diff --exit-code src/lattice/pipeline/_generated_factories.py
+      - run: bash scripts/check_code_budget.sh
+      - run: bash scripts/check_internal_no_duplication.sh
+      - run: bash scripts/check_sdk_no_algorithm_duplication.sh
       # Phase 10: canonical benchmark entrypoint (see docs/refactor/09-benchmarks.md).
       - run: test -x scripts/run_canonical_benchmark.sh

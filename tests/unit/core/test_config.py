@@ -12,13 +12,13 @@ class TestApplyCompressionMode:
         cfg = LatticeConfig(compression_mode="safe")
         cfg.apply_compression_mode()
         assert cfg.transform_content_profiler is True
-        assert cfg.transform_prefix_opt is True
+        assert cfg.transform_reference_sub is True
 
     def test_balanced_mode(self):
         cfg = LatticeConfig(compression_mode="balanced")
         cfg.apply_compression_mode()
         assert cfg.transform_content_profiler is True
-        assert cfg.transform_prefix_opt is True
+        assert cfg.transform_causal_chain is True
 
     def test_aggressive_mode(self):
         cfg = LatticeConfig(compression_mode="aggressive")
@@ -35,7 +35,6 @@ class TestApplyCompressionMode:
             assert cfg.transform_content_profiler is True
             assert cfg.transform_runtime_contract is True
             assert cfg.transform_cache_arbitrage is True
-            assert cfg.transform_prefix_opt is True
             assert cfg.transform_reference_sub is True
             assert cfg.transform_tool_filter is True
             assert cfg.transform_output_cleanup is True

@@ -233,44 +233,9 @@ class Candidate:
 
     def score(self) -> CandidateScore:
         """Compute canonical score from metrics."""
-        m = dict(self.metrics)
+        from lattice.ir.scoring import composite_score
 
-        tokens_before = m.get("tokens_before", 1)
-        tokens_after = m.get("tokens_after", tokens_before)
-        latency_ms = m.get("latency_ms", 0.0)
-        quality_estimate = m.get("quality_estimate", 1.0)
-        cache_gain = m.get("cache_gain", 0.0)
-        transport_gain = m.get("transport_gain", 0.0)
-        semantic_risk = m.get("semantic_risk", 0.0)
-        instability = m.get("instability", 0.0)
-
-        # Cost reduction: fraction of tokens saved
-        cost_reduction = max(0.0, (tokens_before - tokens_after) / max(1, tokens_before))
-
-        # Latency cost: penalize expensive transforms
-        latency_cost = latency_ms / 1000.0
-
-        composite = (
-            quality_estimate
-            + cost_reduction * 0.5
-            + cache_gain * 0.2
-            + transport_gain * 0.2
-            - semantic_risk
-            - latency_cost
-            - instability
-        )
-
-        return CandidateScore(
-            composite=round(composite, 4),
-            quality=quality_estimate,
-            cost_reduction=round(cost_reduction, 4),
-            cache_gain=round(cache_gain, 4),
-            transport_gain=round(transport_gain, 4),
-            semantic_risk=round(semantic_risk, 4),
-            latency_ms=round(latency_ms, 3),
-            instability_penalty=round(instability, 4),
-            reason="all_signals_preserved",
-        )
+        return composite_score(dict(self.metrics))
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

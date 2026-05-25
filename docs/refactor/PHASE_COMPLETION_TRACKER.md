@@ -3,7 +3,7 @@
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** v1.0.0 release — **2016 collected**, **1801 passed**, contract green (see §12).
+**Last verified:** v1.0.0 + Phase 13 branch — **2042 collected** (pinned), contract green on branch (see §12 + v2 §13).
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -223,7 +223,39 @@ All import/layout criteria ✅. Benchmark lines excluded.
 
 ---
 
-## Phase 12 — `11-docs-release.md` §5
+## v2.0 Forward Plan (Phases 13–34)
+
+> Phase 13 on branch `refactor/forward-plan-phase-12-honesty` (merge to `main` pending).
+
+### Phase 13 — `13-honesty-pass.md`
+
+| Criterion | Status |
+|-----------|--------|
+| No file >800 LoC under `src/lattice/` | ✅ |
+| Single `ExecutionPlan` in `ir/primitives.py`; `SessionExecutionPlan` in `planner/session_plan.py` | ✅ |
+| `planner/execution_plan.py` removed | ✅ |
+| `scripts/check_code_budget.sh` + `check_internal_no_duplication.sh` in `refactor-gate` | ✅ |
+| `pipeline/_generated_factories.py` from `scripts/generate_factories.py` | ✅ |
+| `pipeline/post_transform_guard.py`, `pipeline/checks.py`, `pipeline/request_coalescer.py` | ✅ |
+| `ir/scoring.py`; `runtime/validation_engine.py` | ✅ |
+| `gateway/compat/` package; `cli/` package; `integrations/agents/` package | ✅ |
+| Contract tests §1.3 (dup plan/score/cost/config/session/chunk/tokenizer, headers, SSOT) | ✅ |
+| Code budget: dir caps + 800-LoC/file (no per-phase net LoC gate) | ✅ |
+| `gateway/` dir cap 4825 (~4571 actual); shrink target Phase 14 + 21 | ✅ note |
+| `EXPECTED_TEST_COUNT` = 2042 | ✅ |
+| pytest / contract on branch | ✅ |
+| Canonical bench ±2% | ⏳ operator |
+| Footprint tests (`test_4gb_laptop` etc.) | ⏳ skeleton Phase 16 |
+| v2 skeleton docs (15, 25, 28–30, 33, MIGRATION-v1-to-v2) marked Status: skeleton | ✅ |
+
+| Phase | Doc | Verdict |
+|-------|-----|---------|
+| **14** | [14-transport-layer-consolidation.md](14-transport-layer-consolidation.md) | ⏳ **Next** |
+| **15–34** | See [FORWARD_PLAN.md §9](FORWARD_PLAN.md) | ⏳ |
+
+---
+
+## Phase 12 (v1.0.0 docs release) — `11-docs-release.md` §5
 
 | Criterion | Status |
 |-----------|--------|
@@ -233,10 +265,21 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | `CHANGELOG.md` v1.0.0 section dated | ✅ |
 | `MIGRATION.md` exhaustive import map (+ `test_no_old_paths`) | ✅ |
 | `pyproject.toml` + `_version.py` = 1.0.0; Production/Stable | ✅ |
-| `EXPECTED_TEST_COUNT` / README / AGENTS aligned (2016 / 1801) | ✅ |
 | `FEATURE_PARITY.md` 61 rows unchanged | ✅ |
-| ruff / format / mypy / pytest / contract green | ✅ operator |
 | `uv build` + PyPI publish | ✅ CI `publish.yml` on GitHub `release: published` (Trusted Publishing) |
+
+---
+
+## Deferred CI (documented, not Phase 13 blockers)
+
+| Item | Target phase | Notes |
+|------|--------------|-------|
+| `tests/integration/footprint/test_4gb_laptop.py` | 16 | RSS / install-size gate for constraint #1 |
+| `tests/integration/footprint/test_2gb_vps.py` | 16 | VPS footprint |
+| `tests/integration/footprint/test_cold_start.py` | 16 | Cold start ≤ 1.5 s |
+| Full `15-chaos-failure-modes.md` plan body | 15 | Skeleton only after Phase 13 renumber |
+| `25-competitive-benchmark.md` matrix | 25 | Skeleton only |
+| `33-threat-model.md` assets/adversaries | 33 | Skeleton only |
 
 ---
 

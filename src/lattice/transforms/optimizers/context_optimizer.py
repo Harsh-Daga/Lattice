@@ -1,4 +1,4 @@
-"""ContextOptimizer — merged context_selector, information_theoretic_selector, rate_distortion, extractive_compress.
+"""ContextOptimizer — merged context_selector, rate_distortion, extractive_compress.
 
 Phase 3 — Collapse overlapping transforms.
 

@@ -11,7 +11,7 @@ Standardized metadata keys (canonical):
   _lattice_schedule — execution plan metadata from UnifiedPlanner (via content_profiler)
   _lattice_risk_score — SemanticRiskScore from content_profiler
   _lattice_safety_decision — SafetyDecision from PSG
-  _lattice_validation — ValidationOutcome from MILV
+  _lattice_validation — ValidationOutcome from post-transform guard
   _lattice_rollback_reason — Why a transform was rolled back
 """
 

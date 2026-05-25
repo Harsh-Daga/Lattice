@@ -304,10 +304,7 @@ class TierClassifier:
         """
         features = features or {}
         if tier == Tier.SIMPLE:
-            skipped = (
-                "information_theoretic_selector",
-                "rate_distortion",
-            )
+            skipped = ("rate_distortion",)
             mode = "minimal"
             budget_ms = 20.0  # was 2ms — too tight, content_profiler alone needs 10-15ms
             preferred_strategy = "full"

@@ -1,7 +1,7 @@
 """Transform reputation system — rolling stats for quality/compression/rollback.
 
 Maintains rolling window statistics per transform to drive automatic
-enablement/disable decisions and MILV triggering.
+enablement/disable decisions and post-transform guard triggering.
 """
 
 from __future__ import annotations

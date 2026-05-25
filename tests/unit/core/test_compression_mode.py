@@ -24,7 +24,6 @@ def test_safe_mode_keeps_core_transforms() -> None:
     assert cfg.transform_content_profiler is True
     assert cfg.transform_runtime_contract is True
     assert cfg.transform_cache_arbitrage is True
-    assert cfg.transform_prefix_opt is True
     assert cfg.transform_reference_sub is True
     assert cfg.transform_tool_filter is True
     assert cfg.transform_output_cleanup is True

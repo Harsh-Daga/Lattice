@@ -31,13 +31,11 @@ _TASK_TRANSFORM_MATRIX: dict[str, dict[str, bool | None]] = {
         "rate_distortion": False,
         "message_dedup": False,
         "context_selector": False,
-        "information_theoretic_selector": False,
     },
     TaskClass.DEBUGGING.value: {
         "rate_distortion": False,
         "message_dedup": False,
         "context_selector": False,
-        "information_theoretic_selector": False,
     },
     TaskClass.STRUCTURED.value: {
         "rate_distortion": False,

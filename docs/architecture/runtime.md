@@ -174,9 +174,9 @@ def search(initial: Candidate, transforms: list[Transform]) -> Candidate:
 
 **Critical Rule:** No transform mutates in place. `cand.apply()` creates a NEW candidate.
 
-### Segment-aware planning (Phase 19.5)
+### Segment-aware planning (Phase 23)
 
-Mixed prompts are not one global tier. After [19.5-segment-aware-planning.md](../refactor/19.5-segment-aware-planning.md):
+Mixed prompts are not one global tier. After [23-segment-aware-planning.md](../refactor/23-segment-aware-planning.md):
 
 ```
 PromptIR sections → SegmentPlan (per-section policy)
@@ -342,7 +342,7 @@ class IRTransform:
 - Per-optimizer `_Candidate.score` formulas
 - `planner/unified_planner._estimate_utility` fixed bonus table (not a real objective — honesty pass in Phase 12 documents this)
 
-**Target model (Phase 12 lands formula home; Phases 19 / 19.5 / 22 / 27 feed inputs):**
+**Target model (Phase 13 lands formula home; Phases 22 / 23 / 27 / 14 feed inputs):**
 - **ONE** `CandidateScorer` in `ir/quality.py` (or `pipeline/scoring.py` per [SINGLE_SOURCE_OF_TRUTH.md](../refactor/SINGLE_SOURCE_OF_TRUTH.md))
 - **ONE** composite:
 
@@ -368,7 +368,7 @@ All validation entrypoints route through **`runtime/validation_engine.py`** (fac
 | Concern | Canonical module |
 |---|---|
 | IR structural validation | `ir/validation.py` |
-| Post-transform MILV checks | `pipeline/milv.py` (renamed from misleading `MILV` name) |
+| Post-transform guard (rule-based) | `pipeline/post_transform_guard.py` + `pipeline/checks.py` |
 | Output / JSON repair | `safety/output/` ([Phase 15](../refactor/15-native-guardrails.md), extended in [Phase 19](../refactor/19-compression-intelligence.md)) |
 
 **Contract:** `tests/contract/test_replay_determinism.py` — same request + profile + plan → same `canonical_fingerprint()` and transform trace (operator replay gate).

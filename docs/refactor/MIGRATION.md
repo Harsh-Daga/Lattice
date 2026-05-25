@@ -184,6 +184,23 @@ Validated against `tests/unit/test_no_old_paths.py::OLD_PATHS`.
 
 ---
 
+## Forward Plan Phase 13 (v2) — honesty pass renames
+
+| Old | New |
+|-----|-----|
+| `lattice.pipeline.milv` | `lattice.pipeline.post_transform_guard` |
+| `MILVResult` | `PostTransformGuardResult` |
+| `validate_transform` / `should_trigger_milv` | `evaluate_post_transform` / `should_trigger_post_transform_guard` |
+| `lattice.pipeline.batch_accumulator` | `lattice.pipeline.request_coalescer` |
+| `BatchAccumulator` | `RequestCoalescer` |
+| `BatchResult` | `CoalescedResult` |
+| `planner.execution_plan.ExecutionPlan` | `ir.primitives.ExecutionPlan` (pipeline); gateway metadata uses `planner.session_plan.SessionExecutionPlan` |
+| Hand-maintained `pipeline.runner._FACTORIES` | `pipeline._generated_factories` (regenerate via `scripts/generate_factories.py`) |
+
+Removed config fields (ignored if still present in YAML): `transform_prefix_opt`, `transform_constraint_lifting`, `transform_strategy_selector`, `transform_information_theoretic_selector`.
+
+---
+
 ## Anything missing?
 
 Open an issue with the old import path; maintainers will add it here.

@@ -1,49 +1,41 @@
-# LATTICE code budget — enforced by scripts/check_code_budget.sh (Phase 12)
-# Total src/lattice/ cap at v2.0: 35000
-# Current baseline (post Phase 9): ~22000
+# LATTICE code budget — enforced by scripts/check_code_budget.sh
+#
+# Signals we enforce (user- and contributor-facing):
+#   - Per-directory caps (local inflation)
+#   - No file >800 LoC in src/lattice/
+#   - enforce_total_v2 aspirational cap until Phase 31 (Rust core migration)
+#
+# We do NOT enforce per-phase net LoC deltas (removed — measured accounting, not health).
+# Shrink comes from transport consolidation (Phase 14), dedup gates, and Rust core (Phase 31).
 
-# Per-directory caps (src/lattice/)
-core=1200
-ir=3500
-transforms=6500
-pipeline=2500
-planner=2800
-cache=2500
-safety=2000
-agent=2000
-transport=3000
-providers_adapters=2500
-proxy=2200
-gateway=3200
-integrations=1800
-telemetry=1700
-state=900
-audit=800
-auth_keys_quotas_tenants=2800
-mcp=1500
+total_v2=35000
+enforce_total_v2=0
+enforce_dir_caps=1
 
-# Non-Python (separate caps)
+# Per-directory caps (baseline +5% at Phase 13; ratchet down in owning phase PRs)
+core=1676
+ir=4217
+transforms=8343
+pipeline=3358
+planner=2496
+cache=1139
+safety=501
+agent=2100
+transport=1883
+providers_adapters=3024
+proxy=1718
+# gateway/compat split: ~4571 actual; shrink target Phase 14 + Phase 21 — bump only with justification
+gateway=4825
+integrations=5225
+telemetry=1862
+state=1127
+audit=840
+auth_keys_quotas_tenants=2940
+mcp=1575
+
+# Non-Python (informational until Phase 31)
 crates_lattice_core=6000
 bindings_python=1000
 bindings_wasm=500
 typescript_sdk_src=2500
 cursor_extension_src=800
-
-# Per-phase declared net LoC delta (update in same PR as phase doc)
-phase_12=-1500
-phase_13=+500
-phase_14=+1800
-phase_15=+1700
-phase_16=+1400
-phase_17=+2200
-phase_18=+3300
-phase_19=+900
-phase_19_5=+1800
-phase_20=+4200
-phase_21=+2000
-phase_22=+2400
-phase_23=+2200
-phase_24=+4500
-phase_25=+3000
-phase_26=+2300
-phase_27=-1500

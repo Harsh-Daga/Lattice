@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+
+pytest.importorskip("respx")
 import respx
 from fastapi.testclient import TestClient
 from httpx import Response

@@ -67,7 +67,7 @@ class RequestClassifier:
 
 def _tier_to_budget_ms(tier: str) -> float:
     """Map execution tier to latency budget."""
-    from lattice.planner.execution_plan import TIER_BUDGETS_MS
+    from lattice.planner.plan_types import TIER_BUDGETS_MS
 
     return TIER_BUDGETS_MS.get(tier, 100.0)
 

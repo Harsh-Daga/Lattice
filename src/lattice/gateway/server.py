@@ -379,7 +379,7 @@ class LLMTPGateway:
         else:
             prev = session.metadata.get("_lattice_execution_plan")
             if prev is not None:
-                from lattice.planner.execution_plan import ExecutionPlan as _ExecPlan
+                from lattice.planner.session_plan import SessionExecutionPlan as _ExecPlan
 
                 restored = _ExecPlan.from_dict(prev)
                 execution_plan.provider = restored.provider

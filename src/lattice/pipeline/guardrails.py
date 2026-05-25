@@ -50,7 +50,7 @@ class SafetyDecision:
 
 @dataclasses.dataclass(slots=True)
 class ValidationOutcome:
-    """Post-transform validation result from MILV."""
+    """Post-transform validation result from post-transform guard."""
 
     task_equivalence_composite: float = 0.0
     task_equivalence_passed: bool = False
