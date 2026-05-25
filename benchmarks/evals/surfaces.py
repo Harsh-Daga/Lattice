@@ -13,13 +13,6 @@ from unittest.mock import patch
 
 from benchmarks.evals.report import EvalSectionReport
 from lattice.core.config import LatticeConfig
-from lattice.integrations.tunnel import (
-    HTTPProxyServer,
-    LocalSocketServer,
-    ReplayBuffer,
-    TunnelSidecar,
-    WebSocketTunnel,
-)
 from lattice.integrations.claude.install import (
     apply_provider_scope as apply_claude_scope,
 )
@@ -61,6 +54,13 @@ from lattice.integrations.opencode.install import (
 )
 from lattice.integrations.opencode.install import (
     revert_provider_scope as revert_opencode_scope,
+)
+from lattice.integrations.tunnel import (
+    HTTPProxyServer,
+    LocalSocketServer,
+    ReplayBuffer,
+    TunnelSidecar,
+    WebSocketTunnel,
 )
 from lattice.protocol.cache_planner import get_cache_planner
 from lattice.protocol.dictionary_codec import DictionaryCodec

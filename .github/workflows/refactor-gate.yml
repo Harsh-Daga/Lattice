@@ -25,3 +25,5 @@ jobs:
       - run: uv run mypy src/lattice/ --ignore-missing-imports
       - run: uv run pytest tests/ -q --tb=short
       - run: uv run pytest tests/contract/ -q --tb=short
+      # Phase 10: canonical benchmark entrypoint (see docs/refactor/09-benchmarks.md).
+      - run: test -x scripts/run_canonical_benchmark.sh

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real end-to-end test: Proxy → DirectHTTPProvider → Ollama."""
+"""Dev-only E2E: local proxy (8787) → Ollama. Not used in CI; kept for manual smoke."""
 from __future__ import annotations
 
 import json

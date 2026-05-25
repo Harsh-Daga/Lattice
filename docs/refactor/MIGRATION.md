@@ -62,6 +62,23 @@ DeprecationWarning: lattice.sdk.client is deprecated; import from `lattice` or
 - `JsonFileIntegration.patch()` (via `wrap_agent` / durable patch paths) raises `AgentNotInstalledError` when the agent config file is missing (non–dry-run).
 - `lattice status` uses `mutation_store.list_all_active()` (durable init ∪ live transient lace).
 
+## Phase 10 — Benchmarks & evals (shipped on `refactor/phase-10-benchmarks`)
+
+### CLI
+
+- `lattice benchmark` now runs `benchmarks/evals/cli.py` with passthrough args (no redirect stub).
+- `--use-v2-pipeline` removed from the benchmark CLI; only one pipeline exists.
+
+### Layout
+
+- `src/lattice/evals/` removed. Use `benchmarks/evals/` only.
+
+### Artifacts
+
+- Claim traceability: `benchmarks/results/CLAIMS.md`
+- Release reference run: `benchmarks/results/v1.0.0.json` + `.md`
+- CI helper: `scripts/run_canonical_benchmark.sh`
+
 ## Phase 9 — Observability, state, cache, safety (shipped on `refactor/phase-9-observability-state`)
 
 ### Python imports

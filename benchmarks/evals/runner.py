@@ -34,10 +34,10 @@ from benchmarks.scenarios.prompts import BenchmarkScenario
 from lattice.core.config import LatticeConfig
 from lattice.core.context import TransformContext
 from lattice.core.result import is_ok, unwrap
-from lattice.state.session import MemorySessionStore, SessionManager
 from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType
 from lattice.protocol.manifest import manifest_from_messages, manifest_summary
+from lattice.state.session import MemorySessionStore, SessionManager
 from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.simulation import (
     SimulationConfig,
