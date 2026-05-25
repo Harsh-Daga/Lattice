@@ -429,6 +429,17 @@ Each step is implemented behind a feature flag; the full suite turns on with `ca
 
 ---
 
+## 8.1 Planner utility input (`provider_cache_probability`)
+
+The KV-cache analyzer (`cache/analyzer.py`) exports per-request and per-segment scores consumed by `CandidateScorer` ([runtime.md](../architecture/runtime.md#the-scoring-rule)):
+
+- Stable system prefix + low-entropy tool definitions → high `provider_cache_probability`
+- Anti-patterns (timestamp in system prompt, per-turn unique IDs) → score near zero with concrete fix text in `lattice cache analyze` report
+
+Phase 19.5 segment policies may assign higher cache weight to `history` / `instruction` segments. Phase 23 bandit tunes global weights — this phase supplies **measurement**, not routing.
+
+---
+
 ## 9. Out of scope
 
 | Topic | Phase |

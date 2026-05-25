@@ -9,7 +9,7 @@
 > assumed**, the **carryover items**, and the **revised sequencing** for
 > the remaining work.
 >
-> **Doc index:** [docs/refactor/README.md](README.md) · **Forward plan:** [FORWARD_PLAN.md](FORWARD_PLAN.md) · **Phase template:** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) · **Registry:** [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) · **LoC caps:** [CODE_BUDGET.txt](CODE_BUDGET.txt)
+> **Doc index:** [docs/refactor/README.md](README.md) · **Forward plan:** [FORWARD_PLAN.md](FORWARD_PLAN.md) · **Eval → v2 mapping:** [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md) · **Phase template:** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) · **Registry:** [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) · **LoC caps:** [CODE_BUDGET.txt](CODE_BUDGET.txt)
 >
 > The v2.0 forward plan is the source of truth for Phases 12–27. The product thesis: **LATTICE is the transport / network layer for LLM traffic.** Compression, caching, guardrails, agent memory, MCP federation, telemetry, auth — these are policies the transport layer enforces on each request. The transport layer itself owns connections, retries, timeouts, backpressure, framing, streaming, and resumption. ([Phase 27](27-transport-layer-consolidation.md) is the phase that makes this true; before it, LATTICE is "a compression pipeline with a proxy in front of it".)
 >
@@ -519,6 +519,7 @@ The forward plan lives in **[FORWARD_PLAN.md](FORWARD_PLAN.md)**. Quick referenc
 | 17 | [TypeScript SDK (thin client)](17-typescript-sdk.md) | M3 v1.5 | npm ≤ 25 KB gz (edge); zero algorithm code; consumes Phase 24 WASM core |
 | 18 | [MCP-Native Gateway](18-mcp-native-gateway.md) | M3 | Base install |
 | 19 | [Compression Intelligence](19-compression-intelligence.md) | M3 | 0 new deps default (streaming + tool-diff + JSON repair); LLMLingua-2 opt-in `[llmlingua]` (~600 MB) |
+| 19.5 | [Segment-Aware Planning](19.5-segment-aware-planning.md) | M3 | 0 new deps; fixes eval `features not reached by pipeline` |
 | 20 | [Non-Chat Surfaces](20-non-chat-surfaces.md) | M3 | Base install |
 | 21 | [Agent Memory (lightweight)](21-agent-memory.md) | M4 v2.0 | 0 new deps default; rule-based relevance scoring; user's cheap model for summarization |
 | 22 | [Cache Portability](22-cache-portability.md) | M4 | Base install |
@@ -534,7 +535,7 @@ See [PHASE_GUIDELINES.md §7](PHASE_GUIDELINES.md) and [docs/refactor/README.md]
 
 ```
 M2: 12 → 14 → 15 → 13 → 16
-M3: 27 → 24 → 17 → {18, 19, 20}     ← Phase 27 FIRST in M3 (transport layer before edge/MCP/non-chat)
+M3: 27 → 24 → 17 → {18, 19, 20} → 19.5   ← Phase 27 FIRST in M3; 19.5 after compression intel
 M4: 21 → 22 → 23 → 25 → 26
 ```
 

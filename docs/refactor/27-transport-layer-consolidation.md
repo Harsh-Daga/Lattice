@@ -592,6 +592,20 @@ Multiply by 17 providers → ~ 2 500 LoC across all adapters where today there's
 
 ---
 
+## 7.1 Planner utility input (`transport_gain`)
+
+After consolidation, transport metrics feed beam search and the bandit ([runtime.md](../architecture/runtime.md#the-scoring-rule)):
+
+| Signal | Source | Effect on utility |
+|---|---|---|
+| Delta bytes saved vs full replay | `transport/delta_wire.py` | `+transport_gain` proportional to wire reduction |
+| Stable prefix hash hit | `transport/prefix.py` + session state | Higher gain when provider KV can reuse prefix |
+| Retry / breaker instability | `transport/circuit_breaker.py`, `transport/retry.py` | `+instability_penalty` when plan increases failure risk |
+
+**Not** a new optimization axis — exposes existing transport economics to the planner so eval success tracks **latency + wire cost**, not compression % alone. Cross-ref: [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md).
+
+---
+
 ## 8. Out of scope
 
 | Topic | Phase / future |

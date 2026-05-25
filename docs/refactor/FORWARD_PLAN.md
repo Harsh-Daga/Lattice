@@ -51,6 +51,7 @@ Every remaining phase passes both tests:
 | 17 | [TypeScript SDK (thin client)](17-typescript-sdk.md) | `@lattice/sdk` for Node/Bun/Deno/Workers; wraps OpenAI/Anthropic/Vercel AI; **calls the proxy or the shared WASM core — no duplicated logic** | npm bundle ≤ 25 KB gzipped (edge) |
 | 18 | [MCP-Native Gateway](18-mcp-native-gateway.md) | Federate upstream MCP servers, compress tool output via existing transforms, cache tool calls, scan tool output for injection | Base install (already has FastAPI + httpx) |
 | 19 | [Compression Intelligence (lightweight default)](19-compression-intelligence.md) | Streaming-native compression on response chunks, tool-result diffing, JSON structural repair — all zero-dep; LLMLingua-2 separate opt-in with explicit warning | 0 new deps default; +500 MB if LLMLingua opted in |
+| 19.5 | [Segment-Aware Planning](19.5-segment-aware-planning.md) | Per-section transform policies fix `features not reached by pipeline`; utility-aware beam respects segment distortion budgets | 0 new deps |
 | 20 | [Non-Chat Surfaces](20-non-chat-surfaces.md) | `/v1/embeddings` (input dedup + cache reusing Phase 14's user-provider strategy), real OpenAI/Anthropic Batch APIs, audio + realtime + files | Base install |
 | 21 | [Agent Memory (lightweight)](21-agent-memory.md) | Context GC + summarization + token budget + inference-aware retry — relevance scoring is rule-based by default, embedding-based optional via user's provider | 0 new deps default |
 | 22 | [Cache Portability](22-cache-portability.md) | Cache survives **user-initiated** provider switches; cold-start warmer; KV-cache compatibility analyzer | Base install |
@@ -210,7 +211,7 @@ These constraints are CI-enforced where possible. Reviewer must reject any PR th
 | `src/lattice/ir/` | 2 500 | 3 500 | Canonical IR + builder + validation. |
 | `src/lattice/transforms/` | 4 200 | 6 500 | Includes optimizers + tool_diff + llmlingua (opt-in). |
 | `src/lattice/pipeline/` | 1 800 | 2 500 | Runner + gates + streaming. |
-| `src/lattice/planner/` | 1 500 | 2 200 | UnifiedPlanner + bandit. |
+| `src/lattice/planner/` | 1 500 | 2 800 | UnifiedPlanner + segment policy (19.5) + bandit. |
 | `src/lattice/cache/` | 700 | 2 500 | Layered cache + portability + warmer. |
 | `src/lattice/safety/` | 400 | 2 000 | PII + injection + output repair. |
 | `src/lattice/agent/` | 0 | 2 000 | New in Phase 21 + 26. |
@@ -282,6 +283,7 @@ M3 — Differentiate (v1.5)
   → 24  Shared core (Rust / PyO3 / WASM)
   → 17  TypeScript SDK (thin client)
   → 18  MCP  |  19  Compression intel  |  20  Non-chat   (parallel after 17)
+  → 19.5 Segment-aware planning        ← after 19; fixes orchestration gaps from v1.0 evals
 
 M4 — Top-tier (v2.0)
   21  Agent memory
@@ -297,8 +299,20 @@ One engineer full-time: M2 ~4 weeks, M3 ~6 weeks, M4 ~8 weeks. Two engineers: ro
 
 ---
 
-## 10. References
+## 10. Eval-driven architecture notes (May 2026)
 
+External architecture review + `v1.0.0.json` production evals are consolidated in [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md):
+
+- **Accept:** utility scoring, segment-aware planning (19.5), validation facade (12), transport/cache inputs to planner (22, 27)
+- **Reject:** second “refound” deleting legacy pipeline (already removed), mutable-candidate rewrite, compression-% as sole KPI
+
+Runtime law: [docs/architecture/runtime.md](../architecture/runtime.md).
+
+---
+
+## 11. References
+
+- [ARCHITECTURE_EVAL_INSIGHTS.md](ARCHITECTURE_EVAL_INSIGHTS.md) — eval critique → phase mapping
 - [REFACTOR_PLAN.md](REFACTOR_PLAN.md) — the v1.0.0 refactor master (Phases 0-11)
 - [STATUS.md](STATUS.md) — what shipped and when (updated with forward-plan reference + lightweight + transport-layer constraints)
 - [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) — **the authoritative registry of every primitive and its one canonical file.** CI gates check against this doc on every PR.
