@@ -98,10 +98,7 @@ class LatticeHeaderMiddleware(BaseHTTPMiddleware):
             for header_name, default in contract_defaults.items():
                 pending.setdefault(header_name, default)
             # Omit cost on semantic cache hits (gateway never bills); otherwise default 0.
-            if (
-                "x-lattice-cost-usd" not in pending
-                and pending.get("x-lattice-cache-hit") != "true"
-            ):
+            if "x-lattice-cost-usd" not in pending and pending.get("x-lattice-cache-hit") != "true":
                 pending.setdefault("x-lattice-cost-usd", "0.000")
 
         for header_name, value in pending.items():
