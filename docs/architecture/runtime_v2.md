@@ -1,11 +1,27 @@
 # LATTICE Runtime Architecture v2
 
+## Product positioning (read this first)
+
+**LATTICE is the transport / network layer for LLM traffic.**
+
+A single self-hosted process sits between your application and **one** chosen LLM provider per request. It owns:
+
+- **Transport** — connection pooling, HTTP/2 multiplexing, unified retry, timeouts, circuit breaker, backpressure, stream resumption, TACC ([`docs/refactor/27-transport-layer-consolidation.md`](../refactor/27-transport-layer-consolidation.md))
+- **Protocol** — LATT binary framing, delta encoding, manifest
+- **Policy on the wire** — compression (IR transforms), layered cache, guardrails, agent memory, MCP tool shaping, receipts
+
+Compression is one capability of that layer, not the product definition. SDKs are thin clients ([`docs/refactor/13-python-sdk-quality.md`](../refactor/13-python-sdk-quality.md), [`docs/refactor/17-typescript-sdk.md`](../refactor/17-typescript-sdk.md)); algorithms live in one place ([`docs/refactor/SINGLE_SOURCE_OF_TRUTH.md`](../refactor/SINGLE_SOURCE_OF_TRUTH.md)).
+
+Forward plan constraints (lightweight, no external LLM, self-hosted, code budget): [`docs/refactor/FORWARD_PLAN.md`](../refactor/FORWARD_PLAN.md).
+
+---
+
 ## The Fundamental Insight
 
 LATTICE is not a prompt compressor.
-LATTICE is a **semantic operating system for inference**.
+LATTICE is a **semantic operating system for inference** — implemented as a **transport layer** with policy hooks on every request/response byte.
 
-This document is the single source of truth. Every module, every class, every function must trace back to one of the lifecycles defined here.
+This document is the single source of truth for **lifecycles and module boundaries**. Every module, every class, every function must trace back to one of the lifecycles defined here and to exactly one home in [`SINGLE_SOURCE_OF_TRUTH.md`](../refactor/SINGLE_SOURCE_OF_TRUTH.md).
 
 ---
 

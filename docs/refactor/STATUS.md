@@ -8,6 +8,30 @@
 > document captures **what actually shipped vs. what the original plan
 > assumed**, the **carryover items**, and the **revised sequencing** for
 > the remaining work.
+>
+> **Doc index:** [docs/refactor/README.md](README.md) · **Forward plan:** [FORWARD_PLAN.md](FORWARD_PLAN.md) · **Phase template:** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) · **Registry:** [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) · **LoC caps:** [CODE_BUDGET.txt](CODE_BUDGET.txt)
+>
+> The v2.0 forward plan is the source of truth for Phases 12–27. The product thesis: **LATTICE is the transport / network layer for LLM traffic.** Compression, caching, guardrails, agent memory, MCP federation, telemetry, auth — these are policies the transport layer enforces on each request. The transport layer itself owns connections, retries, timeouts, backpressure, framing, streaming, and resumption. ([Phase 27](27-transport-layer-consolidation.md) is the phase that makes this true; before it, LATTICE is "a compression pipeline with a proxy in front of it".)
+>
+> The plan lives under six hard constraints, every one CI-enforced:
+>
+> 1. **Lightweight.** Default install on a 4 GB laptop. No required model downloads. Idle RSS < 100 MB; under load < 200 MB.
+> 2. **No external LLM dependency** beyond the user's chosen provider.
+> 3. **Open source self-hosted only.** No cloud product.
+> 4. **One algorithm, one implementation — across SDKs AND internally.** Enforced by `scripts/check_sdk_no_algorithm_duplication.sh` and `scripts/check_internal_no_duplication.sh` (the latter walks [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md)).
+> 5. **Codebase shall not grow unbounded.** `src/lattice/` LoC cap at v2.0 is **35 000** lines. Per-directory caps. Every PR declares its LoC delta; CI rejects overrun. Enforced by `scripts/check_code_budget.sh` ([Phase 12](12-honesty-pass.md)).
+> 6. **Transport-first design.** After [Phase 27](27-transport-layer-consolidation.md): retry / timeout / circuit-breaker / backpressure / pooling / multiplexing exist exactly once in `src/lattice/transport/`. Adapters become declarative-only (~150 LoC each). Enforced by `tests/contract/test_transport_unification.py`.
+>
+> What's been cut from the prior forward-plan draft (full rationale in [FORWARD_PLAN.md §1](FORWARD_PLAN.md)):
+>
+> - Hosted `lattice.cloud`, Stripe billing, Cloudflare/Neon/Upstash Terraform, hosted playground, per-tenant LoRA distillation training pipeline.
+> - Local SentenceTransformers as **default** embedding backend (Phase 14): now opt-in `[embeddings-local]` extra (~1.5 GB). Default embedding tier uses the user's provider.
+> - Presidio as **default** PII detector (Phase 15): now opt-in `[pii]` extra (~1 GB). Default detector is regex-based (zero deps).
+> - ONNX injection classifier as default (Phase 15): now opt-in `[injection]` extra. Default is heuristic phrase matcher (zero deps).
+> - LLMLingua-2 in the default compression story (Phase 19): now opt-in `[llmlingua]` extra (~600 MB) with an explicit first-run footprint warning.
+> - Per-SDK reimplementation of reverse-pass / hooks / streaming (Phase 13, 17): replaced by the single-core architecture in Phase 24.
+> - Per-adapter retry / timeout / `httpx.AsyncClient` instantiation (~17 copies of nearly-identical transport code): replaced by the single transport layer in [Phase 27](27-transport-layer-consolidation.md). Net **-1500 LoC**.
+> - VSCode marketplace ceremony, Helm chart, signed-wheel sigstore ritual (Phase 26): trimmed to Docker + PyPI + npm + sideload `.vsix`.
 
 ---
 
@@ -475,3 +499,55 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 10. Each phase = one PR (or a small slice series if the phase splits cleanly).
 11. Commit messages reference phase with `[Phase N]` suffix; no `--no-verify`, no `--amend` of pushed commits, no force-push to main.
 12. **Secrets and tokens: NEVER commit. NEVER log. NEVER write into any file in the repo.** Benchmark API key (`OLLAMA_CLOUD_API_KEY`) is a runtime environment variable only.
+
+---
+
+## 9. v2.0 forward plan — Phases 12–26
+
+The forward plan lives in **[FORWARD_PLAN.md](FORWARD_PLAN.md)**. Quick reference:
+
+| Phase | Doc | Milestone | Footprint impact |
+|---|---|---|---|
+| 12 | [Honesty Pass](12-honesty-pass.md) | M2 v1.1 | -2300 LoC (net shrink) |
+| 13 | [Python SDK (thin client)](13-python-sdk-quality.md) | M2 | +1 MB; zero new runtime deps |
+| 14 | [Hybrid Semantic Cache (lightweight)](14-hybrid-semantic-cache.md) | M2 | 0 new deps default; embedding tier uses user's provider |
+| 15 | [Native Guardrails (lightweight)](15-native-guardrails.md) | M2 | 0 new deps default; rule-based PII + heuristic injection + pure-Python repair |
+| 16 | [OpenTelemetry GenAI](16-otel-genai.md) | M2 | + opentelemetry-sdk (~3 MB) only when enabled |
+| 17 | [TypeScript SDK (thin client)](17-typescript-sdk.md) | M3 v1.5 | npm ≤ 25 KB gz (edge); zero algorithm code; consumes Phase 24 WASM core |
+| 18 | [MCP-Native Gateway](18-mcp-native-gateway.md) | M3 | Base install |
+| 19 | [Compression Intelligence](19-compression-intelligence.md) | M3 | 0 new deps default (streaming + tool-diff + JSON repair); LLMLingua-2 opt-in `[llmlingua]` (~600 MB) |
+| 20 | [Non-Chat Surfaces](20-non-chat-surfaces.md) | M3 | Base install |
+| 21 | [Agent Memory (lightweight)](21-agent-memory.md) | M4 v2.0 | 0 new deps default; rule-based relevance scoring; user's cheap model for summarization |
+| 22 | [Cache Portability](22-cache-portability.md) | M4 | Base install |
+| 23 | [Receipts + Bandit + Profiles + Hot Reload](23-receipts-bandit-profiles.md) | M4 | + pyjwt (~100 KB); bandit is pure numpy (no ML deps) |
+| 24 | [Shared Core: Rust + PyO3 + WASM](24-edge-wasm-core.md) | M4 | Optional native wheel ~3 MB; WASM ≤ 200 KB gz; **architectural keystone — prevents SDK duplication** |
+| 25 | [Optional Self-Hosted Auth, Keys, Quotas](25-cloud-multitenant.md) | M4 | All optional; SQLite default; **no cloud, no SaaS, no Stripe** |
+| 26 | [Agent-Loop-Aware + Cursor Visualizer + Minimal Release](26-agent-loop-aware.md) | M4 | Cursor extension ~200 KB; Docker + PyPI + npm + sideload `.vsix` — **no marketplace ceremony, no Helm** |
+| 27 | [Transport Layer Consolidation](27-transport-layer-consolidation.md) | M4 | **Net -1500 LoC.** Unified retry/timeout/CB, HTTP/2 multiplexing, connection pool per provider, transport metrics, backpressure, stream resumption. **The phase that makes "LATTICE is a transport layer for LLMs" true.** |
+
+### Suggested execution order (matches dependencies)
+
+See [PHASE_GUIDELINES.md §7](PHASE_GUIDELINES.md) and [docs/refactor/README.md](README.md).
+
+```
+M2: 12 → 14 → 15 → 13 → 16
+M3: 27 → 24 → 17 → {18, 19, 20}     ← Phase 27 FIRST in M3 (transport layer before edge/MCP/non-chat)
+M4: 21 → 22 → 23 → 25 → 26
+```
+
+### Hard rules introduced by the forward plan (CI-enforced)
+
+| Rule | Enforcement |
+|---|---|
+| No multi-provider routing | `tests/contract/test_no_multi_provider_routing.py` |
+| No algorithm code in SDKs | `scripts/check_sdk_no_algorithm_duplication.sh` |
+| **No internal duplication of canonical primitives** | `scripts/check_internal_no_duplication.sh` walks [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) |
+| **Code budget (total + per-directory + per-PR delta)** | `scripts/check_code_budget.sh` (Phase 12 lands it) |
+| **Transport policies live in one place** | `tests/contract/test_transport_unification.py` + `test_no_per_adapter_httpx_client.py` (Phase 27) |
+| No required model download in default install | `tests/contract/test_default_install_no_models.py` |
+| No required external service in default install | `tests/contract/test_default_install_no_external_services.py` |
+| No file > 800 LoC | Existing R6 |
+| No raw user content in receipts / headers / spans | `tests/contract/test_no_user_content_in_telemetry.py` |
+| Transform reversibility property | `tests/unit/transforms/test_reversibility_property.py` |
+| Footprint budget (4 GB laptop, 2 GB VPS) | `tests/integration/footprint/test_{4gb_laptop,2gb_vps,cold_start}.py` |
+| Cross-mode parity (proxy vs in-process; Python vs Rust vs WASM) | `tests/contract/test_python_parity.spec.ts`, `bindings/python/tests/test_parity_with_python.py` |

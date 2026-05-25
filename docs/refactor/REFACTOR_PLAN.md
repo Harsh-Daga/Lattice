@@ -3,6 +3,12 @@
 > **Purpose.** Take the current LATTICE codebase (166 Python files, ~50 KLOC, multiple parallel paths) and converge it to **one canonical path per concern** at version **1.0.0**. Preserve every user-visible feature. Break internal imports freely (major version bump).
 >
 > **Audience.** Anyone — including someone new to the repo — who needs to execute a slice of the refactor. Every phase document is self-contained: it tells you exactly which files to read, which functions to move, which lines to delete, and what to verify before declaring the phase done.
+>
+> **v2.0 forward plan (Phases 12–27)** is separate from this document. After v1.0.0, read:
+> - [`FORWARD_PLAN.md`](FORWARD_PLAN.md) — transport-layer thesis, six constraints, milestones M2–M4
+> - [`PHASE_GUIDELINES.md`](PHASE_GUIDELINES.md) — mandatory template for phases 12–27
+> - [`SINGLE_SOURCE_OF_TRUTH.md`](SINGLE_SOURCE_OF_TRUTH.md) — registry of canonical homes
+> - [`README.md`](README.md) — doc index
 
 ---
 

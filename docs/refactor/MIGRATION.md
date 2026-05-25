@@ -1,7 +1,22 @@
-# LATTICE v0.x → v1.0.0 migration (in progress)
+# LATTICE migration guide
 
-> Full import-path mapping lands in Phase 11 (`11-docs-release.md`). This file records
-> user-visible changes as each refactor phase ships.
+> Records user-visible changes as each refactor phase ships. Import-path mapping for v1.0.0 lands in Phase 11 (`11-docs-release.md`).
+
+## v2.0 forward plan (not yet shipped)
+
+Phases 12–27 are documented in [`FORWARD_PLAN.md`](FORWARD_PLAN.md). Product positioning:
+
+- **LATTICE is the transport / network layer for LLM traffic** — compression is one policy on that layer.
+- **Lightweight default install** — no required model downloads; runs on a 4 GB laptop.
+- **No external LLM** beyond the provider you already use.
+- **Self-hosted only** — no `lattice.cloud`, no SaaS.
+- **Thin SDKs** — proxy mode = set `baseURL`; no algorithm reimplementation in SDK source.
+
+Breaking changes for v2.0 will be listed here as phases ship. See also [`PHASE_GUIDELINES.md`](PHASE_GUIDELINES.md).
+
+---
+
+## v0.x → v1.0.0 migration (in progress)
 
 ## Phase 7 — Proxy / SDK / CLI (shipped on `refactor/phase-7-proxy-sdk-cli`)
 
