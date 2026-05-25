@@ -1,120 +1,189 @@
-# LATTICE migration guide
+# v0.x → v1.0.0 Migration Guide
 
-> Records user-visible changes as each refactor phase ships. Full import-path mapping for v1.0.0 lands in **Phase 12** (`11-docs-release.md`).
+LATTICE 1.0.0 is the first stable release. The **public CLI and HTTP API are stable**, but internal Python imports were reorganised to a flat domain layout. If you import LATTICE from Python, use this guide.
 
-## v2.0 forward plan (not yet shipped)
-
-Phases 12–27 are documented in [`FORWARD_PLAN.md`](FORWARD_PLAN.md). Product positioning:
-
-- **LATTICE is the transport / network layer for LLM traffic** — compression is one policy on that layer.
-- **Lightweight default install** — no required model downloads; runs on a 4 GB laptop.
-- **No external LLM** beyond the provider you already use.
-- **Self-hosted only** — no `lattice.cloud`, no SaaS.
-- **Thin SDKs** — proxy mode = set `baseURL`; no algorithm reimplementation in SDK source.
-
-Breaking changes for v2.0 will be listed here as phases ship. See also [`PHASE_GUIDELINES.md`](PHASE_GUIDELINES.md).
+For v2.0 forward-plan breaking changes (not yet shipped), see [`FORWARD_PLAN.md`](FORWARD_PLAN.md).
 
 ---
 
-## v0.x → v1.0.0 migration (in progress)
+## What does NOT change
 
-## Phase 7 — Proxy / SDK / CLI (shipped on `refactor/phase-7-proxy-sdk-cli`)
+- **CLI commands.** `lattice proxy run/start/stop/restart/status`, `lattice init`, `lattice lace`, `lattice unlace`, `lattice info`, `lattice config`, `lattice health`, `lattice status`, `lattice doctor`, `lattice benchmark` — syntax unchanged.
+- **HTTP endpoints.** `/v1/chat/completions`, `/v1/messages`, `/v1/models`, `/v1/responses` (POST/GET/DELETE/WS), `/lattice/gateway`, `/lattice/session/*` — unchanged.
+- **Response headers.** `x-lattice-compression`, `x-lattice-session-id`, `x-lattice-delta`, `x-lattice-cost-usd`, `x-lattice-provider`, `x-lattice-transforms-applied` — unchanged (emitted by `LatticeHeaderMiddleware` in `proxy/middleware.py`).
+- **Top-level Python API.** `from lattice import LatticeClient, LatticeProxyClient, wrap_openai_client, CompressResult, __version__` — unchanged.
+- **Configuration.** `LatticeConfig`, `lattice.yaml`, and env vars (`LATTICE_PROVIDER_BASE_URL`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) — unchanged except `transform_delta_encode` now correctly controls delta encoding (see below).
 
-### Python imports
+---
 
-| Old (deprecated v1.0.0) | New (canonical) |
-|-------------------------|-----------------|
-| `from lattice.sdk.client import LatticeClient` | `from lattice import LatticeClient` |
-| `from lattice.sdk.client import CompressResult` | `from lattice import CompressResult` |
-| `from lattice.proxy.compat_exports import *` | **Removed** — no replacement |
+## What changes if you import internals
 
-`import lattice.sdk.client` still works in v1.0.0 but emits:
+### Pipeline & scheduler
 
-```text
-DeprecationWarning: lattice.sdk.client is deprecated; import from `lattice` or
-`lattice.sdk` instead. This module will be removed in v1.1.
-```
+| v0.x | v1.0.0 |
+|------|--------|
+| `lattice.core.pipeline.CompressorPipeline` | **REMOVED.** Use `lattice.pipeline.Pipeline`. |
+| `lattice.core.pipeline_v2.PipelineV2` | `lattice.pipeline.Pipeline` |
+| `lattice.core.pipeline_v2_wrapper.*` | **REMOVED** |
+| `lattice.core.pipeline_factory.build_default_pipeline` | `lattice.pipeline.build_default_pipeline` |
+| `lattice.core.pipeline_factory.build_v2_pipeline` | **REMOVED** — use `build_default_pipeline` |
+| `lattice.core.pipeline_factory.build_optimizer_pipeline` | **REMOVED** |
+| `lattice.core.pipeline_factory.build_benchmark_pipeline` | `lattice.pipeline.build_benchmark_pipeline` |
+| `lattice.core.scheduler.decide_schedule` | **REMOVED.** Use `lattice.planner.UnifiedPlanner.plan()` |
+| `lattice.core.scheduler.SchedulerDecision` | **REMOVED.** Use `lattice.planner.ExecutionPlan` |
+| `lattice.core.optimizer_scheduler.*` | **REMOVED.** Use `lattice.planner.build_execution_plan` |
+| `lattice.core.unified_planner.UnifiedPlanner` | `lattice.planner.UnifiedPlanner` |
+| `lattice.core.unified_planner.SemanticProfile` | `lattice.planner.SemanticProfile` |
+| `lattice.core.task_classifier.classify_task` | `lattice.planner.classify_task` |
+| `lattice.core.runtime_state.*` | `lattice.planner.runtime_state.*` |
+| `lattice.core.policy.OptimizationPolicy` | `lattice.pipeline.OptimizationPolicy` |
+| `lattice.core.guardrails.*` | `lattice.pipeline.guardrails.*` |
+| `lattice.core.milv.*` | `lattice.pipeline.milv.*` |
+| `lattice.core.auto_continuation.*` | `lattice.pipeline.auto_continuation.*` |
+| `lattice.core.batch_accumulator.*` | `lattice.pipeline.batch_accumulator.*` |
 
-### HTTP
+### IR
 
-- `/healthz`, `/readyz`, `/startupz`, `/metrics`, `/stats` are registered on the proxy app.
-- Response `x-lattice-*` headers on compat routes are emitted by `LatticeHeaderMiddleware`
-  (`src/lattice/proxy/middleware.py`) from `request.state`, not per-handler assignment.
+| v0.x | v1.0.0 |
+|------|--------|
+| `lattice.core.ir.PromptIR` | `lattice.ir.PromptIR` |
+| `lattice.core.ir.Span, Section, SectionType, SpanRole` | `lattice.ir.types.*` |
+| `lattice.core.ir_builder.build_ir` | `lattice.ir.build_ir` |
+| `lattice.core.ir_normalizer.normalize_ir` | `lattice.ir.normalize_ir` |
+| `lattice.core.ir_serializer.serialize_ir_to_text` | `lattice.ir.serialize_ir_to_text` |
+| `lattice.core.ir_transform.IRTransform, CandidateSearch` | `lattice.ir.*` |
+| `lattice.core.primitives.PromptIRV2, Candidate, ...` | `lattice.ir.primitives.*` |
+| `lattice.core.compiler.PromptCompiler` | **REMOVED** — use `build_ir` + `normalize_ir` + `serialize_ir_to_text` |
+| `lattice.core.semantic_graph.*` | `lattice.ir.semantic_graph.*` |
 
-### CLI
+### Transport (wire types)
 
-- `lattice version` is an alias for `lattice --version` (unchanged output).
+| v0.x | v1.0.0 |
+|------|--------|
+| `lattice.core.transport.Request, Response, Message, Role` | `lattice.transport.types.*` |
+| `lattice.core.transport.Transform, SyncTransform` | `lattice.transport.types.*` |
+| `lattice.core.serialization.*` | `lattice.transport.serialization.*` |
+| `lattice.core.delta_wire.*` | `lattice.transport.delta_wire.*` |
 
-## Phase 8 — Agent integrations (shipped on `refactor/phase-8-integrations`)
+### State, cache, telemetry, safety
 
-### Python imports
-
-| Old | New |
-|-----|-----|
-| `from lattice.core.tunnel_sidecar import TunnelSidecar` | `from lattice.integrations.tunnel import TunnelSidecar` |
-| `from lattice.core.tunnel_sidecar import SidecarThread` | `from lattice.integrations.tunnel import SidecarThread` |
-| `from lattice.core.tunnel_sidecar import TunnelState` | `from lattice.integrations.tunnel import TunnelState` |
-
-### CLI behavior
-
-- `lattice doctor` with no argument runs health checks for all five primary agents (`claude`, `codex`, `cursor`, `opencode`, `copilot`).
-- `lattice doctor <agent>` uses per-integration `doctor()` (install / durable / transient lace / proxy `/healthz`).
-- `JsonFileIntegration.patch()` (via `wrap_agent` / durable patch paths) raises `AgentNotInstalledError` when the agent config file is missing (non–dry-run).
-- `lattice status` uses `mutation_store.list_all_active()` (durable init ∪ live transient lace).
-
-## Phase 10 — Benchmarks & evals (shipped on `refactor/phase-10-benchmarks`)
-
-### CLI
-
-- `lattice benchmark` now runs `benchmarks/evals/cli.py` with passthrough args (no redirect stub).
-- `--use-v2-pipeline` removed from the benchmark CLI; only one pipeline exists.
-
-### Layout
-
-- `src/lattice/evals/` removed. Use `benchmarks/evals/` only.
-
-### Artifacts
-
-- Claim traceability: `benchmarks/results/CLAIMS.md`
-- Release reference run: `benchmarks/results/v1.0.0.json` + `.md`
-- CI helper: `scripts/run_canonical_benchmark.sh`
-- Optional: `lattice benchmark --provider-detect` (or `benchmarks/evals/cli.py --provider-detect`) picks the first provider with credentials from the built-in preference list (`ollama-cloud`, `ollama`, `openai`, …)
-
-## Phase 9 — Observability, state, cache, safety (shipped on `refactor/phase-9-observability-state`)
-
-### Python imports
-
-| Old | New |
-|-----|-----|
-| `lattice.core.metrics.MetricsCollector` | `lattice.telemetry.MetricsCollector` |
-| `lattice.core.metrics.LatencyTracker` | `lattice.telemetry.LatencyTracker` |
-| `lattice.core.telemetry.DowngradeCategory` | `lattice.telemetry.DowngradeCategory` |
-| `lattice.core.telemetry.DowngradeTelemetry` | `lattice.telemetry.DowngradeTelemetry` |
-| `lattice.core.telemetry.TransportOutcome` | `lattice.telemetry.TransportOutcome` |
-| `lattice.core.agent_stats.AgentStatsCollector` | `lattice.telemetry.AgentStatsCollector` |
-| `lattice.core.cost_estimator.CostEstimator` | `lattice.telemetry.CostEstimator` |
-| `lattice.core.maintenance.MaintenanceCoordinator` | `lattice.telemetry.MaintenanceCoordinator` |
-| `lattice.utils.streaming_sketches.CountMinSketch` | `lattice.telemetry.CountMinSketch` |
-| `lattice.core.session.Session` | `lattice.state.Session` |
-| `lattice.core.session.SessionManager` | `lattice.state.SessionManager` |
+| v0.x | v1.0.0 |
+|------|--------|
+| `lattice.core.session.*` | `lattice.state.*` |
 | `lattice.core.store.RedisSessionStore` | `lattice.state.RedisSessionStore` |
-| `lattice.core.semantic_cache.SemanticCache` | `lattice.cache.SemanticCache` |
-| `lattice.utils.validation.SemanticRiskScore` | `lattice.safety.SemanticRiskScore` |
-| `lattice.utils.validation.compute_risk_score` | `lattice.safety.compute_risk_score` |
+| `lattice.core.semantic_cache.*` | `lattice.cache.*` |
+| `lattice.core.metrics.*` | `lattice.telemetry.*` |
+| `lattice.core.telemetry.*` | `lattice.telemetry.*` (module file: `telemetry/downgrade.py`) |
+| `lattice.core.agent_stats.*` | `lattice.telemetry.*` |
+| `lattice.core.cost_estimator.*` | `lattice.telemetry.*` |
+| `lattice.core.maintenance.*` | `lattice.telemetry.*` |
+| `lattice.utils.streaming_sketches.*` | `lattice.telemetry.*` |
+| `lattice.utils.validation.*` | `lattice.safety.*` |
+| `lattice.utils.patterns.*` | `lattice.transforms.patterns.*` |
 
-Note: `core.telemetry` module file is now `telemetry/downgrade.py` (package `telemetry`, module `downgrade`).
+### Providers
 
-### Top-level convenience imports (v1.0.0)
+| v0.x | v1.0.0 |
+|------|--------|
+| `lattice.providers.openai.OpenAIAdapter` | `lattice.providers.adapters.openai.OpenAIAdapter` |
+| `lattice.providers.anthropic.AnthropicAdapter` | `lattice.providers.adapters.anthropic.AnthropicAdapter` |
+| (all per-provider modules) | `lattice.providers.adapters.*` |
+| `lattice.providers.stall_detector.*` | `lattice.providers.transport.stall_detector.*` |
+| `lattice.core.credentials.*` | `lattice.providers.credentials.*` |
 
-```python
-from lattice import (
-    MetricsCollector,
-    DowngradeCategory,
-    Session,
-    SessionManager,
-    SegmentStore,
-    SemanticCache,
-    SemanticRiskScore,
-    compute_risk_score,
-)
+### Transforms
+
+| v0.x | v1.0.0 |
+|------|--------|
+| `lattice.transforms.prefix_opt.*` | **REMOVED** — folded into `content_profiler`; `transform_prefix_opt` is no-op until v1.1 |
+| `lattice.transforms.constraint_lifting.*` | **REMOVED** — `transform_constraint_lifting` no-op |
+| `lattice.transforms.strategy_selector.*` | **REMOVED** — `transform_strategy_selector` no-op |
+| `lattice.transforms.format_conv.*` | `lattice.transforms.format_converter.*` |
+| `lattice.core.transform_registry.*` | `lattice.transforms.registry.*` |
+| `lattice.optimizer.*` (orchestrators) | `lattice.transforms.optimizers.*` |
+| `lattice.optimizer.structure_optimizer.*` | **REMOVED** — use `IRStructureOptimizer` |
+| `lattice.optimizer.representation_optimizer.*` | `lattice.pipeline.representation_optimizer.*` |
+
+### Runtime & misc
+
+| v0.x | v1.0.0 |
+|------|--------|
+| `lattice.runtime.router.RuntimeRouter` | `lattice.runtime.tier_classifier.TierClassifier` |
+| `lattice.core.tunnel_sidecar.*` | `lattice.integrations.tunnel.*` |
+| `lattice.sdk.client.LatticeClient` | `from lattice import LatticeClient` (shim warns; removed v1.1) |
+| `lattice.proxy.compat_exports.*` | **REMOVED** |
+| `lattice.evals.*` | **REMOVED** — use `benchmarks/evals/` |
+
+### Config flags (no-op in 1.0.0, removed in v1.1)
+
+- `transform_prefix_opt`
+- `transform_constraint_lifting`
+- `transform_strategy_selector`
+
+---
+
+## Removed behaviour
+
+- Legacy `process(request, ctx)` on IR-native transforms — use `optimize(ir, request, ctx)`. Response-side `output_cleanup` keeps `process(response, ctx)` with `is_response_side=True`.
+- `benchmarks/evals/cli.py --use-v2-pipeline` — one pipeline only.
+- `import lattice.sdk.client` — `DeprecationWarning`; use `from lattice import LatticeClient`.
+
+---
+
+## Bug fixes you might rely on
+
+- **`transform_delta_encode`** now controls `delta_encode` (was tied to `transform_batching` in v0.x).
+- **`JsonFileIntegration.patch()`** raises `AgentNotInstalledError` when agent config is missing.
+- **`lattice doctor`** covers all five agents (was three in early v0.x).
+
+---
+
+## Quick fix script
+
+Find stale imports in your tree:
+
+```bash
+rg "from lattice\.(core\.pipeline|core\.scheduler|core\.optimizer_scheduler|core\.compiler|core\.transform_registry|core\.transform_reputation|core\.metrics|core\.telemetry|core\.agent_stats|core\.cost_estimator|core\.maintenance|core\.session|core\.store|core\.semantic_cache|core\.credentials|core\.unified_planner|core\.task_classifier|core\.runtime_state|core\.transport|core\.serialization|core\.delta_wire|core\.ir|core\.primitives|core\.semantic_graph|core\.policy|core\.guardrails|core\.milv|core\.auto_continuation|core\.batch_accumulator|core\.tunnel_sidecar|core\.pipeline_factory|core\.pipeline_v2|core\.pipeline_v2_wrapper|optimizer|utils\.validation|utils\.streaming_sketches|utils\.patterns|providers\.base|providers\.openai|providers\.openai_compatible|providers\.anthropic|providers\.azure|providers\.bedrock|providers\.gemini|providers\.ollama|providers\.stall_detector|runtime\.router|transforms\.prefix_opt|transforms\.constraint_lifting|transforms\.semantic_segmenter|transforms\.format_conv|transforms\.strategy_selector|sdk\.client|evals)\b" .
 ```
+
+Validated against `tests/unit/test_no_old_paths.py::OLD_PATHS`.
+
+---
+
+## Documentation rename
+
+- `docs/architecture/runtime_v2.md` → [`docs/architecture/runtime.md`](../architecture/runtime.md) (redirect stub kept one release cycle).
+
+---
+
+## Per-phase notes (shipped on main)
+
+<details>
+<summary>Phases 7–10 incremental changes</summary>
+
+### Phase 7 — Proxy / SDK / CLI
+
+- `from lattice import LatticeClient` (not `lattice.sdk.client`).
+- `/healthz`, `/readyz`, `/startupz`, `/metrics`, `/stats` registered.
+- `x-lattice-*` via `LatticeHeaderMiddleware`.
+
+### Phase 8 — Integrations
+
+- `lattice.core.tunnel_sidecar` → `lattice.integrations.tunnel`.
+- `lattice doctor` all five agents; `AgentNotInstalledError`; transient lace in `mutation_store`.
+
+### Phase 9 — Observability / state
+
+- `metrics`, `session`, `semantic_cache`, `validation` → `telemetry`, `state`, `cache`, `safety` (see tables above).
+
+### Phase 10 — Benchmarks
+
+- `lattice benchmark` → `benchmarks/evals/cli.py`; `src/lattice/evals/` removed; `CLAIMS.md` + `v1.0.0.json`.
+
+</details>
+
+---
+
+## Anything missing?
+
+Open an issue with the old import path; maintainers will add it here.

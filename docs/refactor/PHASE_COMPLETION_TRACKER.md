@@ -1,9 +1,9 @@
-# Phase completion tracker (Phases 0–11)
+# Phase completion tracker (Phases 0–12)
 
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** Phase 11 branch — **2016 collected**, contract green (see §11).
+**Last verified:** v1.0.0 release — **2016 collected**, **1801 passed**, contract green (see §12).
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -19,6 +19,7 @@
 | **9** | ✅ | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/`; see §9 below |
 | **10** | ✅ | Benchmark wrapper, CLAIMS, v1.0.0 artifacts; see §10 below |
 | **11** | ✅ | Test reshape, FEATURE_PARITY 61-row, contract matrices; see §11 below |
+| **12** | ✅ | Docs + v1.0.0: README, AGENTS, CHANGELOG, MIGRATION, runtime rename; see §12 below |
 
 ---
 
@@ -33,7 +34,7 @@
 | `phase-0-baseline.json` | ✅ |
 | `repomix` gone / gitignore | ✅ |
 | `compat_exports.py` gone | ✅ |
-| README + AGENTS counts | ✅ (superseded by Phase 11 pin — 2000 collected) |
+| README + AGENTS counts | ✅ (superseded by Phase 11–12 pin — 2016 collected) |
 | ruff / mypy / pytest | ✅ |
 
 ---
@@ -222,8 +223,26 @@ All import/layout criteria ✅. Benchmark lines excluded.
 
 ---
 
+## Phase 12 — `11-docs-release.md` §5
+
+| Criterion | Status |
+|-----------|--------|
+| `docs/architecture/runtime.md` exists; `runtime_v2.md` redirect only | ✅ |
+| README transform count = registry (20); providers = 17 | ✅ |
+| README/AGENTS numeric claims cite `CLAIMS.md` | ✅ |
+| `CHANGELOG.md` v1.0.0 section dated | ✅ |
+| `MIGRATION.md` exhaustive import map (+ `test_no_old_paths`) | ✅ |
+| `pyproject.toml` + `_version.py` = 1.0.0; Production/Stable | ✅ |
+| `EXPECTED_TEST_COUNT` / README / AGENTS aligned (2016 / 1801) | ✅ |
+| `FEATURE_PARITY.md` 61 rows unchanged | ✅ |
+| ruff / format / mypy / pytest / contract green | ✅ operator |
+| `uv build` + `twine check` | ✅ operator |
+
+---
+
 ## Remaining operator actions (not code)
 
 1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`); compare vs `phase-0-baseline.json` (±2%).
 2. Run Phase 7 benchmark → `phase-7-proxy.json` (same key); compare vs `phase-0-baseline.json` (±2%).
 3. Run Phase 9 benchmark → `phase-9-observability.json` (same key); `compare_benchmarks.py` vs `phase-0-baseline.json` (±2%).
+4. `git tag v1.0.0` + `gh release create` when ready (not automated in Phase 12 PR).

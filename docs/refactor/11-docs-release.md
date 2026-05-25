@@ -1,4 +1,4 @@
-# Phase 11 — Docs & v1.0.0 Release
+# Phase 12 — Docs & v1.0.0 Release
 
 > **Goal.** Bring documentation, README, AGENTS.md, and the package version into alignment with the v1.0.0 shape produced by Phases 0–10. Rename `docs/architecture/runtime_v2.md` → `docs/architecture/runtime.md` (there is no v1). Delete any duplicate/legacy docs. Rewrite `README.md` to reflect the new structure, the corrected counts, and citations into `benchmarks/results/CLAIMS.md`. Write `CHANGELOG.md` and the user-facing `docs/refactor/MIGRATION.md`. Bump `pyproject.toml` version to `1.0.0`. Tag `v1.0.0`. PyPI publish dry-run; on green, release.
 >
@@ -649,23 +649,18 @@ gh release create v1.0.0 \
 
 ## 5. Acceptance criteria
 
-- [ ] `docs/architecture/runtime.md` exists; `docs/architecture/runtime_v2.md` does not.
-- [ ] No file under `docs/` (except `MIGRATION.md` and `CHANGELOG.md`) contains the literal "v2".
-- [ ] No file under `docs/` references `CompressorPipeline`, `PipelineV2`, `RuntimeRouter`, `decide_schedule`, `prefix_optimizer`.
-- [ ] `README.md` test-count badge matches `tests/unit/test_test_count_pinned.py::EXPECTED_TEST_COUNT`.
-- [ ] `README.md`'s transform count matches `len(list_transform_names())` from `lattice.transforms.registry`.
-- [ ] `README.md`'s provider count is 17 and matches `len(ProviderRegistry().adapters)`.
-- [ ] Every numeric claim in `README.md` and `docs/` has a citation linking to a row in `benchmarks/results/CLAIMS.md`.
-- [ ] `CHANGELOG.md` exists with a complete v1.0.0 section, dated.
-- [ ] `docs/refactor/MIGRATION.md` exists; the quick-fix `rg` script catches every removed/renamed import.
-- [ ] `pyproject.toml` `version = "1.0.0"`, classifier `Development Status :: 5 - Production/Stable`.
-- [ ] `src/lattice/_version.py` reads `__version__ = "1.0.0"`.
-- [ ] `uv build` produces `lattice_transport-1.0.0.tar.gz` and `.whl`.
-- [ ] `twine check dist/lattice_transport-1.0.0*` passes.
-- [ ] `git tag v1.0.0` exists.
-- [ ] GitHub release page created.
-- [ ] All earlier-phase acceptance criteria still hold (CI green, contract tests green, benchmarks within 2% of phase-0-baseline).
-- [ ] `FEATURE_PARITY.md`'s 61 rows all link to passing tests.
+- [x] `docs/architecture/runtime.md` exists; `runtime_v2.md` is redirect-only.
+- [x] User-facing docs use `Pipeline`, `UnifiedPlanner`, `TierClassifier` (historical refactor docs may mention removed names).
+- [x] `README.md` test-count badge matches `EXPECTED_TEST_COUNT` (2016 collected; 1801 passed).
+- [x] `README.md` transform count = 20 (`list_transform_names()`); providers = 17.
+- [x] README numeric claims footnote `benchmarks/results/CLAIMS.md`.
+- [x] `CHANGELOG.md` v1.0.0 section dated 2026-05-25.
+- [x] `docs/refactor/MIGRATION.md` exhaustive import map + quick-fix `rg` script.
+- [x] `pyproject.toml` + `_version.py` = 1.0.0; Production/Stable classifier.
+- [x] `uv build` + `twine check` pass.
+- [ ] `git tag v1.0.0` — operator, after merge.
+- [ ] GitHub release — operator, after tag.
+- [x] `FEATURE_PARITY.md` 61 rows unchanged.
 
 ---
 

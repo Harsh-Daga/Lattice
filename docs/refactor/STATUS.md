@@ -54,8 +54,9 @@
 | **9**       | ✅ Done             | `refactor/phase-9-observability-state` | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` (6 files); `utils/` → `token_count` only. |
 | **10**      | ✅ Done             | PR #16 | `lattice benchmark` wrapper; `src/lattice/evals/` deleted; `CLAIMS.md`; `v1.0.0` artifacts; `run_canonical_benchmark.sh`. |
 | **11**      | ✅ Done             | Phase 11 branch | `tests/unit/` mirrors `src/lattice/`; `FEATURE_PARITY.md` (61 rows); contract matrices; `pytest-xdist`; pinned count. |
+| **12**      | ✅ Done             | v1.0.0 docs release | README/AGENTS rewrite, CHANGELOG, MIGRATION, `runtime.md`, version `1.0.0`, doc dedup. |
 
-**Current totals.** 2016 tests collected (pinned); contract + unit suites green. **Phase 11** ✅ (`10-tests.md`). **Next:** Phase 12 (`11-docs-release.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** 2016 tests collected (pinned); **1801** passed, **215** skipped. **Phases 0–12** ✅ on main. **Next:** v2.0 forward plan Phase 12 (`12-honesty-pass.md` per `FORWARD_PLAN.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 

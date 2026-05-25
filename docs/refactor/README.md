@@ -1,6 +1,6 @@
 # Refactor & Forward Plan — Documentation Index
 
-> **Start here** if you are implementing or reviewing LATTICE after Phase 11 (tests / feature-parity shipped). **Next:** Phase 12 — docs & v1.0.0 release (`11-docs-release.md`).
+> **Start here** if you are implementing or reviewing LATTICE after Phase 12 (v1.0.0 docs release shipped). **Next:** v2.0 forward plan Phase 12 — honesty pass (`12-honesty-pass.md` in `FORWARD_PLAN.md`).
 
 ---
 
@@ -31,7 +31,7 @@ Full detail: [FORWARD_PLAN.md](FORWARD_PLAN.md).
 
 | Doc | Purpose |
 |---|---|
-| [STATUS.md](STATUS.md) | What shipped (Phases 0–11) + forward-plan summary |
+| [STATUS.md](STATUS.md) | What shipped (Phases 0–12) + forward-plan summary |
 | [FORWARD_PLAN.md](FORWARD_PLAN.md) | Master index Phases 12–27, milestones, footprint table, execution order |
 | [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) | **Mandatory template** for every phase doc 12–27 |
 | [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) | Registry: every primitive → one canonical file |
@@ -41,9 +41,15 @@ Full detail: [FORWARD_PLAN.md](FORWARD_PLAN.md).
 | [MIGRATION.md](MIGRATION.md) | User-facing migration notes |
 | [FINAL_LAYOUT.md](FINAL_LAYOUT.md) | Target directory layout (v1 + v2 extensions) |
 
-### v1.0 refactor phases (0–11) — shipped / in progress
+### v1.0 refactor phases (0–12) — shipped (historical specs)
 
-`00-audit-baseline.md` … `11-docs-release.md`
+`00-audit-baseline.md` … `11-docs-release.md` (Phase 12 docs release). Kept for acceptance audit; not required for day-to-day use.
+
+| Supplement | Purpose |
+|---|---|
+| [phase-4-decisions.md](phase-4-decisions.md) | Pointer → phase-5 decisions |
+| [phase-5-decisions.md](phase-5-decisions.md) | Benchmark-gated transform deletions |
+| [phase-6-benchmark.md](phase-6-benchmark.md) | Operator benchmark gate for Phase 6 |
 
 ### v2.0 forward phases (12–27)
 
@@ -70,7 +76,7 @@ Full detail: [FORWARD_PLAN.md](FORWARD_PLAN.md).
 
 | Doc | Purpose |
 |---|---|
-| [../architecture/runtime_v2.md](../architecture/runtime_v2.md) | Five lifecycles + module rules (updated with transport positioning) |
+| [../architecture/runtime.md](../architecture/runtime.md) | Five lifecycles + module rules (updated with transport positioning) |
 
 ---
 
