@@ -236,7 +236,7 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | `EXPECTED_TEST_COUNT` / README / AGENTS aligned (2016 / 1801) | ✅ |
 | `FEATURE_PARITY.md` 61 rows unchanged | ✅ |
 | ruff / format / mypy / pytest / contract green | ✅ operator |
-| `uv build` + `twine check` | ✅ operator |
+| `uv build` + PyPI publish | ✅ CI `publish.yml` on GitHub `release: published` (Trusted Publishing) |
 
 ---
 
@@ -245,4 +245,4 @@ All import/layout criteria ✅. Benchmark lines excluded.
 1. Run canonical benchmark → `phase-6.json` when `OLLAMA_CLOUD_API_KEY` is set (see `docs/refactor/phase-6-benchmark.md`); compare vs `phase-0-baseline.json` (±2%).
 2. Run Phase 7 benchmark → `phase-7-proxy.json` (same key); compare vs `phase-0-baseline.json` (±2%).
 3. Run Phase 9 benchmark → `phase-9-observability.json` (same key); `compare_benchmarks.py` vs `phase-0-baseline.json` (±2%).
-4. `git tag v1.0.0` + `gh release create` when ready (not automated in Phase 12 PR).
+4. Future releases: tag + `gh release create` → CI publishes to PyPI automatically (`/.github/workflows/publish.yml`).
