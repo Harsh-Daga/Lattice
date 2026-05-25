@@ -2,31 +2,19 @@
 
 from __future__ import annotations
 
-import subprocess
-from pathlib import Path
+import re
 
-# Non-streaming buffers allowed until pipeline/streaming/chunk_buffer.py lands.
-_ALLOWLIST_SUFFIXES = (
-    "integrations/tunnel.py",  # ReplayBuffer for tunnel replay
-)
+from tests.contract._scan import files_with_line_match, repo_root, src_lattice
+
+_ALLOWLIST = {"src/lattice/integrations/tunnel.py"}
 
 
 def test_no_duplicate_streaming_buffer_classes() -> None:
-    root = Path(__file__).resolve().parents[2]
-    proc = subprocess.run(
-        ["rg", "-n", "^class \\w*Buffer\\b", "src/lattice"],
-        cwd=root,
-        capture_output=True,
-        text=True,
+    root = repo_root(__file__)
+    hits = files_with_line_match(
+        src_lattice(root),
+        re.compile(r"^class \w*Buffer\b"),
+        repo=root,
     )
-    if proc.returncode == 1:
-        return
-    offenders: list[str] = []
-    for line in proc.stdout.splitlines():
-        if not line.strip():
-            continue
-        path = line.split(":", 1)[0]
-        if any(path.endswith(suffix) for suffix in _ALLOWLIST_SUFFIXES):
-            continue
-        offenders.append(line)
-    assert not offenders, f"unexpected Buffer classes: {offenders}"
+    offenders = hits - _ALLOWLIST
+    assert not offenders, offenders

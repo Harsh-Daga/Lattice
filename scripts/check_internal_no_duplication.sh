@@ -13,38 +13,36 @@ fi
 
 fail=0
 
-# SSOT paths: only require paths that already exist (forward-phase entries may be future).
-while IFS= read -r path; do
-  [[ -z "${path}" ]] && continue
-  full="${ROOT}/${path}"
-  if [[ -e "${full}" ]]; then
-    continue
+_count_execution_plan() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -c '^class ExecutionPlan\b' "${SRC}" 2>/dev/null | awk -F: '{s+=$2} END {print s+0}'
+  else
+    grep -r '^class ExecutionPlan\b' "${SRC}" --include='*.py' 2>/dev/null | wc -l | tr -d ' '
   fi
-  # Allow directory entries ending in /
-  if [[ "${path}" == */ ]] && [[ -d "${full%/}" ]]; then
-    continue
-  fi
-done < <(
-  grep -oE 'src/lattice/[a-zA-Z0-9_./-]+' "${SSOT}" | sort -u
-)
+}
 
-# Exactly one ExecutionPlan class definition
-ep_count="$(rg -c '^class ExecutionPlan\b' "${SRC}" 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')"
+_stale_in_src() {
+  local pat='MILV|BatchAccumulator|from lattice\.planner\.execution_plan'
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "${pat}" "${SRC}" 2>/dev/null
+  else
+    grep -rqE "${pat}" "${SRC}" --include='*.py' 2>/dev/null
+  fi
+}
+
+ep_count="$(_count_execution_plan)"
 if [[ "${ep_count}" -ne 1 ]]; then
   echo "check_internal_no_duplication: expected 1 class ExecutionPlan, found ${ep_count}" >&2
   fail=1
 fi
 
-# No planner.execution_plan module
 if [[ -f "${SRC}/planner/execution_plan.py" ]]; then
   echo "check_internal_no_duplication: planner/execution_plan.py must be removed (use ir.primitives.ExecutionPlan)" >&2
   fail=1
 fi
 
-# Stale public names in src/
-if rg -q 'MILV|BatchAccumulator|from lattice\.planner\.execution_plan' "${SRC}" 2>/dev/null; then
+if _stale_in_src; then
   echo "check_internal_no_duplication: stale MILV/BatchAccumulator/planner.execution_plan in src/" >&2
-  rg -n 'MILV|BatchAccumulator|from lattice\.planner\.execution_plan' "${SRC}" >&2 || true
   fail=1
 fi
 

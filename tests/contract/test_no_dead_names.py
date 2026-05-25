@@ -2,26 +2,19 @@
 
 from __future__ import annotations
 
-import subprocess
-from pathlib import Path
+import re
+
+from tests.contract._scan import iter_py_under, repo_root, src_lattice
+
+_STALE = re.compile(
+    r"MILV|BatchAccumulator|strategy_selector|constraint_lifting|"
+    r"information_theoretic_selector"
+)
 
 
-def test_no_stale_names_in_src_and_tests() -> None:
-    root = Path(__file__).resolve().parents[2]
-    pattern = (
-        r"MILV|BatchAccumulator|strategy_selector|constraint_lifting|"
-        r"information_theoretic_selector"
-    )
-    proc = subprocess.run(
-        [
-            "rg",
-            pattern,
-            "src/",
-            "--glob",
-            "!src/lattice/core/config.py",
-        ],
-        cwd=root,
-        capture_output=True,
-        text=True,
-    )
-    assert proc.returncode == 1, proc.stdout or proc.stderr
+def test_no_stale_names_in_src() -> None:
+    root = repo_root(__file__)
+    base = src_lattice(root)
+    for path in iter_py_under(base, skip_rel=("core/config.py",)):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        assert _STALE.search(text) is None, f"stale name in {path.relative_to(root)}"
