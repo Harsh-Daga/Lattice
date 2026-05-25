@@ -11,6 +11,7 @@ import structlog
 
 logger = structlog.get_logger()
 
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class AgentConfig:
     """Result of a wrap / unwrap operation."""
@@ -55,4 +56,3 @@ def _load_json(path: pathlib.Path) -> dict[str, Any]:
 
 def _save_json(path: pathlib.Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n")
-

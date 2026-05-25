@@ -62,9 +62,9 @@ from lattice.gateway.compat.translation import (
     serialize_openai_response,
 )
 
-Handler = __import__(
-    "collections.abc", fromlist=["Callable"]
-).Callable[..., __import__("typing").Awaitable[__import__("typing").Any]]
+Handler = __import__("collections.abc", fromlist=["Callable"]).Callable[
+    ..., __import__("typing").Awaitable[__import__("typing").Any]
+]
 
 __all__ = [
     "AnthropicCompatDeps",

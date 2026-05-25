@@ -111,9 +111,7 @@ async def handle_chat_stream(
                             if "name" in fn:
                                 tool_calls_acc[idx]["function"]["name"] = fn["name"]
                             if "arguments" in fn:
-                                tool_calls_acc[idx]["function"]["arguments"] += fn[
-                                    "arguments"
-                                ]
+                                tool_calls_acc[idx]["function"]["arguments"] += fn["arguments"]
 
                 lat_meta = chunk.pop("_lattice_metadata", None)
                 if lat_meta:
@@ -145,9 +143,7 @@ async def handle_chat_stream(
                 if stream_meta:
                     msg.metadata.update(stream_meta)
                 session.messages.append(msg)
-                await deps.session_manager.update_session(
-                    session.session_id, session.messages
-                )
+                await deps.session_manager.update_session(session.session_id, session.messages)
             # Feed cache telemetry back for observability
             stream_cached_tokens = _extract_cached_tokens(stream_meta.get("usage", {}))
             if stream_cached_tokens > 0:
@@ -160,9 +156,7 @@ async def handle_chat_stream(
                     total_expected = sum_expected_cached_tokens(cache_plan_stream)
                     breakpoints = len(cache_plan_stream)
                 else:
-                    total_expected = getattr(
-                        cache_plan_stream, "expected_cached_tokens", 0
-                    )
+                    total_expected = getattr(cache_plan_stream, "expected_cached_tokens", 0)
                     breakpoints_int: int = getattr(  # type: ignore[assignment]
                         cache_plan_stream, "breakpoints", []
                     )
@@ -181,9 +175,7 @@ async def handle_chat_stream(
                     assemble_cached_response(
                         model=model_used,
                         content=full_content,
-                        tool_calls=list(tool_calls_acc.values())
-                        if tool_calls_acc
-                        else None,
+                        tool_calls=list(tool_calls_acc.values()) if tool_calls_acc else None,
                         usage=stream_meta.get("usage", {}),
                         finish_reason="stop",
                         sse_chunks=sse_chunks,
@@ -196,9 +188,7 @@ async def handle_chat_stream(
                 stream_usage = stream_meta.get("usage", {})
                 normalized_usage = normalize_usage(stream_usage)
                 stream_prompt = (
-                    normalized_usage["prompt_tokens"]
-                    or compressed_request.token_estimate
-                    or 0
+                    normalized_usage["prompt_tokens"] or compressed_request.token_estimate or 0
                 )
                 stream_completion = normalized_usage["completion_tokens"]
                 stream_cached = normalized_usage["cached_tokens"]

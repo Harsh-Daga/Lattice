@@ -20,6 +20,7 @@ from lattice.integrations.agents.models import AgentConfig
 
 logger = structlog.get_logger()
 
+
 class EnvFileIntegration(AgentIntegration):
     """Agents controlled via ``OPENAI_BASE_URL`` / ``ANTHROPIC_BASE_URL``.
 
@@ -566,5 +567,3 @@ class GenericIntegration(EnvFileIntegration):
 # =============================================================================
 # 2. JSON file integrations (Cursor, OpenCode)
 # =============================================================================
-
-

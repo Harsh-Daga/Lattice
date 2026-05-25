@@ -15,6 +15,7 @@ from lattice.proxy.middleware import stash_lattice_response_headers
 
 Handler = Callable[..., Awaitable[Any]]
 
+
 class OperationalRouteDeps:
     """Dependencies for middleware and operational routes."""
 

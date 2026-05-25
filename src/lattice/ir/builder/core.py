@@ -254,5 +254,3 @@ def _partition_text_section(
             span_counter += 1
 
     return sections, span_counter
-
-

@@ -6,6 +6,7 @@ from typing import Any
 
 Handler = Callable[..., Awaitable[Any]]
 
+
 @dataclasses.dataclass(slots=True)
 class ChatCompatDeps:
     """Dependencies required by chat completion compatibility handler."""
@@ -36,5 +37,3 @@ class ChatCompatDeps:
 
 
 _ws_lib: Any = None
-
-

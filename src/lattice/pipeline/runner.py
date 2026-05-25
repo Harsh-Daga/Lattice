@@ -339,7 +339,9 @@ class Pipeline:
                     )
                     context.record_metric(tx_name, "post_transform_guard_triggered", True)
                     context.record_metric(tx_name, "post_transform_guard_score", guard_result.score)
-                    context.record_metric(tx_name, "post_transform_guard_passed", guard_result.passed)
+                    context.record_metric(
+                        tx_name, "post_transform_guard_passed", guard_result.passed
+                    )
                     if not guard_result.passed:
                         _rollback(
                             f"post_guard_rejected:{guard_result.reason}",

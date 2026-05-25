@@ -23,6 +23,7 @@ from lattice.integrations.mutation_store import (
 
 logger = structlog.get_logger()
 
+
 class JsonFileIntegration(AgentIntegration):
     """Generic base for agents that store config in JSON files.
 

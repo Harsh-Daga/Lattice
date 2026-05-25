@@ -227,5 +227,3 @@ def _extract_diff_block(lines: list[str], idx: int, span_counter: int) -> tuple[
         break
 
     return i, _make_section(SectionType.DATA, "\n".join(block_lines).strip(), span_counter)
-
-

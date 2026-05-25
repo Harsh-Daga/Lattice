@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from lattice.ir.primitives import PromptIRV2, SectionV2, SpanV2
-from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.planner.task_classifier import TaskClass
+from lattice.planner.unified_planner import SemanticProfile, UnifiedPlanner
 from lattice.transport.types import Message, Request
 
 

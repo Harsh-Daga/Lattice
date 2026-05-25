@@ -13,17 +13,15 @@ from starlette.responses import Response as StarletteResponse
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_err, unwrap
-from lattice.transport.serialization import message_to_dict
-from lattice.transport.types import Request
-
-Handler = Callable[..., Awaitable[Any]]
-
 from lattice.gateway.compat.providers import (
     _WELL_KNOWN_PROVIDER_URLS,
     _resolve_passthrough_provider,
     _resolve_provider_upstream_url,
 )
-from lattice.transport.serialization import message_from_dict
+from lattice.transport.serialization import message_from_dict, message_to_dict
+from lattice.transport.types import Request
+
+Handler = Callable[..., Awaitable[Any]]
 
 
 @dataclasses.dataclass(slots=True)
@@ -176,7 +174,6 @@ def make_responses_handler(deps: ResponsesCompatDeps) -> Handler:
                 deps.provider,
                 session_id=x_lattice_session_id or "",
             )
-
 
         msgs = []
         for m in body_json.get("messages", body_json.get("input", [])):

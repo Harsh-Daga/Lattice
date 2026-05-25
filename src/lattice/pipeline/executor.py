@@ -14,7 +14,12 @@ from lattice.pipeline._generated_factories import DEFAULT_TRANSFORM_FACTORIES
 from lattice.planner.runtime_state import get_canonical_state_value
 from lattice.transport.types import Request
 
-__all__ = ["PipelineTransformRegistry", "_serialize_ir_to_messages", "IR_NATIVE_TRANSFORMS", "pipeline_process"]
+__all__ = [
+    "PipelineTransformRegistry",
+    "_serialize_ir_to_messages",
+    "IR_NATIVE_TRANSFORMS",
+    "pipeline_process",
+]
 
 
 def _serialize_ir_to_messages(ir: PromptIRV2, working: Request) -> None:

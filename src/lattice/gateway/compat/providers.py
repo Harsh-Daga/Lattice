@@ -125,4 +125,3 @@ def _prepare_codex_upstream_headers(
         headers.get("chatgpt-account-id", ""),
     )
     return {**headers, **resolved}
-

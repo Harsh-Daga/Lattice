@@ -292,9 +292,8 @@ class TestProxyNonStreamingMetadata:
 
     def test_proxy_completion_calls_forward_metadata(self) -> None:
         """Verify metadata forwarding in proxy/compat non-streaming paths."""
-        import inspect
-
         import importlib
+        import inspect
         import pkgutil
 
         from lattice.proxy import bootstrap as bootstrap_mod

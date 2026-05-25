@@ -315,4 +315,3 @@ def _compute_similarity(query: _SemanticFingerprint, candidate: _SemanticFingerp
 # ---------------------------------------------------------------------------
 # Exact response cache
 # ---------------------------------------------------------------------------
-

@@ -95,9 +95,7 @@ def evaluate_post_transform(
             score -= 0.08
             reasons.append("root_cause_lost")
 
-    err = structural_checks.error_signals_preserved(
-        before_text, after_text, task.task_class.value
-    )
+    err = structural_checks.error_signals_preserved(before_text, after_text, task.task_class.value)
     if not err.passed:
         score -= 0.10
         reasons.append("error_signal_halved")

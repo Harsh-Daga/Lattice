@@ -9,17 +9,16 @@ from fastapi import status
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.responses import Response as StarletteResponse
 
-from lattice.proxy.middleware import attach_routing_headers
-from lattice.telemetry.downgrade import TransportOutcome
-
-Handler = Callable[..., Awaitable[Any]]
-
 from lattice.gateway.compat.headers import build_routing_headers
 from lattice.gateway.compat.providers import (
     _WELL_KNOWN_PROVIDER_URLS,
     _prepare_codex_upstream_headers,
     _resolve_provider_upstream_url,
 )
+from lattice.proxy.middleware import attach_routing_headers
+from lattice.telemetry.downgrade import TransportOutcome
+
+Handler = Callable[..., Awaitable[Any]]
 
 
 async def responses_passthrough(
@@ -320,5 +319,3 @@ async def responses_websocket_passthrough(websocket: Any, *, logger: Any) -> Non
     from lattice.integrations.codex.ws_handler import responses_websocket_passthrough as _impl
 
     await _impl(websocket, logger=logger)
-
-

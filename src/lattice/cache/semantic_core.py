@@ -24,6 +24,7 @@ from lattice.cache.stores import CacheBackend, InMemoryCacheBackend
 
 _logger = structlog.get_logger()
 
+
 class SemanticCache:
     """In-memory hybrid exact/semantic response cache with TTL and LRU eviction.
 

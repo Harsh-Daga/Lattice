@@ -85,4 +85,3 @@ def _print_banner() -> None:
     └─────────────────────────────────────────┘
     """
     console.print(banner, style="cyan")
-

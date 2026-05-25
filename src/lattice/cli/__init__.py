@@ -3,50 +3,19 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
 
 from lattice._version import __version__
-from lattice.cli._console import (
-    _get_config,
-    _get_pid_mgr,
-    _lace_agent,
-    _list_agents,
-    _list_mutated_agents,
-    _print_banner,
-    _run_init,
-    _start_background,
-    _unlace_agent,
-    console,
-    logger,
-)
-from lattice.cli.doctor_cmds import _cmd_doctor, _print_doctor_report
+from lattice.cli._console import console
+from lattice.cli.doctor_cmds import _cmd_doctor
 from lattice.cli.info_cmds import (
     _cmd_agent_status,
     _cmd_benchmark,
     _cmd_config,
     _cmd_health,
     _cmd_info,
-    _enabled_transforms,
 )
-from lattice.cli.init_cmds import (
-    _cmd_init,
-    _cmd_lace,
-    _cmd_unlace,
-    _format_init_empty_error,
-    _print_init_help,
-    _print_lace_help,
-    _print_unlace_help,
-)
-from lattice.cli.proxy_cmds import (
-    _cmd_proxy,
-    _cmd_proxy_restart,
-    _cmd_proxy_run,
-    _cmd_proxy_start,
-    _cmd_proxy_status,
-    _cmd_proxy_stop,
-    _parse_proxy_args,
-    _print_proxy_help,
-)
+from lattice.cli.init_cmds import _cmd_init, _cmd_lace, _cmd_unlace
+from lattice.cli.proxy_cmds import _cmd_proxy
 
 
 def _print_help() -> None:

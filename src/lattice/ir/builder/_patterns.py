@@ -198,4 +198,3 @@ _STOP_WORDS = frozenset(
         "not",
     }
 )
-

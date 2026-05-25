@@ -36,7 +36,6 @@ async def chat_completions_websocket_passthrough(
 
     import json as _json
 
-
     try:
         json_body = await websocket.receive_text()
         body = _json.loads(json_body)
@@ -100,5 +99,3 @@ async def chat_completions_websocket_passthrough(
             logger.warning("ws_chat_completions_stream_error", error=str(exc))
     finally:
         await websocket.close()
-
-

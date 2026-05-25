@@ -183,4 +183,3 @@ def _usage_total_tokens(usage: dict[str, Any]) -> int:
     if isinstance(total, int):
         return total
     return normalized["prompt_tokens"] + normalized["completion_tokens"]
-

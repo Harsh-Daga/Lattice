@@ -11,6 +11,7 @@ from lattice.transport.types import Message, Request, Response
 
 Handler = Callable[..., Awaitable[Any]]
 
+
 def deserialize_anthropic_request(body: dict[str, Any]) -> Request:
     """Convert Anthropic Messages API JSON body into internal request."""
     messages: list[Message] = []
@@ -301,5 +302,3 @@ async def compress_anthropic_body(
     compressed_texts = [m.content for m in compressed_request.messages]
     replace_anthropic_text_blocks(blocks, compressed_texts)
     return body, ctx, original_tokens, compressed_request.token_estimate
-
-

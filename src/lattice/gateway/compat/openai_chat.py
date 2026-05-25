@@ -30,7 +30,11 @@ from lattice.telemetry.downgrade import TransportOutcome
 
 Handler = Callable[..., Awaitable[Any]]
 
-__all__ = ["ChatCompatDeps", "chat_completions_websocket_passthrough", "make_chat_completion_handler"]
+__all__ = [
+    "ChatCompatDeps",
+    "chat_completions_websocket_passthrough",
+    "make_chat_completion_handler",
+]
 
 
 def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
@@ -337,7 +341,6 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         )
         if cache_hit_response is not None:
             return cache_hit_response
-
 
         start_llm = time.perf_counter()
         try:
@@ -712,4 +715,3 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
         return response
 
     return _handle_chat_completion
-

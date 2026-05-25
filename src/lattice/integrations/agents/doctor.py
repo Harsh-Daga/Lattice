@@ -70,4 +70,3 @@ def build_agent_doctor_report(
         proxy_reachable=proxy_ok,
         diagnostic_lines=lines,
     )
-

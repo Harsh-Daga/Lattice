@@ -17,6 +17,7 @@ import os
 import pathlib
 
 from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _logger = logging.getLogger(__name__)
 
@@ -28,7 +29,6 @@ _DEPRECATED_TRANSFORM_FLAGS = frozenset(
         "transform_information_theoretic_selector",
     }
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class _ConfigFileSources:

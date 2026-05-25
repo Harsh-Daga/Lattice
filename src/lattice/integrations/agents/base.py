@@ -9,6 +9,7 @@ from typing import Any
 import structlog
 
 from lattice.core.config import LatticeConfig
+from lattice.integrations.agents.models import AgentConfig
 from lattice.integrations.agents.protocol import AgentDoctorReport
 
 logger = structlog.get_logger()
@@ -42,8 +43,6 @@ def _load_json(path: pathlib.Path) -> dict[str, Any]:
 
 def _save_json(path: pathlib.Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n")
-
-from lattice.integrations.agents.models import AgentConfig
 
 
 class AgentIntegration:
@@ -97,5 +96,3 @@ class AgentIntegration:
 # =============================================================================
 # 1. Env-file integrations (Claude Code, Codex, generic)
 # =============================================================================
-
-

@@ -11,6 +11,7 @@ import structlog
 
 logger = structlog.get_logger()
 
+
 class AgentNotInstalledError(Exception):
     """Raised when an integration target (config file, env file, executable) is not present."""
 
@@ -44,5 +45,3 @@ class AgentDoctorReport:
     is_patched_transient: bool
     proxy_reachable: bool
     diagnostic_lines: list[str] = dataclasses.field(default_factory=list)
-
-

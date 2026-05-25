@@ -10,6 +10,7 @@ from lattice.transport.types import Message, Request
 
 Handler = Callable[..., Awaitable[Any]]
 
+
 def extract_responses_text_blocks(body: dict[str, Any]) -> list[tuple[dict[str, Any], str]]:
     """Extract mutable text blocks from OpenAI Responses request payloads."""
     blocks: list[tuple[dict[str, Any], str]] = []
@@ -81,5 +82,3 @@ async def compress_responses_body(
     compressed_texts = [m.content for m in compressed_request.messages]
     replace_responses_text_blocks(blocks, compressed_texts)
     return body, ctx, original_tokens, compressed_request.token_estimate
-
-

@@ -13,12 +13,6 @@ from starlette.responses import Response as StarletteResponse
 
 from lattice.core.context import TransformContext
 from lattice.core.result import is_err, unwrap
-from lattice.proxy.middleware import attach_routing_headers
-from lattice.telemetry.downgrade import TransportOutcome
-from lattice.transport.serialization import message_to_dict
-
-Handler = Callable[..., Awaitable[Any]]
-
 from lattice.gateway.compat.anthropic_messages import (
     deserialize_anthropic_request,
     deserialize_anthropic_response,
@@ -26,6 +20,11 @@ from lattice.gateway.compat.anthropic_messages import (
 )
 from lattice.gateway.compat.headers import build_routing_headers
 from lattice.gateway.compat.providers import _WELL_KNOWN_PROVIDER_URLS
+from lattice.proxy.middleware import attach_routing_headers
+from lattice.telemetry.downgrade import TransportOutcome
+from lattice.transport.serialization import message_to_dict
+
+Handler = Callable[..., Awaitable[Any]]
 
 
 @dataclasses.dataclass(slots=True)
@@ -258,5 +257,3 @@ def make_anthropic_handler(deps: AnthropicCompatDeps) -> Handler:
             )
 
     return _handle_anthropic_message
-
-

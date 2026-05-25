@@ -465,4 +465,3 @@ class AnthropicSerializeMixin:
     # ------------------------------------------------------------------
     # Deserialization (Anthropic JSON → internal Response)
     # ------------------------------------------------------------------
-

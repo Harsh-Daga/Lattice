@@ -7,6 +7,7 @@ from lattice.gateway.server import LLMTPGateway
 
 Handler = Callable[..., Awaitable[Any]]
 
+
 class HTTPCompatHandler:
     """Handles OpenAI/Anthropic/Responses compatibility routes.
 
@@ -48,4 +49,3 @@ class HTTPCompatHandler:
         if self.models_handler is None:
             raise RuntimeError("models_handler is not configured")
         return await self.models_handler(*args, **kwargs)
-

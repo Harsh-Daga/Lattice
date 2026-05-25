@@ -13,6 +13,7 @@ from lattice.integrations.agents.registry import _AGENT_REGISTRY, list_agents
 
 logger = structlog.get_logger()
 
+
 def wrap_agent(
     agent_name: str,
     lattice_config: LatticeConfig | None = None,

@@ -8,6 +8,7 @@ from lattice.transport.types import Message, Request, Response
 
 Handler = Callable[..., Awaitable[Any]]
 
+
 def detect_new_messages(existing: list[Message], incoming: list[Message]) -> list[Message]:
     """Detect newly appended messages against existing conversation state."""
     if len(incoming) <= len(existing):
@@ -46,4 +47,3 @@ def is_local_origin(request: Any) -> bool:
         or remote in ("127.0.0.1", "::1")
         or forwarded.startswith("127.0.0.1")
     )
-
