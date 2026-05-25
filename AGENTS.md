@@ -91,7 +91,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 
 ## Testing
 
-- Unit tests: `tests/unit/` — **1760 passed**, 196 skipped (Phase 11 full reorg pending)
+- Unit tests: `tests/unit/` — **1766 passed**, 196 skipped (Phase 11 full reorg pending)
 - Integrations unit tests: `tests/unit/integrations/` (tunnel, doctor, mutation_store, protocol)
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
@@ -123,7 +123,7 @@ Suites: `all`, `feature`, `feature-matrix`, `provider`, `protocol`, `transport`,
 
 | Metric | Value |
 |--------|-------|
-| Tests passed | **1760** (+ 196 skipped) |
+| Tests passed | **1766** (+ 196 skipped) |
 | Contract tests | green (`tests/contract/`) |
 | ruff / format / mypy | **0 errors** |
 

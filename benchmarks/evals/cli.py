@@ -15,7 +15,10 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 # ruff: isort: off
-from benchmarks.evals.catalog import default_scenarios  # noqa: E402
+from benchmarks.evals.catalog import (  # noqa: E402
+    default_scenarios,
+    detect_first_available_provider,
+)
 from benchmarks.evals.report import EvalSectionReport, ProductionEvalReport, render_markdown  # noqa: E402
 from benchmarks.evals.runner import (  # noqa: E402
     run_capability_eval,
@@ -61,6 +64,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--scenarios", nargs="*", default=[], help="Optional scenario filter")
     parser.add_argument("--providers", nargs="*", default=[], help="Optional provider filter")
+    parser.add_argument(
+        "--provider-detect",
+        action="store_true",
+        help="Pick the first provider with credentials from the built-in preference list",
+    )
     parser.add_argument(
         "--provider-model",
         action="append",
@@ -113,6 +121,21 @@ def _render_single_section(section: EvalSectionReport, runner_name: str) -> str:
 async def main() -> int:
     args = _parse_args()
     provider_models = _parse_provider_models(args.provider_model)
+    providers = list(args.providers)
+    if args.provider_detect and not providers:
+        detected, detected_models = detect_first_available_provider()
+        if not detected:
+            print(
+                "No provider with credentials found (--provider-detect). "
+                "Set OPENAI_API_KEY, ANTHROPIC_API_KEY, OLLAMA_CLOUD_API_KEY, or run "
+                "with --providers and --provider-model.",
+                file=sys.stderr,
+            )
+            return 2
+        providers = detected
+        for name, model in detected_models.items():
+            provider_models.setdefault(name, model)
+        print(f"provider-detect: using {providers[0]} model={provider_models[providers[0]]}", file=sys.stderr)
     scenarios = default_scenarios(args.scenarios or None)
 
     try:
@@ -148,7 +171,7 @@ async def main() -> int:
 
         if args.suite == "provider":
             section = await run_provider_eval(
-                providers=args.providers or None,
+                providers=providers or None,
                 model_overrides=provider_models,
                 scenarios=scenarios,
                 iterations=args.provider_iterations,
@@ -292,7 +315,7 @@ async def main() -> int:
 
         report = await run_production_evals(
             scenarios=args.scenarios or None,
-            providers=args.providers or None,
+            providers=providers or None,
             model_overrides=provider_models,
             replay_input=args.replay_input,
             iterations=args.iterations,

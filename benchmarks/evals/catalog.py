@@ -9,6 +9,16 @@ from benchmarks.scenarios.prompts import BenchmarkScenario, get_scenarios
 from lattice.providers.capabilities import CapabilityRegistry, get_capability_registry
 from lattice.providers.credentials import CredentialResolver
 
+# First match with credentials wins when ``--provider-detect`` is set (Phase 10).
+_DETECT_PREFERENCE_ORDER = [
+    "ollama-cloud",
+    "ollama",
+    "openai",
+    "anthropic",
+    "groq",
+    "deepseek",
+]
+
 _DEFAULT_PROVIDER_ORDER = [
     "openai",
     "anthropic",
@@ -165,3 +175,24 @@ def default_provider_targets(
         )
 
     return targets
+
+
+def detect_first_available_provider(
+    *,
+    registry: CapabilityRegistry | None = None,
+    resolver: CredentialResolver | None = None,
+) -> tuple[list[str], dict[str, str]]:
+    """Return the first provider in preference order that has credentials.
+
+    Used by ``benchmarks/evals/cli.py --provider-detect`` when the operator
+    does not pass ``--providers``.
+    """
+    for provider in _DETECT_PREFERENCE_ORDER:
+        targets = default_provider_targets(
+            [provider],
+            registry=registry,
+            resolver=resolver,
+        )
+        if targets and targets[0].available:
+            return [provider], {provider: targets[0].model}
+    return [], {}

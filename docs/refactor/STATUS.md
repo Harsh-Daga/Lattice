@@ -54,7 +54,7 @@
 | **9**       | ✅ Done             | `refactor/phase-9-observability-state` | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` (6 files); `utils/` → `token_count` only. |
 | **10**      | ✅ Done             | `refactor/phase-10-benchmarks` | `lattice benchmark` wrapper; `src/lattice/evals/` deleted; `CLAIMS.md`; `v1.0.0` artifacts; `run_canonical_benchmark.sh`. |
 
-**Current totals.** 1760 passed, 196 skipped, contract green. **Next:** Phase 11 (tests / `10-tests.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** 1766 passed, 196 skipped (1962 collected), contract green. **Next:** Phase 11 (tests / `10-tests.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 
@@ -416,8 +416,8 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 - **Phase 7 (Proxy + SDK + CLI)** — ✅ Shipped on `refactor/phase-7-proxy-sdk-cli`. Health routes, `proxy/middleware.py`, top-level SDK exports, `sdk/client.py` deprecation shim.
 - **Phase 8 (Integrations)** — ✅ Shipped on PR #13. Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. (MCP module unchanged — out of scope for 07-integrations.md.)
 - **Phase 9 (Observability + State)** — ✅ Shipped on `refactor/phase-9-observability-state`. `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/token_count`. See `08-observability-state.md`.
-- **Phase 10 (Benchmarks)** — **Next.** `09-benchmarks.md`: `lattice benchmark` wrapper, CLAIMS.md, v1.0.0 reference run. ~1 day.
-- **Phase 11 (Tests)** — reorg into `tests/unit/{ir,pipeline,transport,planner,...}/`; drop `--use-v2-pipeline` CLI flag (originally scoped here). ~1 day.
+- **Phase 10 (Benchmarks)** — ✅ Shipped PR [#16](https://github.com/Harsh-Daga/Lattice/pull/16); completion fixes on `refactor/phase-10-completion` (provider_validation `compress()`, `--provider-detect`, doc sync).
+- **Phase 11 (Tests)** — **Next.** `10-tests.md`: mirror `tests/unit/` to `src/lattice/`, FEATURE_PARITY matrix, contract extensions. ~2 days.
 - **Phase 12 (Docs + Release)** — README + CHANGELOG + MIGRATION.md + tag v1.0.0. ~1 day.
 
 ---
@@ -480,7 +480,7 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 
 | Item                                                                     | Target phase        |
 | ------------------------------------------------------------------------ | ------------------- |
-| Remove `--use-v2-pipeline` CLI flag                                      | Phase 11            |
+| Remove `--use-v2-pipeline` CLI flag                                      | ✅ Phase 10         |
 | Canonical bench vs phase-0 baseline (±2%) → `phase-5.json`               | CI / local key      |
 | Canonical bench vs phase-0 baseline (±2%) → `phase-6.json`               | CI / local key      |
 

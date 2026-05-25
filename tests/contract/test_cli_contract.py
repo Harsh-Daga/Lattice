@@ -51,7 +51,8 @@ def test_version_global() -> None:
 
 # Commands whose `--help` does NOT follow the standard usage banner shape
 # today. `health` tries to reach a running proxy on --help.
-_NONSTANDARD_HELP = {"health", "benchmark"}
+# `benchmark` delegates to argparse (shows `--suite`, not Rich Usage).
+_NONSTANDARD_HELP = {"health"}
 
 
 @pytest.mark.parametrize(
@@ -74,9 +75,13 @@ def test_subcommand_help(command: str) -> None:
         f"lattice {command} --help exit={result.returncode}\n"
         f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
+    if command == "benchmark":
+        combined = (result.stdout or "") + (result.stderr or "")
+        assert "--suite" in combined, (
+            f"lattice benchmark --help missing --suite:\n{combined[:600]}"
+        )
+        return
     if command in _NONSTANDARD_HELP:
-        # Non-standard --help shape today; full banner check arrives in
-        # the phase that fixes the command.
         return
     _assert_help_ok(result, f"lattice {command} --help")
 

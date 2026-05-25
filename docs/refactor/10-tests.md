@@ -1,4 +1,4 @@
-# Phase 10 — Test Reshape & Feature-Parity Matrix
+# Phase 11 — Test Reshape & Feature-Parity Matrix (STATUS Phase 11; file `10-tests.md`)
 
 > **Goal.** Restructure `tests/unit/` so its layout exactly mirrors `src/lattice/`. Every src module has a corresponding tests subdirectory; every public class has at least one test file. Produce a `docs/refactor/FEATURE_PARITY.md` checklist proving every v0.x user-visible feature still works at v1.0.0. Add the missing contract tests for HTTP endpoints, headers, and Python API surface. Verify the actual `pytest --collect-only` count matches what `README.md` claims. Add `pytest-xdist` for parallel test runs to keep CI under 5 minutes despite the suite growing.
 >

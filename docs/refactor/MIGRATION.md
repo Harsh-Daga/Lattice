@@ -78,6 +78,7 @@ DeprecationWarning: lattice.sdk.client is deprecated; import from `lattice` or
 - Claim traceability: `benchmarks/results/CLAIMS.md`
 - Release reference run: `benchmarks/results/v1.0.0.json` + `.md`
 - CI helper: `scripts/run_canonical_benchmark.sh`
+- Optional: `lattice benchmark --provider-detect` (or `benchmarks/evals/cli.py --provider-detect`) picks the first provider with credentials from the built-in preference list (`ollama-cloud`, `ollama`, `openai`, …)
 
 ## Phase 9 — Observability, state, cache, safety (shipped on `refactor/phase-9-observability-state`)
 

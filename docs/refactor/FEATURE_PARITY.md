@@ -1,7 +1,7 @@
 # LATTICE v0.x → v1.0.0 Feature Parity Checklist (Phase 0 scaffold)
 
 > **Purpose.** Single index linking user-visible features to automated proof tests.
-> Phase 10 expands this to the full 61-row matrix in `10-tests.md` §4.5.
+> Phase 11 expands this to the full 61-row matrix in `10-tests.md` §4.5.
 > **Rule:** Each row must reference a test that exists and passes on `main` / the phase branch.
 
 | # | Feature | Evidence (v1.0.0) | Test(s) |
@@ -25,4 +25,4 @@
 | 17 | Compression modes (config) | safe / balanced / aggressive | `tests/unit/test_config.py` |
 | 18 | strategy_selector deleted | Benchmark gate default cut | `docs/refactor/phase-5-decisions.md` |
 
-**Status:** Scaffold satisfies Phase 0 `00-audit-baseline.md` §2. Full row coverage is Phase 10 (`10-tests.md`).
+**Status:** Scaffold satisfies Phase 0 `00-audit-baseline.md` §2. Full row coverage is Phase 11 (`10-tests.md`).
