@@ -135,7 +135,10 @@ async def main() -> int:
         providers = detected
         for name, model in detected_models.items():
             provider_models.setdefault(name, model)
-        print(f"provider-detect: using {providers[0]} model={provider_models[providers[0]]}", file=sys.stderr)
+        print(
+            f"provider-detect: using {providers[0]} model={provider_models[providers[0]]}",
+            file=sys.stderr,
+        )
     scenarios = default_scenarios(args.scenarios or None)
 
     try:

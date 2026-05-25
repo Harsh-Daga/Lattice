@@ -411,7 +411,9 @@ def test_provider_validation_uses_pipeline_compress() -> None:
     assert "pipeline.process(request.copy()" not in src
 
 
-def test_detect_first_available_provider_without_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_detect_first_available_provider_without_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Without API keys, detect returns empty (CLI exits 2)."""
 
     class _EmptyResolver:

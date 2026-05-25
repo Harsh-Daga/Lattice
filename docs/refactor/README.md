@@ -1,6 +1,6 @@
 # Refactor & Forward Plan — Documentation Index
 
-> **Start here** if you are implementing or reviewing LATTICE after Phase 10 (benchmarks shipped).
+> **Start here** if you are implementing or reviewing LATTICE after Phase 11 (tests / feature-parity shipped). **Next:** Phase 12 — docs & v1.0.0 release (`11-docs-release.md`).
 
 ---
 
@@ -31,7 +31,7 @@ Full detail: [FORWARD_PLAN.md](FORWARD_PLAN.md).
 
 | Doc | Purpose |
 |---|---|
-| [STATUS.md](STATUS.md) | What shipped (Phases 0–10) + forward-plan summary |
+| [STATUS.md](STATUS.md) | What shipped (Phases 0–11) + forward-plan summary |
 | [FORWARD_PLAN.md](FORWARD_PLAN.md) | Master index Phases 12–27, milestones, footprint table, execution order |
 | [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) | **Mandatory template** for every phase doc 12–27 |
 | [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) | Registry: every primitive → one canonical file |

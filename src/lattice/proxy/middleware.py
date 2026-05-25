@@ -86,6 +86,21 @@ class LatticeHeaderMiddleware(BaseHTTPMiddleware):
                     continue
                 pending[header_name] = _format_header_value(value)
 
+        # Compat routes stash at least one lattice header; fill contract defaults (R1 additive).
+        if pending:
+            contract_defaults = {
+                "x-lattice-compression": "0",
+                "x-lattice-session-id": "",
+                "x-lattice-delta": "false",
+                "x-lattice-provider": "unknown",
+                "x-lattice-transforms-applied": "",
+            }
+            for header_name, default in contract_defaults.items():
+                pending.setdefault(header_name, default)
+            # Omit cost on semantic cache hits (gateway never bills); otherwise default 0.
+            if "x-lattice-cost-usd" not in pending and pending.get("x-lattice-cache-hit") != "true":
+                pending.setdefault("x-lattice-cost-usd", "0.000")
+
         for header_name, value in pending.items():
             response.headers[header_name] = value
 

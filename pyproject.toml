@@ -78,6 +78,7 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=5.0.0",
+    "pytest-xdist>=3.6.0",
     "ruff>=0.6.0",
     "mypy>=1.11.0",
     "pre-commit>=3.8.0",
@@ -104,7 +105,7 @@ ignore = ["E501"]
 "src/lattice/integrations/tunnel.py" = ["E402"]
 # Pre-existing unused vars in test fixtures
 "tests/unit/integrations/test_tunnel.py" = ["F841"]
-"tests/unit/test_cache_arbitrage.py" = ["F821"]
+"tests/unit/transforms/test_cache_arbitrage.py" = ["F821"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -134,7 +135,12 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -n auto --dist loadfile"
+markers = [
+    "contract: slow contract tests requiring a running proxy",
+    "integration: integration tests requiring Redis or live provider",
+    "e2e: end-to-end tests requiring agent binaries on PATH",
+]
 pythonpath = ["."]
 
 [tool.coverage.run]
