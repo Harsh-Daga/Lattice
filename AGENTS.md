@@ -19,14 +19,32 @@ uv run python benchmarks/evals/cli.py --suite feature
 
 ## Architecture
 
-LATTICE is a **unified optimization + transport system** with one canonical runtime (Phases 0–8 complete on `refactor/phase-8-integrations`):
+**LATTICE is the transport / network layer for LLM traffic** — not a compression-only tool. One self-hosted proxy owns the path to the user's chosen provider: connections, retry, timeouts, circuit breaker, backpressure, framing, streaming, cache, guardrails, compression, observability.
+
+Canonical runtime (Phases 0–9 shipped):
 
 ```
-Request → content_profiler → UnifiedPlanner → ExecutionPlan → Pipeline.compress/process → Provider
+Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress → TransportDispatcher → Provider
+                                                                              ↑
+                                                         Phase 27 consolidates this layer
 ```
 
-The authoritative architecture document is [`docs/architecture/runtime_v2.md`](docs/architecture/runtime_v2.md).  
-Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
+| Doc | Purpose |
+|-----|---------|
+| [`docs/architecture/runtime_v2.md`](docs/architecture/runtime_v2.md) | Five lifecycles + module rules |
+| [`docs/refactor/FORWARD_PLAN.md`](docs/refactor/FORWARD_PLAN.md) | Phases 12–27, six hard constraints |
+| [`docs/refactor/PHASE_GUIDELINES.md`](docs/refactor/PHASE_GUIDELINES.md) | Mandatory template for phase docs |
+| [`docs/refactor/SINGLE_SOURCE_OF_TRUTH.md`](docs/refactor/SINGLE_SOURCE_OF_TRUTH.md) | One primitive → one file |
+| [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md) | Shipped vs pending |
+
+### Six constraints (v2.0 — do not violate in new code)
+
+1. **Lightweight** — default install on a 4 GB laptop; no required model downloads.
+2. **No external LLM** — only the user's provider for embeddings/summarization when needed.
+3. **Self-hosted OSS only** — no SaaS / Stripe / hosted cloud.
+4. **One implementation** — no duplicate algorithms in SDKs or adapters; update `SINGLE_SOURCE_OF_TRUTH.md`.
+5. **Code budget** — `src/lattice/` ≤ 35k LoC; declare delta per PR (`CODE_BUDGET.txt`).
+6. **Transport-first** — retry/timeout/pool/breaker live in `transport/` only ([Phase 27](docs/refactor/27-transport-layer-consolidation.md)).
 
 ### Key Modules
 
@@ -43,9 +61,9 @@ Refactor progress: [`docs/refactor/STATUS.md`](docs/refactor/STATUS.md).
 | `transforms/` | Individual transforms — IR-native via `optimize(ir, ...)`; orchestrators in `transforms/optimizers/`; registry in `transforms/registry.py` |
 | `transforms/optimizers/` | Per-domain optimizer orchestrators (`ir_structure`, reference, tool, diagnostic, context) |
 | `runtime/` | **TierClassifier** (workload complexity — not a provider router) |
-| `transport/` | Request/Response types, serialization, delta wire, congestion |
+| `transport/` | **Unified transport layer** (Phase 27): dispatcher, pool, retry, breaker, backpressure, stream resume, metrics, types, delta wire, TACC |
 | `protocol/` | Prefix canonicalization, cache planners, binary framing, manifest |
-| `providers/` | `adapters/` (17 providers), `transport/` (HTTP dispatch), **credentials** |
+| `providers/` | `adapters/` (17 providers — **declarative only** post–Phase 27: shape/parse + retry policy, no httpx clients), **credentials** |
 | `proxy/` | FastAPI server, `register_health_routes`, `LatticeHeaderMiddleware` (`proxy/middleware.py`) |
 | `gateway/` | HTTP compatibility layer; routing headers stashed on `request.state` (middleware emits) |
 | `integrations/` | Agent wrap/lace/init; `tunnel.py` sidecar; `mutation_store` (durable + transient); per-agent `doctor()` |

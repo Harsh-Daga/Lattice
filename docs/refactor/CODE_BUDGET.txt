@@ -1,0 +1,48 @@
+# LATTICE code budget — enforced by scripts/check_code_budget.sh (Phase 12)
+# Total src/lattice/ cap at v2.0: 35000
+# Current baseline (post Phase 9): ~22000
+
+# Per-directory caps (src/lattice/)
+core=1200
+ir=3500
+transforms=6500
+pipeline=2500
+planner=2200
+cache=2500
+safety=2000
+agent=2000
+transport=3000
+providers_adapters=2500
+proxy=2200
+gateway=3200
+integrations=1800
+telemetry=1700
+state=900
+audit=800
+auth_keys_quotas_tenants=2800
+mcp=1500
+
+# Non-Python (separate caps)
+crates_lattice_core=6000
+bindings_python=1000
+bindings_wasm=500
+typescript_sdk_src=2500
+cursor_extension_src=800
+
+# Per-phase declared net LoC delta (update in same PR as phase doc)
+phase_12=-1500
+phase_13=+500
+phase_14=+1800
+phase_15=+1700
+phase_16=+1400
+phase_17=+2200
+phase_18=+3300
+phase_19=+900
+phase_20=+4200
+phase_21=+2000
+phase_22=+2400
+phase_23=+2200
+phase_24=+4500
+phase_25=+3000
+phase_26=+2300
+phase_27=-1500

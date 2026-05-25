@@ -425,3 +425,39 @@ scripts/
 3. **Domain locality.** Everything about IR is under `ir/`. Everything about transforms is under `transforms/`. Everything about telemetry is under `telemetry/`. No "core grab-bag".
 4. **Pointed dependency direction.** `core/` is a leaf — the rest of the package imports from it. `pipeline/` is the top of the runtime stack. CLI/proxy/SDK sit above pipeline.
 5. **Test parity.** Every src module has a tests/ sibling at the same path. New `tests/contract/` proves the user contract.
+
+---
+
+## 8. v2.0 extensions (Phases 12–27 — see [FORWARD_PLAN.md](FORWARD_PLAN.md))
+
+These paths are added by the forward plan. LoC caps: [CODE_BUDGET.txt](CODE_BUDGET.txt). Canonical homes: [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md).
+
+```
+src/lattice/
+├── transport/                    # EXPANDED — Phase 27: dispatcher, pool, retry, breaker, backpressure, stream_resume, metrics
+│   # providers/transport/ DELETED — merged here
+├── cache/layers/                 # Phase 14
+├── cache/embeddings/             # Phase 14 (user-provider default)
+├── cache/portability/            # Phase 22
+├── safety/pii/ | injection/ | output/   # Phase 15
+├── telemetry/otel/               # Phase 16
+├── agent/                        # Phase 21 + 26
+├── audit/                        # Phase 23
+├── auth/ | keys/ | quotas/ | tenants/   # Phase 25 (optional self-hosted; NOT cloud SaaS)
+├── mcp/                          # Phase 18
+├── policy/profiles.py            # Phase 23
+├── config/reload.py              # Phase 23
+├── pipeline/streaming/           # Phase 19
+├── transforms/tool_diff/ | llmlingua/   # Phase 19 (llmlingua opt-in)
+├── gateway/{embeddings,batch,audio,files,realtime}.py   # Phase 20
+└── sdk/                          # Phase 13 — thin client only
+
+crates/lattice-core/              # Phase 24 — Rust canonical primitives
+bindings/python/ | bindings/wasm/ # Phase 24 — PyO3 + WASM
+packages/typescript-sdk/        # Phase 17 — thin client
+tools/cursor-extension/           # Phase 26
+openapi/lattice-proxy.yaml        # Phase 17 — single source for HTTP types
+scripts/check_{code_budget,sdk_no_algorithm_duplication,internal_no_duplication}.sh
+```
+
+**Product rule:** LATTICE is the **transport layer for LLMs**. Adapters after Phase 27 contain **no** `httpx.AsyncClient` — only `shape_request` / `parse_response` / `retry_policy`.
