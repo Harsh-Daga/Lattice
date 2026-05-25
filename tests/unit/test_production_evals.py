@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from benchmarks.evals.catalog import detect_first_available_provider
 from benchmarks.evals.replay import ReplayTrace, run_trace_replay
 from benchmarks.evals.report import EvalSectionReport, ProductionEvalReport, render_markdown
 from benchmarks.evals.runner import _feature_matches, run_feature_eval, run_feature_matrix_eval
@@ -397,3 +398,36 @@ async def test_tacc_admission_decision_visible() -> None:
     )
     # TACC config state should be visible in replay stats
     assert report.config.get("tacc_enabled") is True
+
+
+def test_provider_validation_uses_pipeline_compress() -> None:
+    """Regression: provider_validation must not call process() without ExecutionPlan."""
+    import inspect
+
+    from benchmarks.evals import runner
+
+    src = inspect.getsource(runner.run_provider_validation)
+    assert "pipeline.compress(" in src
+    assert "pipeline.process(request.copy()" not in src
+
+
+def test_detect_first_available_provider_without_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without API keys, detect returns empty (CLI exits 2)."""
+
+    class _EmptyResolver:
+        def resolve(self, provider: str) -> object:
+            from lattice.providers.credentials import ProviderCredentials
+
+            return ProviderCredentials(api_key=None, base_url=None)
+
+    monkeypatch.setattr(
+        "benchmarks.evals.catalog._DETECT_PREFERENCE_ORDER",
+        ["openai"],
+    )
+    monkeypatch.setattr(
+        "benchmarks.evals.catalog.CredentialResolver",
+        lambda: _EmptyResolver(),
+    )
+    providers, models = detect_first_available_provider()
+    assert providers == []
+    assert models == {}

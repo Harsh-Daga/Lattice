@@ -1797,7 +1797,7 @@ async def run_provider_validation(
                     provider=target.provider,
                     model=target.model,
                 )
-                compress_result = await pipeline.process(request.copy(), ctx)
+                compress_result = pipeline.compress(request.copy(), ctx)
                 if is_ok(compress_result):
                     compressed = unwrap(compress_result)
                     comp_messages = [message_to_dict(m) for m in compressed.messages]

@@ -3,7 +3,7 @@
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** Phase 10 branch — **1764 passed**, contract green (see §10).
+**Last verified:** `refactor/phase-10-completion` — **1766 passed**, contract green (see §10).
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -189,7 +189,12 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | `scripts/run_canonical_benchmark.sh` + CI reference | ✅ |
 | Script audit (`profile_format_conv`, `test_e2e_real`) | ✅ headers |
 | ruff / mypy / pytest / contract | ✅ |
-| `compare_benchmarks.py` vs baseline ±5% | ⏳ operator |
+| `compare_benchmarks.py` vs baseline ±5% | ⏳ reference run (not a phase gate; see CLAIMS.md) |
+| `--provider-detect` on benchmark CLI | ✅ |
+| `provider_validation` uses `Pipeline.compress()` | ✅ (fix: was broken `process()` call) |
+| Doc/index sync (STATUS, AGENTS, README badge) | ✅ |
+| `scripts/README.md` | ✅ |
+| `refactor-gate` ruff `benchmarks/` | ✅ |
 
 ---
 

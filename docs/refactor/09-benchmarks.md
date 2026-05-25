@@ -18,7 +18,7 @@ The audit found:
 2. **`benchmarks/evals/cli.py` has `--use-v2-pipeline` flag.** After Phase 2 there is no v1 pipeline. The flag is a no-op accepted-for-back-compat. Remove it.
 3. **`README.md` cites figures with no traceability** — "1584 tests passed", "18 transforms", "17 providers", "30-60% per-request overhead reduction", "20-50% on structured/data-heavy workloads", "15-25% improvement". Most have no JSON-backed source. Phase 9 produces a CLAIMS.md mapping each claim → benchmark run + JSON file → date.
 4. **`lattice benchmark` CLI subcommand is a 5-line stub** that prints "Benchmarking has moved to benchmarks/evals/cli.py". Make it a real wrapper.
-5. **Reproducibility hole**: contributors don't all have `ollama-cloud / kimi-k2.6:cloud` available. Phase 0 baseline locks the canonical provider; Phase 9 adds a `--provider-detect` mode that picks the first available provider from a preference list.
+5. **Reproducibility hole**: contributors don't all have `ollama-cloud / kimi-k2.6:cloud` available. Phase 0 baseline locks the canonical provider; Phase 10 adds `--provider-detect` on `benchmarks/evals/cli.py` to pick the first credentialed provider from a preference list.
 
 ---
 
