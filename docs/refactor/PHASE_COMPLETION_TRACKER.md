@@ -1,9 +1,9 @@
-# Phase completion tracker (Phases 0–10)
+# Phase completion tracker (Phases 0–11)
 
 > **Rule:** Non-benchmark acceptance items must be ✅ before a phase is **Done**.
 > **Benchmarks:** `phase-*.json` compare gates are tracked separately (optional CI key).
 
-**Last verified:** `refactor/phase-10-completion` — **1766 passed**, contract green (see §10).
+**Last verified:** Phase 11 branch — **2016 collected**, contract green (see §11).
 
 | Phase | Verdict | Notes |
 |-------|---------|-------|
@@ -18,6 +18,7 @@
 | **8** | ✅ | Integrations tunnel move, doctor, mutation store; see §8 below |
 | **9** | ✅ | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/`; see §9 below |
 | **10** | ✅ | Benchmark wrapper, CLAIMS, v1.0.0 artifacts; see §10 below |
+| **11** | ✅ | Test reshape, FEATURE_PARITY 61-row, contract matrices; see §11 below |
 
 ---
 
@@ -32,7 +33,7 @@
 | `phase-0-baseline.json` | ✅ |
 | `repomix` gone / gitignore | ✅ |
 | `compat_exports.py` gone | ✅ |
-| README + AGENTS counts | ✅ (1903 collected; 1706 passed) |
+| README + AGENTS counts | ✅ (superseded by Phase 11 pin — 2000 collected) |
 | ruff / mypy / pytest | ✅ |
 
 ---
@@ -195,6 +196,29 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | Doc/index sync (STATUS, AGENTS, README badge) | ✅ |
 | `scripts/README.md` | ✅ |
 | `refactor-gate` ruff `benchmarks/` | ✅ |
+
+---
+
+## Phase 11 — `10-tests.md` §6
+
+| Criterion | Status |
+|-----------|--------|
+| `tests/unit/` mirrors `src/lattice/` (≤4 root `test_*.py`) | ✅ |
+| `tests/conftest.py` (`free_port`, `temp_config_home`, `proxy_subprocess`, `httpx_mock_provider`) | ✅ |
+| `pytest-xdist` + parallel `addopts` | ✅ |
+| `tests/unit/test_test_count_pinned.py` (`EXPECTED_TEST_COUNT=2016`) | ✅ |
+| `tests/contract/test_full_cli_matrix.py` | ✅ |
+| `tests/contract/test_full_http_matrix.py` | ✅ |
+| `tests/contract/test_headers_full.py` | ✅ |
+| `tests/contract/test_python_api_full.py` | ✅ |
+| `FEATURE_PARITY.md` 61 rows with test links | ✅ |
+| README badge + AGENTS counts aligned | ✅ |
+| `refactor-gate` ruff format + check `benchmarks/` | ✅ |
+| ruff / mypy / pytest / contract green | ✅ |
+| `tests/unit/utils/test_token_count.py` | ✅ |
+| `.github/workflows/test.yml` parallel gate | ✅ |
+| xdist flake check (`pytest -n auto --randomly-seed=42`) | ✅ operator |
+| Full-registry `process()` removal on execution-only transforms | ⏳ deferred Phase 2 (documented) |
 
 ---
 

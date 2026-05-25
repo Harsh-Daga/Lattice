@@ -9,7 +9,7 @@
   <a href="https://pypi.org/project/lattice-transport/"><img src="https://img.shields.io/pypi/v/lattice-transport" alt="PyPI"></a>
   <a href="https://github.com/Harsh-Daga/lattice/actions"><img src="https://img.shields.io/github/actions/workflow/status/Harsh-Daga/lattice/ci.yml?branch=main&label=CI" alt="CI"></a>
   <a href="https://github.com/Harsh-Daga/lattice/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
-  <a href="https://github.com/Harsh-Daga/lattice"><img src="https://img.shields.io/badge/tests-1962%20collected-brightgreen" alt="Tests"></a>
+  <a href="https://github.com/Harsh-Daga/lattice"><img src="https://img.shields.io/badge/tests-2016%20collected-brightgreen" alt="Tests"></a>
   <a href="#"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue" alt="Python"></a>
 </p>
 

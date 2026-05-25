@@ -720,22 +720,22 @@ time uv run pytest tests/ -q
 
 ## 6. Acceptance criteria
 
-- [ ] `tests/unit/` mirrors `src/lattice/` exactly — every src module has a tests subdirectory.
-- [ ] No test files remain at `tests/unit/test_*.py` root except: `test_test_count_pinned.py`, `test_core_is_leaf.py`, `test_no_old_paths.py`, `test_no_lattice_evals.py` (cross-cutting).
-- [ ] `tests/conftest.py` exists with at minimum: `free_port`, `temp_config_home`, `proxy_subprocess`, `httpx_mock_provider` fixtures.
-- [ ] `pytest-xdist` added to dev deps; `addopts = "-v --tb=short -n auto"` in pyproject.
-- [ ] `tests/unit/test_test_count_pinned.py` passes.
-- [ ] `tests/contract/test_full_cli_matrix.py` passes (all 22+ CLI shapes).
-- [ ] `tests/contract/test_full_http_matrix.py` passes (every documented endpoint responds).
-- [ ] `tests/contract/test_headers_full.py` passes (all 6 x-lattice headers emit).
-- [ ] `tests/contract/test_python_api_full.py` passes (every documented symbol importable; former internals are gone).
-- [ ] `docs/refactor/FEATURE_PARITY.md` exists; every row has a passing-test link.
-- [ ] `README.md` test-count badge and `AGENTS.md` "Tests passed" row match `EXPECTED_TEST_COUNT`.
-- [ ] `time uv run pytest tests/ -q` completes in under 5 minutes (on dev's machine; CI may differ).
-- [ ] `uv run ruff check src/ tests/` clean.
-- [ ] `uv run mypy src/lattice/` clean.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `uv run pytest tests/contract/ -q` passes.
+- [x] `tests/unit/` mirrors `src/lattice/` — domain subdirs for every shipped package (incl. `utils/`).
+- [x] No test files remain at `tests/unit/test_*.py` root except: `test_test_count_pinned.py`, `test_core_is_leaf.py`, `test_no_old_paths.py`, `test_no_lattice_evals.py` (cross-cutting).
+- [x] `tests/conftest.py` exists with at minimum: `free_port`, `temp_config_home`, `proxy_subprocess`, `httpx_mock_provider` fixtures.
+- [x] `pytest-xdist` added to dev deps; `addopts = "-v --tb=short -n auto --dist loadfile"` in pyproject.
+- [x] `tests/unit/test_test_count_pinned.py` passes.
+- [x] `tests/contract/test_full_cli_matrix.py` passes (22+ CLI shapes).
+- [x] `tests/contract/test_full_http_matrix.py` passes (every documented non-WS endpoint; live probes `@pytest.mark.contract`).
+- [x] `tests/contract/test_headers_full.py` passes (all 6 `x-lattice-*` contract headers on compat routes).
+- [x] `tests/contract/test_python_api_full.py` passes (every documented symbol importable; former internals are gone).
+- [x] `docs/refactor/FEATURE_PARITY.md` exists; every row has a passing-test link.
+- [x] `README.md` test-count badge and `AGENTS.md` counts match `EXPECTED_TEST_COUNT`.
+- [x] `time uv run pytest tests/ -q` completes in under 5 minutes (xdist on 8 cores).
+- [x] `uv run ruff check src/ tests/ benchmarks/` clean.
+- [x] `uv run mypy src/lattice/` clean.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `uv run pytest tests/contract/ -q` passes.
 
 ---
 

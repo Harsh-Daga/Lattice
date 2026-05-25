@@ -171,7 +171,7 @@ class TestSanitizeJsonSchema:
         desc = out["properties"]["big"]["description"]
         assert len(desc) <= 50
 
-    @pytest.mark.parametrize("bad_key", list(_UNSUPPORTED_KEYS))
+    @pytest.mark.parametrize("bad_key", sorted(_UNSUPPORTED_KEYS))
     def test_all_unsupported_keys_stripped(self, bad_key: str) -> None:
         schema: dict[str, Any] = {
             "type": "object",

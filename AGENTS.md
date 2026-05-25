@@ -91,7 +91,8 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 
 ## Testing
 
-- Unit tests: `tests/unit/` — **1766 passed**, 196 skipped (Phase 11 full reorg pending)
+- Unit tests: `tests/unit/<domain>/` mirrors `src/lattice/<domain>/` (root keeps only cross-cutting guards + `test_test_count_pinned.py`) — **2016 collected**, pinned in `tests/unit/test_test_count_pinned.py`
+- Parallel runs: `uv run pytest tests/ -q` uses `pytest-xdist` (`-n auto --dist loadfile`)
 - Integrations unit tests: `tests/unit/integrations/` (tunnel, doctor, mutation_store, protocol)
 - Integration tests: `tests/integration/` — proxy sessions, Redis, IR optimizer E2E
 - E2E tests: `tests/e2e/` — agent wrappers, full pipeline
@@ -123,7 +124,7 @@ Suites: `all`, `feature`, `feature-matrix`, `provider`, `protocol`, `transport`,
 
 | Metric | Value |
 |--------|-------|
-| Tests passed | **1766** (+ 196 skipped) |
+| Tests collected | **2016** (pinned; `uv run pytest tests/ -q`) |
 | Contract tests | green (`tests/contract/`) |
 | ruff / format / mypy | **0 errors** |
 

@@ -6,11 +6,11 @@ import pytest
 
 from lattice.planner.unified_planner import Tier, UnifiedPlanner
 
-_DELETED_TRANSFORMS = {
+_DELETED_TRANSFORMS = (
     "alias_manifest",
     "dictionary_compress",
     "grammar_compress",
-}
+)
 
 
 class TestDeletedTransforms:

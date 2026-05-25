@@ -52,9 +52,10 @@
 | **7**       | ✅ Done (merge PR #12) | `refactor/phase-7-proxy-sdk-cli` | HealthManager + middleware; top-level imports; sdk deprecation shim; doc/MIGRATION slice. |
 | **8**       | ✅ Done             | `refactor/phase-8-integrations` | Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. |
 | **9**       | ✅ Done             | `refactor/phase-9-observability-state` | `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` (6 files); `utils/` → `token_count` only. |
-| **10**      | ✅ Done             | `refactor/phase-10-benchmarks` | `lattice benchmark` wrapper; `src/lattice/evals/` deleted; `CLAIMS.md`; `v1.0.0` artifacts; `run_canonical_benchmark.sh`. |
+| **10**      | ✅ Done             | PR #16 | `lattice benchmark` wrapper; `src/lattice/evals/` deleted; `CLAIMS.md`; `v1.0.0` artifacts; `run_canonical_benchmark.sh`. |
+| **11**      | ✅ Done             | Phase 11 branch | `tests/unit/` mirrors `src/lattice/`; `FEATURE_PARITY.md` (61 rows); contract matrices; `pytest-xdist`; pinned count. |
 
-**Current totals.** 1766 passed, 196 skipped (1962 collected), contract green. **Next:** Phase 11 (tests / `10-tests.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
+**Current totals.** 2016 tests collected (pinned); contract + unit suites green. **Phase 11** ✅ (`10-tests.md`). **Next:** Phase 12 (`11-docs-release.md`). **Benchmark gates** (`phase-6.json`, `phase-7-proxy.json`, `phase-9-observability.json`, `v1.0.0.json`) remain operator-run when `OLLAMA_CLOUD_API_KEY` is available.
 
 ---
 
@@ -417,8 +418,8 @@ Each maps onto its original `docs/refactor/0N-*.md` doc (e.g. new Phase 4 = orig
 - **Phase 8 (Integrations)** — ✅ Shipped on PR #13. Tunnel → `integrations/tunnel.py`; `AgentNotInstalledError`; per-agent `doctor()`; transient lace in `mutation_store`. (MCP module unchanged — out of scope for 07-integrations.md.)
 - **Phase 9 (Observability + State)** — ✅ Shipped on `refactor/phase-9-observability-state`. `telemetry/`, `state/`, `cache/`, `safety/`; leaf `core/` + `utils/token_count`. See `08-observability-state.md`.
 - **Phase 10 (Benchmarks)** — ✅ Shipped PR [#16](https://github.com/Harsh-Daga/Lattice/pull/16); completion fixes on `refactor/phase-10-completion` (provider_validation `compress()`, `--provider-detect`, doc sync).
-- **Phase 11 (Tests)** — **Next.** `10-tests.md`: mirror `tests/unit/` to `src/lattice/`, FEATURE_PARITY matrix, contract extensions. ~2 days.
-- **Phase 12 (Docs + Release)** — README + CHANGELOG + MIGRATION.md + tag v1.0.0. ~1 day.
+- **Phase 11 (Tests)** — ✅ Shipped. `tests/unit/` mirrors `src/lattice/`; `FEATURE_PARITY.md` (61 rows); contract matrices; `pytest-xdist`; `test_test_count_pinned.py`.
+- **Phase 12 (Docs + release)** — **Next.** `11-docs-release.md`: README rewrite, CHANGELOG, full MIGRATION import map, version 1.0.0, tag, PyPI dry-run.
 
 ---
 

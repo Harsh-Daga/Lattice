@@ -10,8 +10,8 @@ Every figure in README.md, AGENTS.md, and public docs must appear in this table 
 
 | Claim | Source | JSON / proof | Run date | Notes |
 |-------|--------|--------------|----------|-------|
-| "1766 tests passed" | `uv run pytest tests/ -q` | n/a (pytest) | 2026-05-25 | 196 skipped; **1962 collected** |
-| "1962 tests collected" (README badge) | pytest collect | n/a | 2026-05-25 | Pinned in README + AGENTS; Phase 11 adds `test_test_count_pinned.py` |
+| "1801 tests passed" | `uv run pytest tests/ -q` | n/a (pytest) | 2026-05-25 | 215 skipped; **2016 collected** (xdist `-n auto`) |
+| "2016 tests collected" (README badge) | pytest collect | n/a | 2026-05-25 | Pinned in `tests/unit/test_test_count_pinned.py` |
 | "18 transforms" (README) | Transform registry | structural | n/a | Registry has **20** names; README aligned in Phase 12 |
 | "17 providers" | `ProviderRegistry().adapters` | structural | n/a | `len(ProviderRegistry().adapters) == 17` |
 | Default pipeline transform count (6) | `list_default_pipeline_names()` | structural | n/a | Orchestrators add more at runtime |

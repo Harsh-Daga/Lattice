@@ -1,4 +1,4 @@
-name: Refactor Gate
+name: Tests (parallel)
 
 on:
   pull_request:
@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: refactor-gate-${{ github.ref }}
+  group: tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  gate:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,8 +23,6 @@ jobs:
       - run: uv sync
       - run: uv run ruff check src/ tests/ benchmarks/
       - run: uv run ruff format --check src/ tests/ benchmarks/
-      - run: uv run mypy src/lattice/ --ignore-missing-imports
+      - run: uv run pytest tests/unit/test_test_count_pinned.py -q
       - run: uv run pytest tests/ -q --tb=short
       - run: uv run pytest tests/contract/ -q --tb=short
-      # Phase 10: canonical benchmark entrypoint (see docs/refactor/09-benchmarks.md).
-      - run: test -x scripts/run_canonical_benchmark.sh

@@ -1,6 +1,6 @@
 # LATTICE migration guide
 
-> Records user-visible changes as each refactor phase ships. Import-path mapping for v1.0.0 lands in Phase 11 (`11-docs-release.md`).
+> Records user-visible changes as each refactor phase ships. Full import-path mapping for v1.0.0 lands in **Phase 12** (`11-docs-release.md`).
 
 ## v2.0 forward plan (not yet shipped)
 
