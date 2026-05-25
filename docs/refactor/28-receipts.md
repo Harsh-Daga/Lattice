@@ -1,9 +1,10 @@
 # Phase 28 — Compression Receipts (HMAC-Signed Audit Log)
 
+> **Status:** Skeleton — receipt schema + HMAC store land in this phase's implementation PR.
+
 > **Footprint impact.** + `pyjwt[crypto]` (~100 KB) for receipt signing. No ML deps.
 > **Algorithm location.** `src/lattice/audit/receipts.py`, `receipt_store.py`, `receipt_router.py`. Registry: [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) §11.
 > **External-service requirement.** None. Storage reuses memory / SQLite / Postgres / Redis backends from cache and auth phases.
-> **LoC delta (declared).** +900 net (`audit/`).
 > **Transport role.** Receipts record `transport.request_id`, attempt count, RTT, and breaker state from [Phase 20](14-transport-layer-consolidation.md); compression fields from the pipeline only.
 > **Guidelines.** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) — constraints 1–6.
 >

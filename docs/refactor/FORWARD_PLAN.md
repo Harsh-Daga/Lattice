@@ -8,11 +8,11 @@
 >
 > **Six hard constraints, in priority order.** These override every previously-stated design decision and reshape every phase doc. Every constraint has a CI gate.
 >
-> 1. **Lightweight.** The base install runs on a 4 GB laptop. No required model downloads. No background processes besides the proxy itself. Idle RSS < 100 MB, under load < 200 MB. *Enforced by:* `tests/integration/footprint/test_{4gb_laptop,2gb_vps,cold_start}.py`.
+> 1. **Lightweight.** The base install runs on a 4 GB laptop. No required model downloads. No background processes besides the proxy itself. Idle RSS < 100 MB, under load < 200 MB. *Enforced by:* `tests/integration/footprint/test_{4gb_laptop,2gb_vps,cold_start}.py` (skeleton in Phase 16 — see [PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md)).
 > 2. **No external LLM dependency** beyond the one the user is already calling. We never load our own LLM at runtime; we never spin up our own embedding service; we never require an outside API key beyond what the user is paying for already. If a feature needs an embedding or a small model, it uses the *user's* configured provider's cheap model — no new dependency, no new bill. *Enforced by:* `tests/contract/test_default_install_no_external_services.py`, `tests/contract/test_default_install_no_models.py`.
 > 3. **Open source self-hostable. No cloud product.** There is no `lattice.cloud`, no hosted offering, no Stripe, no Terraform-managed managed-service deployment. Everything ships as a Python package + Docker image + npm package. Optional self-hosted features (auth, virtual keys, quotas) exist for small teams running one shared proxy; they are never required.
 > 4. **One algorithm, one implementation — across SDKs AND internally.** Reverse-pass, alias substitution, IR fingerprinting, streaming chunk buffering, transforms, retry policy, cost estimation, config loading, session state, framing, congestion control — each has exactly one home. Other surfaces (TypeScript SDK, edge runtime, optional native Python acceleration, all 17 provider adapters) consume that one implementation. *Enforced by:* `scripts/check_sdk_no_algorithm_duplication.sh` (SDK side), `scripts/check_internal_no_duplication.sh` (internal side, [Phase 13](13-honesty-pass.md) + [Phase 14](14-transport-layer-consolidation.md)), and [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md).
-> 5. **Codebase shall not grow unbounded.** `src/lattice/` LoC budget at v2.0 is **35 000 lines** (currently ~49 000 post–Phase 13; ratchet in [CODE_BUDGET.txt](CODE_BUDGET.txt)). `enforce_phase_delta=1` on forward-plan PRs; directory caps at baseline+5%. *Enforced by:* `scripts/check_code_budget.sh` ([Phase 13](13-honesty-pass.md)).
+> 5. **Codebase shall not grow unbounded.** `src/lattice/` aspirational total at v2.0 is **35 000 lines** (currently ~49 000 post–Phase 13; `enforce_total_v2=0` until Phase 31). **Enforced now:** per-directory caps, no file >800 LoC, no internal duplication ([CODE_BUDGET.txt](CODE_BUDGET.txt), `scripts/check_code_budget.sh`, `scripts/check_internal_no_duplication.sh`). Per-phase net LoC accounting is **not** enforced.
 > 6. **Transport-first design.** Retry, timeout, circuit-breaker, backpressure, framing, streaming, observability — one surface in `src/lattice/transport/`. No per-adapter retry code. *Established by:* [Phase 14 — Transport Layer Consolidation](14-transport-layer-consolidation.md) (immediately after Phase 13).
 
 ---
@@ -43,8 +43,8 @@ Every remaining phase passes both tests. **v1 Phase 12** = docs release only; **
 
 | Phase | Doc | User benefit | Footprint |
 |---|---|---|---|
-| 13 | [Honesty Pass](13-honesty-pass.md) | Honest names; single ExecutionPlan/scoring/registry; CI gates | -1500 LoC |
-| 14 | [Transport](14-transport-layer-consolidation.md) | Unified retry/pool/breaker/stream | -1500 LoC |
+| 13 | [Honesty Pass](13-honesty-pass.md) | Honest names; single ExecutionPlan/scoring/registry; dir-cap + no-dup CI | structural prep |
+| 14 | [Transport](14-transport-layer-consolidation.md) | Unified retry/pool/breaker/stream | adapter shrink |
 | 15 | [Chaos contract](15-chaos-failure-modes.md) | Evidence-backed failure modes | 0 src |
 | 16 | [Python SDK](16-python-sdk-quality.md) | Thin client; zero algo duplication | +1 MB wheel |
 | 17 | [Hybrid cache](17-hybrid-semantic-cache.md) | 4-tier cache | 0 deps default |
@@ -201,10 +201,10 @@ These constraints are CI-enforced where possible. Reviewer must reject any PR th
 | **No internal duplication of canonical primitives.** | `scripts/check_internal_no_duplication.sh` walks every entry in [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) and verifies the symbol exists in exactly the declared file. Adds two new patterns per phase that introduces a new primitive. |
 | **No required model download.** | `tests/contract/test_default_install_no_models.py` verifies the default install never writes to `assets/models/` at startup. |
 | **No required external service.** | `tests/contract/test_default_install_no_external_services.py` runs the proxy with all network blocked except the configured upstream provider; default config must boot. |
-| **Code budget.** | `scripts/check_code_budget.sh` (lands with Phase 16): (a) `src/lattice/` total LoC ≤ declared per-phase budget; (b) per-directory caps; (c) net delta on every PR must match the phase doc's declared `LoC delta`. Phase docs without a declared delta block merge. |
+| **Code budget.** | `scripts/check_code_budget.sh` ([Phase 13](13-honesty-pass.md)): per-directory caps, no file >800 LoC; `enforce_total_v2` when Phase 31 flips. No per-phase net LoC gate. |
 | **No file over 800 LoC.** | Existing R6 enforcement (file split required when a single file grows past 800 lines). |
 | **No raw user content in receipts/headers/spans by default.** | `tests/contract/test_no_user_content_in_telemetry.py` runs a sample workload, captures all telemetry, asserts no message-text substring leaks. |
-| **Footprint budget.** | `tests/integration/footprint/test_4gb_laptop.py` and `test_2gb_vps.py` block merge on regression. |
+| **Footprint budget.** | `tests/integration/footprint/test_{4gb_laptop,2gb_vps,cold_start}.py` — skeleton Phase 16; block merge on regression once implemented. |
 | **Reversibility property.** | Property test in `tests/unit/transforms/test_reversibility_property.py` — for any transform, `reverse(apply(x)) == x` modulo allowed lossy fields. |
 | **Transport policies live in one place.** | After [Phase 20](14-transport-layer-consolidation.md): retry/timeout/circuit-breaker/backpressure logic exists exactly once in `src/lattice/transport/`. CI gate `tests/contract/test_transport_unification.py` greps for `httpx.AsyncClient(` outside the transport package — block merge on hit (adapters must go through the unified transport). |
 

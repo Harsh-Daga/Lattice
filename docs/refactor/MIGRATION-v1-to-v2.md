@@ -1,5 +1,7 @@
 # Migration: v1.x → v2 forward plan
 
+> **Status:** Skeleton — index for v2 phase renumber; expand per phase as each ships.
+
 > Companion to [MIGRATION.md](MIGRATION.md) (v0.x → v1.0.0 import map). This doc covers **user-visible** changes from the v2 forward plan (Phases 13–34).
 >
 > Link from: [FORWARD_PLAN.md](FORWARD_PLAN.md), [README.md](../../README.md), [AGENTS.md](../../AGENTS.md), [CHANGELOG.md](../../CHANGELOG.md).

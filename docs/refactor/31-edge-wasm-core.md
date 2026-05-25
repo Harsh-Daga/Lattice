@@ -12,7 +12,6 @@
 >
 > **Estimated effort.** 10 days (1 PR for the core + bindings; ~+6000 LoC Rust, ~+400 LoC integration glue across Python and TS).
 
-> **LoC delta (declared).** +4500 net (`crates/` + bindings; not counted in `src/lattice/` cap).
 > **Transport role.** Accelerates framing, fingerprint, streaming buffer used **on** the transport path; does not replace Phase 20 dispatcher.
 > **Registry.** §2–§4 Rust mirrors + SDK FFI surfaces.
 

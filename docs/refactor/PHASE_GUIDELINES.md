@@ -43,20 +43,20 @@ From [FORWARD_PLAN.md](FORWARD_PLAN.md). Every phase doc’s opening blockquote 
 ## 6. Registry and CI (every phase PR)
 
 1. Update [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md).
-2. Update [CODE_BUDGET.txt](CODE_BUDGET.txt) with `phase_NN_*=±delta`.
-3. Set `LATTICE_PHASE_DELTA=phase_NN_*` in CI for delta enforcement when touching `src/lattice/`.
+2. Update [CODE_BUDGET.txt](CODE_BUDGET.txt) **directory caps** when a phase owns a directory (ratchet down with justification — do not add per-phase net LoC keys).
+3. Ensure `scripts/check_code_budget.sh` and `scripts/check_internal_no_duplication.sh` pass in `refactor-gate.yml`.
 
 ---
 
-## R5. Code budget schedule (Phase 13 doc update)
+## R5. Code budget schedule (Phase 13+)
 
 | Flag | Value | Meaning |
 |---|---|---|
-| `enforce_phase_delta` | **1** | Every labeled forward-plan PR must match declared delta (±10%). |
-| `enforce_dir_caps` | **1** | Caps = current baseline +5%; ratchet down per phase comments in `CODE_BUDGET.txt`. |
+| `enforce_dir_caps` | **1** | Per-directory caps in `CODE_BUDGET.txt` (baseline +5% at Phase 13). |
 | `enforce_total_v2` | **0** until Phase 31 | **Must flip to 1** no later than Phase 31; Rust core migrates algorithms out of `src/lattice/` until total ≤ 35 000. |
+| Per-phase net LoC | **removed** | Do not declare `phase_NN_*` deltas — use dir caps, 800-LoC/file, no-dup gates, and footprint tests instead. |
 
-Shrink schedule (net declared deltas): Phase 13 **-1500**, Phase 14 **-1500**, later growth phases offset until Phase 31 forces migration to `crates/lattice-core/`.
+**Shrink targets (narrative, not CI math):** Phase 14 consolidates adapter transport; Phase 31 moves algorithms to `crates/lattice-core/`. Phase 13 structural splits may net positive LoC — that is acceptable when caps and no-dup gates pass.
 
 ---
 

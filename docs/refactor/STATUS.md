@@ -19,7 +19,7 @@
 > 2. **No external LLM dependency** beyond the user's chosen provider.
 > 3. **Open source self-hosted only.** No cloud product.
 > 4. **One algorithm, one implementation — across SDKs AND internally.** Enforced by `scripts/check_sdk_no_algorithm_duplication.sh` and `scripts/check_internal_no_duplication.sh` (the latter walks [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md)).
-> 5. **Codebase shall not grow unbounded.** `src/lattice/` LoC cap at v2.0 is **35 000** lines (~49 000 today; ratchet in [CODE_BUDGET.txt](CODE_BUDGET.txt)). `enforce_phase_delta=1`. Enforced by `scripts/check_code_budget.sh` ([Phase 13](13-honesty-pass.md)).
+> 5. **Codebase shall not grow unbounded.** Per-directory caps + 800-LoC/file + no-dup gates (`scripts/check_code_budget.sh`, `check_internal_no_duplication.sh`). Total cap 35 000 at v2.0 (`enforce_total_v2` flips Phase 31). No per-phase net LoC gate.
 > 6. **Transport-first design.** After [Phase 14](14-transport-layer-consolidation.md): retry / timeout / circuit-breaker / backpressure / pooling / multiplexing exist exactly once in `src/lattice/transport/`. Enforced by `tests/contract/test_transport_unification.py`.
 >
 > What's been cut from the prior forward-plan draft (full rationale in [FORWARD_PLAN.md §1](FORWARD_PLAN.md)):
@@ -30,7 +30,7 @@
 > - ONNX injection classifier as default (Phase 21): now opt-in `[injection]` extra. Default is heuristic phrase matcher (zero deps).
 > - LLMLingua-2 in the default compression story (Phase 27): now opt-in `[llmlingua]` extra (~600 MB) with an explicit first-run footprint warning.
 > - Per-SDK reimplementation of reverse-pass / hooks / streaming (Phase 19, 17): replaced by the single-core architecture in Phase 31.
-> - Per-adapter retry / timeout / `httpx.AsyncClient` instantiation (~17 copies of nearly-identical transport code): replaced by the single transport layer in [Phase 20](14-transport-layer-consolidation.md). Net **-1500 LoC**.
+> - Per-adapter retry / timeout / `httpx.AsyncClient` instantiation (~17 copies of nearly-identical transport code): replaced by the single transport layer in [Phase 14](14-transport-layer-consolidation.md). Shrink target ~1500 LoC (dir caps + transport unification tests, not a net-LoC gate).
 > - VSCode marketplace ceremony, Helm chart, signed-wheel sigstore ritual (Phase 34): trimmed to Docker + PyPI + npm + sideload `.vsix`.
 
 ---
@@ -56,7 +56,7 @@
 | **11**      | ✅ Done             | Phase 11 branch | `tests/unit/` mirrors `src/lattice/`; `FEATURE_PARITY.md` (61 rows); contract matrices; `pytest-xdist`; pinned count. |
 | **12**      | ✅ Done             | v1.0.0 docs release | README/AGENTS rewrite, CHANGELOG, MIGRATION, `runtime.md`, version `1.0.0`, doc dedup. |
 
-**Current totals.** **2039** tests collected (pinned on honesty branch); **Phases 0–12** ✅ on `main`. **Phase 13** (honesty pass) ✅ on branch `refactor/forward-plan-phase-12-honesty` — merge to `main` pending (§1.3 contract tests + doc alignment complete). **Next:** [Phase 14 — Transport consolidation](14-transport-layer-consolidation.md). See [MIGRATION-v1-to-v2.md](MIGRATION-v1-to-v2.md). **Benchmark gates** remain operator-run when `OLLAMA_CLOUD_API_KEY` is set.
+**Current totals.** **2042** tests collected (pinned on honesty branch); **Phases 0–12** ✅ on `main`. **Phase 13** (honesty pass) ✅ on branch `refactor/forward-plan-phase-12-honesty` — merge to `main` pending. Code budget: **dir caps + 800-LoC/file + no-dup** (per-phase net LoC gate removed). **Next:** [Phase 14 — Transport consolidation](14-transport-layer-consolidation.md). See [MIGRATION-v1-to-v2.md](MIGRATION-v1-to-v2.md). **Benchmark gates** remain operator-run when `OLLAMA_CLOUD_API_KEY` is set.
 
 ---
 

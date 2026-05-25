@@ -1,9 +1,10 @@
 # Phase 15 — Chaos & Failure-Mode Contract
 
+> **Status:** Skeleton — renumber/index placeholder; full failure-surface table + chaos harness land in this phase's implementation PR.
+
 > **Footprint impact.** 0 `src/lattice/` LoC; +1200 LoC `tests/integration/chaos/`; +200 LoC transport probe hooks.
 > **Algorithm location.** Contract table in `tests/integration/chaos/contract.py`; probes in `src/lattice/transport/` (Phase 20 surface only).
 > **External-service requirement.** None (in-process toxiproxy-style TCP injector; pure Python, no new runtime dep).
-> **LoC delta (declared).** 0 src; +1400 tests.
 > **Transport role.** Defines MUST behaviour for every failure on the proxy↔provider path after [Phase 20](14-transport-layer-consolidation.md). This phase calls `transport.request()` — no per-adapter retry, timeout, or backoff.
 > **Guidelines.** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) — constraints 1–6.
 >

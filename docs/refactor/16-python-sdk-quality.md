@@ -7,7 +7,6 @@
 > **External-service requirement.** None.
 >
 
-> **LoC delta (declared).** +500 net (`sdk/`).
 > **Transport role.** SDK is a thin HTTP client to the proxy transport layer — zero transport/retry/pool code in SDK.
 > **Registry.** §12 SDK surfaces.
 

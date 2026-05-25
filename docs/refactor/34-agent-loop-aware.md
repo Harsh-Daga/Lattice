@@ -7,7 +7,6 @@
 > **External-service requirement.** None.
 >
 
-> **LoC delta (declared).** +2300 net (`agent/` step profiles + `tools/cursor-extension/`).
 > **Transport role.** Per-step profiles adjust pipeline plan before transport dispatch; extension reads receipts (no transport code).
 > **Registry.** §4 step classifier + step profiles.
 

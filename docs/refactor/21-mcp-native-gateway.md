@@ -7,7 +7,6 @@
 > **External-service requirement.** None for serving. Federated upstream MCP servers (the user's own configured tools) are the only "external services" — chosen by the user, not imposed by us.
 >
 
-> **LoC delta (declared).** +3300 net (`mcp/`). Within cap 1500 — may require cap bump with justification in PR.
 > **Transport role.** MCP is an alternate ingress into the same pipeline + transport dispatcher as HTTP proxy.
 > **Registry.** §13 MCP.
 

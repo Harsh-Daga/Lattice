@@ -1,9 +1,10 @@
-# Phase 25 — Competitive Benchmark + Quality SLOs
+# Phase 25 — Competitive Benchmark
+
+> **Status:** Skeleton — competitive matrix + quality-floor config land in this phase's implementation PR. + Quality SLOs
 
 > **Footprint impact.** 0 `src/lattice/` LoC; +800 LoC `benchmarks/competitive/`; +600 LoC tests.
 > **Algorithm location.** Matrix runner in `benchmarks/competitive/matrix.py`; quality floor gate in `core/config.py::quality_floor`.
 > **External-service requirement.** Operator API keys for upstream provider and competitor gateways (CI nightly, non-blocking).
-> **LoC delta (declared).** 0 src; +1400 benchmarks/tests.
 > **Transport role.** Compares end-to-end proxy latency and wire size using Phase 20 transport; competitors run with identical upstream provider+model.
 > **Guidelines.** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) — constraints 1–6.
 >

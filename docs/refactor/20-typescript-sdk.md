@@ -7,7 +7,6 @@
 > **External-service requirement.** None for proxy mode (just point at a running proxy). None for in-process mode beyond `@lattice/core-wasm`. The user's provider is the only external service.
 >
 
-> **LoC delta (declared).** +2200 net (`packages/typescript-sdk/`).
 > **Transport role.** Default: HTTP to proxy transport. In-process: `@lattice/core-wasm` only — no TS transport stack.
 > **Registry.** §12 TypeScript SDK.
 

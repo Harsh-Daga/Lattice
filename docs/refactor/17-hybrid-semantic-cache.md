@@ -7,7 +7,6 @@
 > **External-service requirement.** None for default in-memory tier. Redis or Postgres only if the user wants distributed cache across multiple proxy instances.
 >
 
-> **LoC delta (declared).** +1800 net (`cache/`). Within cap 2500.
 > **Transport role.** Cache lookup/store on the request path before `TransportDispatcher.execute()`; optional embedding via user's provider only.
 > **Registry.** §5 cache layers + §6 embedding backends.
 

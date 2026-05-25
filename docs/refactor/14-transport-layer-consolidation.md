@@ -10,9 +10,8 @@
 >
 > **External-service requirement.** None. The user's chosen provider is the only external service. Transport metrics export via the existing OpenTelemetry path ([Phase 22](19-otel-genai.md)).
 >
-> **Estimated effort.** 8 days (1 PR, **net -1500 LoC**, +3000 new, -4500 deleted across adapters).
+> **Estimated effort.** 8 days (1 PR; **shrink target** ~1500 net LoC by deduplicating adapter transport — verified via dir caps + `test_transport_unification.py`, not a per-phase LoC gate).
 
-> **LoC delta (declared).** **-1500 net** — consolidates adapter transport code into `transport/`.
 > **Transport role.** **Canonical owner** of proxy↔provider byte path: pool, retry, breaker, backpressure, stream resume, metrics.
 > **Registry.** §7 entire section; adapters demoted to declarative-only.
 

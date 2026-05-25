@@ -6,7 +6,6 @@
 >
 > **External-service requirement.** None.
 >
-> **LoC delta (declared).** +1800 net (`planner/` + tests); `planner/` cap 2200 → 2800 in same PR update to [CODE_BUDGET.txt](CODE_BUDGET.txt).
 >
 > **Transport role.** Per-segment `transport_strategy` feeds `TransportPlan` (delta vs full replay, prefix stability) before Phase 20 dispatch — aligns structural prompts with wire economics.
 >

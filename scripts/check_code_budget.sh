@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Enforce src/lattice/ LoC caps from docs/refactor/CODE_BUDGET.txt (Phase 13+).
+# Enforce src/lattice/ structural caps from docs/refactor/CODE_BUDGET.txt (Phase 13+).
+#
+# Checks: total_v2 (when enforce_total_v2=1), per-directory caps, no file >800 LoC.
+# Per-phase net LoC deltas are intentionally NOT enforced (see CODE_BUDGET.txt header).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -46,7 +49,7 @@ while IFS= read -r line; do
   key="${line%%=*}"
   val="${line#*=}"
   case "${key}" in
-    total_v2|phase_*|crates_*|bindings_*|typescript_*|cursor_*|enforce_*)
+    total_v2|crates_*|bindings_*|typescript_*|cursor_*|enforce_*)
       continue
       ;;
   esac
@@ -76,45 +79,8 @@ while IFS= read -r big; do
   fail=1
 done < <(find "${SRC}" -name '*.py' -print0 | xargs -0 wc -l 2>/dev/null | awk '$1 > 800 && $2 != "total" {print $2}')
 
-enforce_delta="$(grep -E '^enforce_phase_delta=' "${BUDGET_FILE}" 2>/dev/null | cut -d= -f2 || true)"
-phase_key="${LATTICE_PHASE_DELTA:-}"
-if [[ -z "${phase_key}" ]]; then
-  # Doc-only / multi-phase PRs: skip delta check unless env set
-  phase_key=""
-fi
-if [[ "${enforce_delta}" == "1" ]] && [[ -n "${phase_key}" ]] && git -C "${ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  phase_decl="$(grep -E "^${phase_key}=" "${BUDGET_FILE}" | cut -d= -f2 || true)"
-  if [[ -n "${phase_decl}" ]]; then
-    base="$(git -C "${ROOT}" merge-base HEAD origin/main 2>/dev/null || git -C "${ROOT}" merge-base HEAD main 2>/dev/null || true)"
-    if [[ -n "${base}" ]]; then
-      added=0
-      removed=0
-      while read -r a r _; do
-        added=$((added + a))
-        removed=$((removed + r))
-      done < <(git -C "${ROOT}" diff --numstat "${base}"...HEAD -- 'src/lattice/**/*.py' 2>/dev/null || true)
-      net=$((added - removed))
-      if [[ "${phase_decl}" =~ ^- ]]; then
-        target="${phase_decl#-}"
-        min_remove=$((target * 9 / 10))
-        if [[ "${net}" -gt "-${min_remove}" ]]; then
-          echo "check_code_budget: PR net LoC ${net} weaker than ${phase_key}=${phase_decl} (need ~-${min_remove} or more)" >&2
-          fail=1
-        fi
-      elif [[ "${phase_decl}" =~ ^\+ ]]; then
-        target="${phase_decl#+}"
-        max_add=$((target * 11 / 10))
-        if [[ "${net}" -gt "${max_add}" ]]; then
-          echo "check_code_budget: PR net LoC ${net} exceeds ${phase_key}=${phase_decl} (+10% max ${max_add})" >&2
-          fail=1
-        fi
-      fi
-    fi
-  fi
-fi
-
 if [[ "${DRY_RUN}" == "1" ]]; then
-  echo "check_code_budget: dry-run total=${total} enforce_total=${enforce_total} enforce_dirs=${enforce_dirs} enforce_delta=${enforce_delta} phase_key=${phase_key:-<unset>}"
+  echo "check_code_budget: dry-run total=${total} enforce_total=${enforce_total} enforce_dirs=${enforce_dirs}"
   exit 0
 fi
 

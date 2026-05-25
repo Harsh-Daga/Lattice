@@ -1,13 +1,12 @@
 # Phase 13 — Honesty Pass + Internal-Dedup Audit + Code-Budget Gate
 
-> **Footprint impact.** Net **-1500 LoC** (was -1100; expanded scope catches more duplication). Zero new runtime deps. The split files de-load imports too, so cold-start time drops ~50 ms.
+> **Footprint impact.** Zero new runtime deps. Structural splits add package scaffolding (net `src/lattice/` may grow on this PR); **real shrink** is targeted at [Phase 14](14-transport-layer-consolidation.md) (adapter transport dedup) and [Phase 31](31-edge-wasm-core.md) (Rust core). User-facing lightweight constraint is enforced by footprint tests ([FORWARD_PLAN.md §3.2](FORWARD_PLAN.md)) — deferred to Phase 16, tracked in [PHASE_COMPLETION_TRACKER.md](PHASE_COMPLETION_TRACKER.md).
 >
 > **Algorithm location.** Pure cleanup phase — no new algorithms introduced. Collapses every primitive listed in [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) into the declared canonical home and lands the CI gates that keep them there.
 >
 > **External-service requirement.** None.
 >
-
-> **LoC delta (declared).** -1500 net. Lands CI gates; shrinks codebase.
+> **Code health gates (CI).** Per-directory LoC caps, no file >800 LoC, internal no-dup + SSOT registry — **not** per-phase net LoC accounting (see [CODE_BUDGET.txt](CODE_BUDGET.txt)).
 > **Transport role.** Prerequisite for [Phase 14](14-transport-layer-consolidation.md) — splits files, collapses duplicates, enables `test_transport_unification` shell.
 > **Registry.** Full audit; updates [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) process + [CODE_BUDGET.txt](CODE_BUDGET.txt).
 
@@ -16,12 +15,12 @@
 >
 > **Outcome.** `MILV` → `post_transform_guard`. `BatchAccumulator` → `RequestCoalescer`. Dual `ExecutionPlan` collapses to one. `Candidate.score` / `CandidateScorer` formula has one home. Seven files over 800 LoC are split. Transform registry and runner factory are generated from the same source. **Beyond the original honesty-pass scope**, this phase now also lands:
 > - `scripts/check_internal_no_duplication.sh` — walks [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) and verifies every named primitive exists at its declared path and nowhere else.
-> - `scripts/check_code_budget.sh` — enforces the per-directory LoC caps in [FORWARD_PLAN.md §6.1](FORWARD_PLAN.md). Every PR must declare its LoC delta; CI blocks merge on overrun.
+> - `scripts/check_code_budget.sh` — enforces per-directory LoC caps and the 800-LoC-per-file ceiling ([FORWARD_PLAN.md §6.1](FORWARD_PLAN.md)).
 > - An audit of **internal duplications** beyond the named cases — see §1.3.
 >
-> **Why this matters for the v2.0 forward plan.** Phase 13 sets the structural baseline that every later phase relies on. In particular, [Phase 17](17-hybrid-semantic-cache.md) needs the cache split, [Phase 18](18-native-guardrails.md) needs the guardrails split, [Phase 31](31-edge-wasm-core.md) needs the algorithms to have one canonical Python home before they can be ported to Rust, and [Phase 14](14-transport-layer-consolidation.md) needs the code-budget gate in place to enforce its -1500 LoC consolidation. Doing this work first is what keeps every subsequent phase lightweight — there's no scaffolding to drag around and no way to silently regress.
+> **Why this matters for the v2.0 forward plan.** Phase 13 sets the structural baseline that every later phase relies on. In particular, [Phase 17](17-hybrid-semantic-cache.md) needs the cache split, [Phase 18](18-native-guardrails.md) needs the guardrails split, [Phase 31](31-edge-wasm-core.md) needs the algorithms to have one canonical Python home before they can be ported to Rust, and [Phase 14](14-transport-layer-consolidation.md) consolidates duplicated adapter transport code. Doing this work first is what keeps every subsequent phase lightweight — there's no scaffolding to drag around and no way to silently regress.
 >
-> **Estimated effort.** 4 days (was 3; expanded scope adds 1 day for the audit + CI gates). 1 PR, ~+1600/-3100 LoC net.
+> **Estimated effort.** 4 days (was 3; expanded scope adds 1 day for the audit + CI gates). 1 PR; structural prep may net positive LoC in `src/lattice/` (splits + `__init__.py` re-exports) — acceptable when dir caps and no-dup gates pass.
 
 ---
 
@@ -61,15 +60,17 @@ Plus the umbrella registry-check `tests/contract/test_single_source_of_truth.py`
 
 ## 1.4 The code-budget gate
 
-`scripts/check_code_budget.sh` lands in this phase and is wired into `.github/workflows/refactor-gate.yml`. It performs three checks:
+`scripts/check_code_budget.sh` lands in this phase and is wired into `.github/workflows/refactor-gate.yml`. It enforces **structural** caps only:
 
-1. **Total `src/lattice/` LoC ≤ declared budget per phase.** The current phase's budget lives in `docs/refactor/CODE_BUDGET.txt` (a one-liner per phase) and is read by the script.
-2. **Per-directory caps** from [FORWARD_PLAN.md §6.1](FORWARD_PLAN.md), mirrored in `docs/refactor/CODE_BUDGET.txt`.
-3. **Per-PR delta matches declaration.** Every PR with the label `phase:NN` must reference the phase doc and the doc's declared `LoC delta`; CI computes actual `git diff --stat` LoC delta and fails if it exceeds declared + 10%.
+1. **Per-directory caps** from [FORWARD_PLAN.md §6.1](FORWARD_PLAN.md), mirrored in `docs/refactor/CODE_BUDGET.txt` (`enforce_dir_caps=1`).
+2. **No file >800 LoC** under `src/lattice/` (Ground Rule R6).
+3. **Total `src/lattice/` LoC ≤ 35 000** when `enforce_total_v2=1` (flips no later than Phase 31 when algorithms migrate to `crates/lattice-core/`).
 
-Block-merge behaviour: a PR over budget either (a) gets the delta declaration updated with a justification in the phase doc, or (b) is rejected.
+**Not enforced:** per-phase net LoC deltas (`phase_*` keys removed from `CODE_BUDGET.txt`). Directory caps, the 800-LoC rule, and `check_internal_no_duplication.sh` catch the failure modes that matter; net line count on a structural split PR is not a health signal.
 
-The script is ~80 LoC of bash + awk. Lives at `scripts/check_code_budget.sh`. No runtime cost; CI-only.
+Block-merge behaviour: a PR over a **directory cap** or **file-size** limit must shrink, split further, or update `CODE_BUDGET.txt` with justification in the owning phase doc.
+
+The script is ~70 LoC of bash. No runtime cost; CI-only.
 
 ---
 

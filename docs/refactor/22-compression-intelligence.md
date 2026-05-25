@@ -7,7 +7,6 @@
 > **External-service requirement.** None. Optional: the user's own provider's cheap text model can be used as an LLM-judge for tuning if explicitly opted in (benchmark-only, never in hot path).
 >
 
-> **LoC delta (declared).** +900 net (streaming + tool_diff; LLMLingua opt-in isolated).
 > **Transport role.** Streaming reverse-pass on the **response transport stream** (SSE); integrates with Phase 20 stream resumption.
 > **Registry.** §4 streaming + tool_diff + optional llmlingua.
 

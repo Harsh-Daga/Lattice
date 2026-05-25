@@ -7,7 +7,6 @@
 > **External-service requirement.** None. The user's already-configured provider is the only external service. We never spin up our own Whisper / TTS / embedding model — passthrough only. Single-provider constraint upheld: every surface in this phase routes to the user's chosen provider, never selects between providers.
 >
 
-> **LoC delta (declared).** +4200 net (`gateway/` endpoints). Within cap 3200 — may require cap bump with justification.
 > **Transport role.** New HTTP surfaces (embeddings, batch, audio, realtime) all dispatch through unified `TransportDispatcher` (Phase 20).
 > **Registry.** §12 gateway endpoints + embedding_dedup transform.
 

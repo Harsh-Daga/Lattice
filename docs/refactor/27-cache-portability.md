@@ -9,7 +9,6 @@
 > **Reaffirms the no-multi-provider-routing rule.** This phase optimizes for the case where a user *deliberately decides* to change provider (e.g. moves from `openai/gpt-4o` to `anthropic/claude-3-5-sonnet` via a config change). LATTICE does not pick the provider; the user does. The portability layer ensures the next provider's experience is instantly warm.
 >
 
-> **LoC delta (declared).** +2400 net (`cache/portability/`).
 > **Transport role.** Portable manifests attach to cache entries; no multi-provider routing — user-initiated provider switch only.
 > **Registry.** §5 portability + warmer + analyzer.
 

@@ -1,9 +1,10 @@
-# Phase 33 — Threat Model & Credential Boundary
+# Phase 33 — Threat Model
+
+> **Status:** Skeleton — assets/adversaries/mitigations + contract tests land in this phase's implementation PR. & Credential Boundary
 
 > **Footprint impact.** Doc-only + tests; 0 `src/lattice/` LoC delta; +600 LoC contract/audit tests.
 > **Algorithm location.** `docs/refactor/33-threat-model.md` (this doc); CI gates in `tests/contract/test_header_allowlist.py`, `test_log_redaction.py`, `test_receipt_replay.py`.
 > **External-service requirement.** None.
-> **LoC delta (declared).** 0 src; +600 tests.
 > **Transport role.** Maps mitigations to Phase 20 `transport.request_id`, Phase 22 cache scope keys, Phase 26 guardrails, Phase 28 receipt nonces.
 > **Guidelines.** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) — constraints 1–6.
 >

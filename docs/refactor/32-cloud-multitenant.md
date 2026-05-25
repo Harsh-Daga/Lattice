@@ -9,7 +9,6 @@
 > **External-service requirement.** None for SQLite backend (default). Postgres only for teams that want shared state across multiple proxy replicas. No cloud KMS, no Stripe, no managed identity provider.
 >
 
-> **LoC delta (declared).** +3000 net (`auth/`, `keys/`, `quotas/`, `tenants/`). **Optional** — off by default.
 > **Transport role.** Admission control at proxy ingress (bearer → tenant) before pipeline/transport; virtual keys supply provider credentials to dispatcher.
 > **Registry.** §11 auth/multi-user.
 

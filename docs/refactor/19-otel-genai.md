@@ -7,7 +7,6 @@
 > **External-service requirement.** None required. The OTel exporter targets the user's existing observability stack via OTLP (which can point at anything — local Jaeger, Datadog Agent, Honeycomb, Phoenix, OpenTelemetry Collector). No vendor lock-in; no LATTICE-owned telemetry service.
 >
 
-> **LoC delta (declared).** +1400 net (`telemetry/otel/`). Opt-in `[otel]` extra.
 > **Transport role.** Spans cover transport (`lattice.transport.*`) + pipeline; transport metrics from Phase 20 feed OTel.
 > **Registry.** §10 telemetry/otel.
 

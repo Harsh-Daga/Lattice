@@ -1,9 +1,10 @@
 # Phase 29 — Self-Tuning Bandit Routing (Thompson Sampling)
 
+> **Status:** Skeleton — Thompson bandit + planner wiring land in this phase's implementation PR.
+
 > **Footprint impact.** Pure `numpy` Beta posteriors; no ML library or model download.
 > **Algorithm location.** `src/lattice/planner/bandit/thompson.py`, `reward.py`, `store.py`. Registry: [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) §4.
 > **External-service requirement.** None.
-> **LoC delta (declared).** +700 net (`planner/bandit/`).
 > **Transport role.** Bandit selects transform allowlists only; provider calls use `transport.request()` from Phase 20.
 > **Guidelines.** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) — constraints 1–6.
 >

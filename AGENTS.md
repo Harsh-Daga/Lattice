@@ -95,7 +95,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 - Integration: `tests/integration/`
 - E2E: `tests/e2e/`
 - Contract: `tests/contract/` — `uv run pytest tests/contract/ -q`; full live probes: `LATTICE_CONTRACT_FULL=1 uv run pytest tests/contract/ -q --run-contract`
-- **2039** tests collected (pinned in `tests/unit/test_test_count_pinned.py`); update pass/skip counts when CI runs on this branch
+- **2042** tests collected (pinned in `tests/unit/test_test_count_pinned.py`); update pass/skip counts when CI runs on this branch
 
 ## Key environment variables
 
@@ -124,7 +124,7 @@ Numeric README claims must match [`benchmarks/results/CLAIMS.md`](benchmarks/res
 
 | Metric | Value |
 |--------|-------|
-| Tests collected | **2039** (pinned) |
+| Tests collected | **2042** (pinned) |
 | Tests passed | **1824** (215 skipped; refresh on CI) |
 | Contract tests | green (`tests/contract/`) |
 | ruff / format / mypy | **0 errors** |

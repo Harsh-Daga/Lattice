@@ -7,7 +7,6 @@
 > **External-service requirement.** None for default detectors. Optional: any of the heavy detectors can be bound to a cloud API instead (Bedrock Guardrails, Azure Content Safety) — for users who already have those subscriptions. We never require them.
 >
 
-> **LoC delta (declared).** +1700 net (`safety/`). Within cap 2000.
 > **Transport role.** Input guardrails pre-dispatch; output guardrails post-response — hooks on transport path, not inside adapters.
 > **Registry.** §4 pipeline + safety subpackages.
 

@@ -1,9 +1,10 @@
 # Phase 30 — Per-Route Profiles + Hot Reload
 
+> **Status:** Skeleton — profile registry + reload land in this phase's implementation PR.
+
 > **Footprint impact.** Pydantic profiles; reload via SIGHUP or optional `watchdog` (`[hot-reload]` extra ~200 KB). Default: polling/SIGHUP only.
 > **Algorithm location.** `src/lattice/policy/profiles.py`, `matchers.py`, `src/lattice/config/reload.py`. Registry: [SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) §14.
 > **External-service requirement.** None.
-> **LoC delta (declared).** +600 net (`policy/`, `config/reload.py`).
 > **Transport role.** Profiles override cache/guardrail/agent settings on `request.state` before `transport.request()`; they do not add per-route retry code.
 > **Guidelines.** [PHASE_GUIDELINES.md](PHASE_GUIDELINES.md) — constraints 1–6.
 >

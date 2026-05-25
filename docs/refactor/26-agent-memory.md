@@ -7,7 +7,6 @@
 > **External-service requirement.** None. The user's provider is the only external service touched; we never bring in our own LLM.
 >
 
-> **LoC delta (declared).** +2000 net (`agent/`). Within cap 2000.
 > **Transport role.** Pre-dispatch request shaping (GC, budgets). Agent retry strategy ≠ transport retry ([SINGLE_SOURCE_OF_TRUTH.md](SINGLE_SOURCE_OF_TRUTH.md) §6 vs §7).
 > **Registry.** §6 agent memory.
 
