@@ -17,13 +17,13 @@ from lattice.core.result import is_err, unwrap, unwrap_err
 from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.pipeline.runner import Pipeline
 from lattice.providers.credentials import CredentialResolver
-from lattice.transport import DirectHTTPProvider, ProviderRegistry
 from lattice.safety.risk_scoring import (
     lossy_transform_allowed,
     request_safety_profile,
     structure_signature,
 )
 from lattice.telemetry.cost_estimator import CostEstimator
+from lattice.transport import DirectHTTPProvider, ProviderRegistry
 from lattice.transport.serialization import message_from_dict, message_to_dict
 from lattice.transport.types import Request, Response
 
