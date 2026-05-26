@@ -13,6 +13,9 @@ def test_lace_records_and_clears_transient(tmp_path: Any, monkeypatch: Any) -> N
     cfg.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(cfg))
+    # ``_TRANSIENT_PATH`` is bound at import; point it at an isolated file for xdist CI.
+    transient_path = cfg / "lattice" / "transient_laces.json"
+    monkeypatch.setattr(ms, "_TRANSIENT_PATH", transient_path)
     events: list[tuple[str, str]] = []
 
     def track_record(agent: str, pid: int) -> None:
