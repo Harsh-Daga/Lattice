@@ -70,7 +70,7 @@ from lattice.protocol.multiplex import MultiStreamMux, ReliabilityMode, StreamTy
 from lattice.protocol.reliability import SelectiveReliability
 from lattice.protocol.resume import ReplayWindow, StreamChunk, StreamManager
 from lattice.providers.capabilities import CacheMode, Capability, get_capability_registry
-from lattice.providers.transport import ConnectionPoolManager
+from lattice.transport import ConnectionPoolManager
 
 
 @contextmanager

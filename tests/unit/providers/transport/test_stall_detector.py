@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lattice.providers.transport.stall_detector import StreamStallDetector
+from lattice.transport.stall_detector import StreamStallDetector
 
 
 def test_true_stall_detection() -> None:

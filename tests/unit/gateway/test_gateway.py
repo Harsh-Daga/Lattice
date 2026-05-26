@@ -334,7 +334,7 @@ async def test_anthropic_passthrough_requires_explicit_base_url() -> None:
     falls through to ``_WELL_KNOWN_PROVIDER_URLS`` (api.anthropic.com) so the
     passthrough can still forward requests.
     """
-    from lattice.providers.transport import ProviderRegistry
+    from lattice.transport import ProviderRegistry
 
     async def _mock_request(*_a: Any, **_k: Any) -> SimpleNamespace:
         return SimpleNamespace(status_code=200, content=b"{}", headers={})

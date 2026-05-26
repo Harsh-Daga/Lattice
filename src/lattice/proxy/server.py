@@ -62,7 +62,7 @@ Design Decisions
   • ``lattice.state.session``         — session management
   • ``lattice.protocol.manifest``    — canonical segments
   • ``lattice.protocol.cache_planner`` — provider cache optimization
-  • ``lattice.providers.transport``  — DirectHTTPProvider + connection pools
+  • ``lattice.transport``  — DirectHTTPProvider + connection pools
   • ``lattice.providers.*``          — per-provider adapters
   • ``lattice.integrations.agents``  — agent config injection
 

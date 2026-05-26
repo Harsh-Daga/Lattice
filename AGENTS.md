@@ -61,7 +61,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 | `pipeline/` | `Pipeline`, policy, guardrails, MILV, representation_optimizer |
 | `transforms/` | Per-transform modules; `registry.py`; `optimizers/` orchestrators |
 | `runtime/` | **TierClassifier** (workload complexity — not a provider router) |
-| `transport/` | Wire types, serialization, delta_wire, TACC congestion (unified layer in [Phase 14](docs/refactor/14-transport-layer-consolidation.md)) |
+| `transport/` | Wire types, HTTP dispatch (`TransportDispatcher`), pool, retry, breaker, backpressure, TACC, delta_wire |
 | `protocol/` | Binary framing, manifest, segments |
 | `providers/` | `adapters/` (17 providers), `transport/` (HTTP dispatch), `credentials` |
 | `proxy/` | FastAPI server, health routes, `LatticeHeaderMiddleware` |
@@ -95,7 +95,7 @@ Request → profile → UnifiedPlanner → ExecutionPlan → Pipeline.compress �
 - Integration: `tests/integration/`
 - E2E: `tests/e2e/`
 - Contract: `tests/contract/` — `uv run pytest tests/contract/ -q`; full live probes: `LATTICE_CONTRACT_FULL=1 uv run pytest tests/contract/ -q --run-contract`
-- **2042** tests collected (pinned in `tests/unit/test_test_count_pinned.py`); update pass/skip counts when CI runs on this branch
+- **2070** tests collected (pinned in `tests/unit/test_test_count_pinned.py`); update pass/skip counts when CI runs on this branch
 
 ## Key environment variables
 

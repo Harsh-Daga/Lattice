@@ -49,11 +49,12 @@ from lattice.providers.tool_sanitizer import (
     restore_tool_call_ids,
     sanitize_tool_ids,
 )
-from lattice.providers.transport import (
+from lattice.transport import (
     ConnectionPoolManager,
     DirectHTTPProvider,
     ProviderRegistry,
     RateLimitTracker,
+    StreamStallDetector,
     _resolve_provider_name,
 )
 

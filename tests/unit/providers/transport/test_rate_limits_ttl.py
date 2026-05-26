@@ -6,7 +6,7 @@ import time
 
 import httpx
 
-from lattice.providers.transport.rate_limits import RATE_LIMIT_TTL_S, RateLimitTracker
+from lattice.transport.rate_limit import RATE_LIMIT_TTL_S, RateLimitTracker
 
 
 def test_rate_limit_evicts_stale(monkeypatch) -> None:

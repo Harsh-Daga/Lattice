@@ -253,7 +253,7 @@ class TestNativeGatewayEndpoint:
             return Response(content="native-ok", model="openai/gpt-4")
 
         monkeypatch.setattr(
-            "lattice.providers.transport.DirectHTTPProvider.completion",
+            "lattice.transport.DirectHTTPProvider.completion",
             _fake_completion,
         )
 
@@ -273,7 +273,7 @@ class TestNativeGatewayEndpoint:
             return Response(content="native-binary-ok", model="openai/gpt-4")
 
         monkeypatch.setattr(
-            "lattice.providers.transport.DirectHTTPProvider.completion",
+            "lattice.transport.DirectHTTPProvider.completion",
             _fake_completion,
         )
 

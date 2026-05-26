@@ -127,6 +127,11 @@ class TransportOutcome:
     # Generic fallback
     fallback_reason: str = ""
 
+    # Transport layer (Phase 14)
+    transport_rtt_ms: float = 0.0
+    transport_attempt: int = 0
+    transport_pool_utilization: float = 0.0
+
     def to_headers(self) -> dict[str, str]:
         """Produce response headers from this outcome.
 
@@ -156,6 +161,14 @@ class TransportOutcome:
             headers["x-lattice-stream-resumed"] = "true"
         if self.stream_resume_fallback_reason:
             headers["x-lattice-stream-resume-fallback-reason"] = self.stream_resume_fallback_reason
+        if self.transport_rtt_ms > 0:
+            headers["x-lattice-transport-rtt-ms"] = f"{self.transport_rtt_ms:.2f}"
+        if self.transport_attempt > 0:
+            headers["x-lattice-transport-attempt"] = str(self.transport_attempt)
+        if self.transport_pool_utilization > 0:
+            headers["x-lattice-transport-pool-utilization"] = (
+                f"{self.transport_pool_utilization:.3f}"
+            )
         return headers
 
     def to_stats(self) -> dict[str, Any]:
@@ -173,6 +186,9 @@ class TransportOutcome:
             "stream_resumed": self.stream_resumed,
             "stream_resume_fallback_reason": self.stream_resume_fallback_reason,
             "fallback_reason": self.fallback_reason,
+            "transport_rtt_ms": self.transport_rtt_ms,
+            "transport_attempt": self.transport_attempt,
+            "transport_pool_utilization": self.transport_pool_utilization,
         }
 
     def to_downgrade_categories(self) -> list[DowngradeCategory]:

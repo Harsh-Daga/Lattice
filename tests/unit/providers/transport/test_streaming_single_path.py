@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from lattice.providers.transport import DirectHTTPProvider
+from lattice.transport import DirectHTTPProvider
 from lattice.transport.types import Message, Request
 
 

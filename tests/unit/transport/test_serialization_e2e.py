@@ -10,7 +10,7 @@ Verifies that data flows correctly through the entire pipeline:
 from __future__ import annotations
 
 from lattice.protocol.content import ImagePart, ImageSource, ImageSourceType, TextPart
-from lattice.providers.transport import DirectHTTPProvider
+from lattice.transport import DirectHTTPProvider
 from lattice.transport.serialization import (
     message_from_dict,
     message_to_dict,

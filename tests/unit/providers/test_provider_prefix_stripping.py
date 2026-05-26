@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from lattice.providers.transport import ProviderRegistry
+from lattice.transport import ProviderRegistry
 
 
 class TestProviderPrefixStripping:

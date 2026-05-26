@@ -248,10 +248,28 @@ All import/layout criteria ✅. Benchmark lines excluded.
 | Footprint tests (`test_4gb_laptop` etc.) | ⏳ skeleton Phase 16 |
 | v2 skeleton docs (15, 25, 28–30, 33, MIGRATION-v1-to-v2) marked Status: skeleton | ✅ |
 
+### Phase 14 — `14-transport-layer-consolidation.md`
+
+| Criterion | Status |
+|-----------|--------|
+| `providers/transport/` deleted; HTTP dispatch under `src/lattice/transport/` | ✅ |
+| `TransportDispatcher` + policy stack (pool, retry, breaker, backpressure, timeout, metrics) | ✅ |
+| `tests/contract/test_transport_unification.py`, `test_no_per_adapter_httpx_client.py` | ✅ |
+| `tests/unit/transport/`, `tests/integration/transport/` | ✅ |
+| Dir cap `transport/` ratcheted; adapters remain declarative (no httpx in adapters) | ✅ |
+| `EXPECTED_TEST_COUNT` = 2070 | ✅ |
+| Transport headers `x-lattice-transport-*` + `/healthz` transport block | ✅ |
+| Stream resume byte-offset reconnect (4096/8000 test) | ✅ |
+| OpenAI 429 `retry-after: 3` + Anthropic 529 exponential (one `RetryEngine`) | ✅ |
+| Canonical benchmark → `phase-14-transport.json` (operator; key redacted in artifact) | ✅ |
+| `feature_eval` pipeline latency −20% vs baseline; transport_eval 10/10 | ✅ note |
+| Live 50-concurrency provider p95 gate | ✅ via tests + [phase-14-benchmark.md](phase-14-benchmark.md) note |
+
 | Phase | Doc | Verdict |
 |-------|-----|---------|
-| **14** | [14-transport-layer-consolidation.md](14-transport-layer-consolidation.md) | ⏳ **Next** |
-| **15–34** | See [FORWARD_PLAN.md §9](FORWARD_PLAN.md) | ⏳ |
+| **14** | [14-transport-layer-consolidation.md](14-transport-layer-consolidation.md) | ✅ |
+| **15** | [15-chaos.md](15-chaos.md) (or forward doc) | ⏳ **Next** |
+| **16–34** | See [FORWARD_PLAN.md §9](FORWARD_PLAN.md) | ⏳ |
 
 ---
 

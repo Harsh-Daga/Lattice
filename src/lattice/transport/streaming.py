@@ -11,7 +11,8 @@ import httpx
 import structlog
 
 from lattice.core.errors import ProviderTimeoutError
-from lattice.providers.transport.helpers import (
+from lattice.transport.congestion import TACCController
+from lattice.transport.helpers import (
     await_tacc_admission,
     build_request,
     next_stream_line,
@@ -23,11 +24,10 @@ from lattice.providers.transport.helpers import (
     stream_chunk_text,
     stream_retry_policy,
 )
-from lattice.providers.transport.pool import ConnectionPoolManager
-from lattice.providers.transport.rate_limits import RateLimitTracker
-from lattice.providers.transport.registry import ProviderRegistry, _resolve_provider_name
-from lattice.providers.transport.stall_detector import StreamStallDetector
-from lattice.transport.congestion import TACCController
+from lattice.transport.pool import ConnectionPoolManager
+from lattice.transport.rate_limit import RateLimitTracker
+from lattice.transport.registry import ProviderRegistry, _resolve_provider_name
+from lattice.transport.stall_detector import StreamStallDetector
 
 logger = structlog.get_logger()
 

@@ -14,8 +14,8 @@ from unittest.mock import patch
 import pytest
 
 from lattice.integrations.mcp import LatticeMCPTools
-from lattice.providers.transport import DirectHTTPProvider
 from lattice.sdk import LatticeClient
+from lattice.transport import DirectHTTPProvider
 from lattice.transport.types import Message, Request, Response
 
 # =============================================================================
@@ -176,20 +176,20 @@ class TestProxyProviderDetection:
     """Proxy correctly detects provider from header and model prefix."""
 
     def test_detect_provider_from_header(self) -> None:
-        from lattice.providers.transport import _resolve_provider_name
+        from lattice.transport import _resolve_provider_name
 
         assert _resolve_provider_name("gpt-4", provider_name="groq") == "groq"
         assert _resolve_provider_name("llama-3.1-70b", provider_name="groq") == "groq"
 
     def test_detect_provider_from_prefix(self) -> None:
-        from lattice.providers.transport import _resolve_provider_name
+        from lattice.transport import _resolve_provider_name
 
         assert _resolve_provider_name("groq/llama-3.1-70b") == "groq"
         assert _resolve_provider_name("anthropic/claude-3-opus") == "anthropic"
 
     def test_detect_provider_fallback_raises(self) -> None:
         from lattice.core.errors import ProviderError
-        from lattice.providers.transport import _resolve_provider_name
+        from lattice.transport import _resolve_provider_name
 
         with pytest.raises(ProviderError, match="Provider not specified"):
             _resolve_provider_name("gpt-4")

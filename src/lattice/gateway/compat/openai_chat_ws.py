@@ -75,7 +75,7 @@ async def chat_completions_websocket_passthrough(
     provider_name = provider
 
     from lattice.providers.credentials import CredentialResolver
-    from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
+    from lattice.transport import DirectHTTPProvider, ProviderRegistry
 
     registry = ProviderRegistry()
     credentials = CredentialResolver()

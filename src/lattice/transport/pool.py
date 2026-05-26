@@ -11,17 +11,18 @@ logger = structlog.get_logger()
 
 
 class ConnectionPoolManager:
-    """Manages persistent ``httpx.AsyncClient`` instances per provider."""
+    """Manages one persistent ``httpx.AsyncClient`` per provider (HTTP/2 when available)."""
 
     def __init__(self, http2: bool = True, downgrade_telemetry: Any = None) -> None:
         self._http2 = http2
-        self._clients: dict[tuple[str, str], httpx.AsyncClient] = {}
-        self._http2_fallback_reason: dict[tuple[str, str], str] = {}
+        self._clients: dict[str, httpx.AsyncClient] = {}
+        self._http2_fallback_reason: dict[str, str] = {}
         self._downgrade_telemetry = downgrade_telemetry
         self._log = logger.bind(module="connection_pool")
 
-    def get_client(self, provider: str, base_url: str) -> httpx.AsyncClient:
-        key = (provider, base_url)
+    def get_client(self, provider: str, base_url: str = "") -> httpx.AsyncClient:
+        # One pool per provider; full URL is built per request on the adapter endpoint.
+        key = provider
         if key not in self._clients:
             limits = httpx.Limits(max_connections=100, max_keepalive_connections=20)
             timeout = httpx.Timeout(120.0, connect=10.0)
@@ -58,27 +59,31 @@ class ConnectionPoolManager:
             )
         return self._clients[key]
 
-    def get_http_version(self, provider: str, base_url: str) -> str:
-        key = (provider, base_url)
-        if key in self._http2_fallback_reason:
+    def get_http_version(self, provider: str, base_url: str = "") -> str:
+        del base_url
+        if provider in self._http2_fallback_reason:
             return "http/1.1"
         return "http/2" if self._http2 else "http/1.1"
 
-    def get_fallback_reason(self, provider: str, base_url: str) -> str | None:
-        return self._http2_fallback_reason.get((provider, base_url))
+    def get_fallback_reason(self, provider: str, base_url: str = "") -> str | None:
+        del base_url
+        return self._http2_fallback_reason.get(provider)
 
     async def close(self) -> None:
-        for key, client in list(self._clients.items()):
+        for provider, client in list(self._clients.items()):
             await client.aclose()
-            self._log.info("pool_closed", provider=key[0])
+            self._log.info("pool_closed", provider=provider)
         self._clients.clear()
 
-    async def recycle_client(self, provider: str, base_url: str) -> None:
-        key = (provider, base_url)
-        client = self._clients.pop(key, None)
+    async def recycle_client(self, provider: str, base_url: str = "") -> None:
+        del base_url
+        client = self._clients.pop(provider, None)
         if client is not None:
             await client.aclose()
-            self._log.info("pool_recycled", provider=provider, base_url=base_url)
+            self._log.info("pool_recycled", provider=provider)
+
+    def clients_by_provider(self) -> dict[str, httpx.AsyncClient]:
+        return dict(self._clients)
 
     @property
     def pool_count(self) -> int:

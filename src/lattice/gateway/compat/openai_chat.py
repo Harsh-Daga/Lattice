@@ -683,6 +683,7 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
                 auto_continuation_turns=cont_result.turns if cont_result else 0,
             )
 
+        tel = deps.provider.last_transport_telemetry
         transport_outcome = TransportOutcome(
             semantic_cache_status="miss" if cache_key is not None else "",
             batching_status="batched" if batching_eligible else "",
@@ -691,7 +692,15 @@ def make_chat_completion_handler(deps: ChatCompatDeps) -> Handler:
             else ("miss" if used_speculative else ""),
             delta_mode=delta_mode,
             http_version=http_version,
+            transport_rtt_ms=tel.rtt_ms if tel else 0.0,
+            transport_attempt=tel.attempt if tel else 0,
+            transport_pool_utilization=tel.pool_utilization if tel else 0.0,
+            stream_resumed=tel.was_resumed if tel else False,
         )
+        if tel is not None:
+            from lattice.proxy.middleware import stash_lattice_response_headers
+
+            stash_lattice_response_headers(fastapi_request, tel.to_headers())
         attach_routing_headers(
             fastapi_request,
             ctx,
