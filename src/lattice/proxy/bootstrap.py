@@ -22,7 +22,6 @@ from lattice.planner.runtime_state import get_canonical_request_value
 from lattice.protocol.framing import BinaryFramer
 from lattice.protocol.resume import StreamManager
 from lattice.providers.credentials import CredentialResolver
-from lattice.providers.transport import DirectHTTPProvider
 from lattice.state.session import MemorySessionStore, SessionManager
 from lattice.state.store import RedisSessionStore
 from lattice.telemetry.agent_stats import AgentStatsCollector
@@ -31,6 +30,7 @@ from lattice.telemetry.downgrade import DowngradeTelemetry
 from lattice.telemetry.metrics import get_metrics
 from lattice.transforms.batching import BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor, SpeculativeTransform
+from lattice.transport import DirectHTTPProvider
 from lattice.transport.serialization import message_to_dict
 from lattice.transport.types import Message, Request, Response
 
@@ -164,7 +164,7 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
             idx: int, _cid: str, messages: list[Message]
         ) -> tuple[dict[str, Any], dict[str, int]]:
             serialized = [message_to_dict(m) for m in messages]
-            from lattice.providers.transport import _resolve_provider_name
+            from lattice.transport import _resolve_provider_name
 
             provider_name = _resolve_provider_name(batched.key.model)
             resp = await provider.completion(
@@ -226,7 +226,7 @@ def build_proxy_runtime(config: LatticeConfig) -> ProxyRuntime:
 
     async def _speculative_provider_call(req: Request) -> Response:
         messages = serialize_messages(req)
-        from lattice.providers.transport import _resolve_provider_name
+        from lattice.transport import _resolve_provider_name
 
         provider_name = _resolve_provider_name(req.model)
         return await provider.completion(

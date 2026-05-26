@@ -382,7 +382,7 @@ async def test_semantic_cache_exact_vs_approximate_hit() -> None:
 
 
 def test_stall_detection_signal_accuracy() -> None:
-    from lattice.providers.transport.stall_detector import StreamStallDetector
+    from lattice.transport.stall_detector import StreamStallDetector
 
     detector = StreamStallDetector()
     detector.start_stream("openai", "stream-1")
@@ -513,7 +513,7 @@ async def test_degraded_path_multiple_issues() -> None:
 
 def test_concurrent_stream_stall_regression() -> None:
     """Stall on one stream should not affect another concurrent stream."""
-    from lattice.providers.transport.stall_detector import StreamStallDetector
+    from lattice.transport.stall_detector import StreamStallDetector
 
     detector = StreamStallDetector()
     detector.start_stream("openai", "stream-fast")
@@ -707,7 +707,7 @@ def test_stream_resume_fallback_reason_visible_in_headers() -> None:
 
 def test_ignored_chunk_updates_observable() -> None:
     """Unknown stream IDs should increment ignored_chunk_count."""
-    from lattice.providers.transport.stall_detector import StreamStallDetector
+    from lattice.transport.stall_detector import StreamStallDetector
 
     detector = StreamStallDetector()
     detector.start_stream("openai", "stream-known")

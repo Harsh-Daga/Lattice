@@ -47,12 +47,16 @@ class HealthManager:
     def healthz(self) -> dict[str, Any]:
         """Liveness probe — process is up."""
         if self._ops is not None:
-            return {
+            body: dict[str, Any] = {
                 "status": "healthy",
                 "version": self._ops.version,
                 "provider": "direct_http",
                 "adapters": ", ".join(self._ops.provider.registry.list_adapters()),
             }
+            transport_health = getattr(self._ops.provider, "transport_health", None)
+            if callable(transport_health):
+                body["transport"] = transport_health()
+            return body
         return {"status": "healthy", "version": __version__}
 
     def readyz(self) -> tuple[dict[str, Any], int]:

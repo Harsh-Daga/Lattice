@@ -8,8 +8,8 @@ Design Principles
 -----------------
 * **Explicit over magic:** Each provider's quirks are encoded in its own
   adapter, not hidden behind a universal dispatcher.
-* **Testable in isolation:** Adapters are pure functions (no network calls).
-  The `DirectHTTPProvider` manages connections and delegates to adapters.
+* **Testable in isolation:** Adapters are pure protocol shaping (no network calls).
+  ``TransportDispatcher`` in ``lattice.transport`` owns all HTTP execution.
 * **Streaming-aware:** Adapters normalize SSE / NDJSON / event-stream chunks
   into a uniform OpenAI-compatible delta format.
 * **Auth-agnostic:** Each adapter declares its own header injection strategy.
@@ -20,7 +20,7 @@ Reference Implementations
 * FreeRouter owns tool-call translation Anthropic ↔ OpenAI in ~200 LOC.
 
 Our approach: each adapter is ~50–150 LOC, fully typed, unit-tested,
-and directly wired into `DirectHTTPProvider`.
+and consumed by ``TransportDispatcher`` only.
 """
 
 from __future__ import annotations

@@ -35,7 +35,7 @@ from lattice.providers.adapters.openai_compatible import (
     OpenRouterAdapter,
     TogetherAdapter,
 )
-from lattice.providers.transport import RateLimitTracker
+from lattice.transport import RateLimitTracker
 from lattice.transport.types import Message, Request
 
 # =============================================================================

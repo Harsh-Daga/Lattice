@@ -92,7 +92,7 @@ class TestProxyHeadersIncludeTransportInfo:
         )
 
         with patch(
-            "lattice.providers.transport.DirectHTTPProvider.completion",
+            "lattice.transport.DirectHTTPProvider.completion",
             new_callable=AsyncMock,
         ) as mock_completion:
             from lattice.transport.types import Response
@@ -149,7 +149,7 @@ class TestProxyDeltaHeaderReflectsUsage:
             provider_base_urls={"openai": "https://api.openai.com"},
         )
         with patch(
-            "lattice.providers.transport.DirectHTTPProvider.completion",
+            "lattice.transport.DirectHTTPProvider.completion",
             new_callable=AsyncMock,
         ) as mock_completion:
             from lattice.transport.types import Response

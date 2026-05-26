@@ -10,9 +10,9 @@ from fastapi.testclient import TestClient
 
 from lattice.core.config import LatticeConfig
 from lattice.gateway.compat import build_routing_headers
-from lattice.providers.transport import ConnectionPoolManager
 from lattice.proxy.server import create_app
 from lattice.state.session import MemorySessionStore, Session
+from lattice.transport import ConnectionPoolManager
 from lattice.transport.delta_wire import DeltaWireDecoder
 from lattice.transport.types import Message, Request
 
@@ -154,17 +154,17 @@ class TestConnectionPoolTracksHttp2Fallback:
                 raise ImportError("h2 unavailable")
             return MagicMock()
 
-        with patch("lattice.providers.transport.httpx.AsyncClient", side_effect=_fake_async_client):
+        with patch("lattice.transport.httpx.AsyncClient", side_effect=_fake_async_client):
             client = pool.get_client("openai", "https://api.openai.com")
             assert client is not None
 
         assert pool.get_http_version("openai", "https://api.openai.com") == "http/1.1"
         assert pool.get_fallback_reason("openai", "https://api.openai.com") == "h2_unavailable"
-        assert ("openai", "https://api.openai.com") in pool._http2_fallback_reason
+        assert "openai" in pool._http2_fallback_reason
 
     def test_connection_pool_no_fallback_when_http2_works(self) -> None:
         pool = ConnectionPoolManager(http2=True)
-        with patch("lattice.providers.transport.httpx.AsyncClient", return_value=MagicMock()):
+        with patch("lattice.transport.httpx.AsyncClient", return_value=MagicMock()):
             pool.get_client("openai", "https://api.openai.com")
         assert pool.get_http_version("openai", "https://api.openai.com") == "http/2"
         assert pool.get_fallback_reason("openai", "https://api.openai.com") is None

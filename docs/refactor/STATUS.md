@@ -56,7 +56,7 @@
 | **11**      | ✅ Done             | Phase 11 branch | `tests/unit/` mirrors `src/lattice/`; `FEATURE_PARITY.md` (61 rows); contract matrices; `pytest-xdist`; pinned count. |
 | **12**      | ✅ Done             | v1.0.0 docs release | README/AGENTS rewrite, CHANGELOG, MIGRATION, `runtime.md`, version `1.0.0`, doc dedup. |
 
-**Current totals.** **2042** tests collected (pinned on honesty branch); **Phases 0–12** ✅ on `main`. **Phase 13** (honesty pass) ✅ on branch `refactor/forward-plan-phase-12-honesty` — merge to `main` pending. Code budget: **dir caps + 800-LoC/file + no-dup** (per-phase net LoC gate removed). **Next:** [Phase 14 — Transport consolidation](14-transport-layer-consolidation.md). See [MIGRATION-v1-to-v2.md](MIGRATION-v1-to-v2.md). **Benchmark gates** remain operator-run when `OLLAMA_CLOUD_API_KEY` is set.
+**Current totals.** **2070** tests collected (pinned); **Phases 0–14** ✅ on branch `refactor/phase-14-transport-consolidation`. Code budget: **dir caps + 800-LoC/file + no-dup** (per-phase net LoC gate removed). **Next:** Phase 15 (chaos). See [MIGRATION-v1-to-v2.md](MIGRATION-v1-to-v2.md). **Benchmark:** `benchmarks/results/phase-14-transport.json` (operator 2026-05-26; see [phase-14-benchmark.md](refactor/phase-14-benchmark.md)).
 
 ---
 

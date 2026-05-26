@@ -72,7 +72,7 @@ class TestProxyEndToEnd:
             return response
 
         monkeypatch.setattr(
-            "lattice.providers.transport.DirectHTTPProvider.completion",
+            "lattice.transport.DirectHTTPProvider.completion",
             _fake_completion,
         )
 
@@ -118,7 +118,7 @@ class TestProxyEndToEnd:
                 finish_reason="stop",
             )
 
-        import lattice.providers.transport as _lpt
+        import lattice.transport as _lpt
 
         monkeypatch.setattr(
             _lpt.DirectHTTPProvider,
@@ -151,7 +151,7 @@ class TestProxyEndToEnd:
             )
 
         monkeypatch.setattr(
-            "lattice.providers.transport.DirectHTTPProvider.completion",
+            "lattice.transport.DirectHTTPProvider.completion",
             _fake_completion,
         )
 
@@ -189,7 +189,7 @@ class TestProxyEndToEnd:
             )
 
         monkeypatch.setattr(
-            "lattice.providers.transport.DirectHTTPProvider.completion",
+            "lattice.transport.DirectHTTPProvider.completion",
             _fake_completion,
         )
 

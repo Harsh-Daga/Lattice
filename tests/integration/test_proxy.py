@@ -125,7 +125,7 @@ class TestProxyRoundTrip:
     """End-to-end proxy tests with DirectHTTPProvider monkeypatched."""
 
     def _patch_completion(self, monkeypatch: pytest.MonkeyPatch, response: Response) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _mock(*_args: Any, **_kwargs: Any) -> Response:
             return response
@@ -192,7 +192,7 @@ class TestProxyRoundTrip:
     def test_semantic_cache_hit_reports_zero_billed_cost_and_agent_savings(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         calls = 0
 
@@ -235,7 +235,7 @@ class TestProxyRoundTrip:
     def test_provider_timeout(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise ProviderTimeoutError(provider="openai", timeout_seconds=1)
@@ -254,7 +254,7 @@ class TestProxyRoundTrip:
     def test_provider_auth_error(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise ProviderError(provider="openai", status_code=401, message="Unauthorized")
@@ -270,7 +270,7 @@ class TestProxyRoundTrip:
     def test_provider_rate_limit(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise ProviderError(provider="openai", status_code=429, message="Rate limited")
@@ -286,7 +286,7 @@ class TestProxyRoundTrip:
     def test_provider_bad_request(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise ProviderError(provider="openai", status_code=422, message="Invalid")
@@ -302,7 +302,7 @@ class TestProxyRoundTrip:
     def test_provider_not_found(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise ProviderError(provider="openai", status_code=404, message="Not found")
@@ -318,7 +318,7 @@ class TestProxyRoundTrip:
     def test_provider_unavailable(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise ProviderError(provider="openai", status_code=503, message="Unavailable")
@@ -332,7 +332,7 @@ class TestProxyRoundTrip:
         assert "error" in data
 
     def test_provider_502(self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise ProviderError(provider="openai", status_code=502, message="Bad gateway")
@@ -349,7 +349,7 @@ class TestProxyRoundTrip:
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Any other exception → proxy returns 502."""
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _raise(*_args: Any, **_kwargs: Any) -> Any:
             raise RuntimeError("boom")
@@ -378,7 +378,7 @@ class TestStreaming:
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Streaming flag → SSE response with normalized chunks."""
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _mock_stream(*_args: Any, **_kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
             yield {"choices": [{"delta": {"content": "Hello "}, "finish_reason": None}]}
@@ -411,7 +411,7 @@ class TestSessionPropagation:
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """x-lattice-session-id header creates a session and is forwarded."""
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         called = False
 
@@ -642,7 +642,7 @@ class TestAnthropicMessagesEndpoint:
             async def aclose(self) -> None:
                 pass
 
-        from lattice.providers.transport import ConnectionPoolManager
+        from lattice.transport import ConnectionPoolManager
 
         def _mock_get_client(_self: Any, _provider: str, _base_url: str) -> _MockClient:
             return _MockClient()
@@ -703,7 +703,7 @@ class TestAnthropicMessagesEndpoint:
             async def aclose(self) -> None:
                 pass
 
-        from lattice.providers.transport import ConnectionPoolManager
+        from lattice.transport import ConnectionPoolManager
 
         def _mock_get_client(_self: Any, _provider: str, _base_url: str) -> _MockClient:
             return _MockClient()
@@ -765,7 +765,7 @@ class TestAnthropicMessagesEndpoint:
             async def aclose(self) -> None:
                 pass
 
-        from lattice.providers.transport import ConnectionPoolManager
+        from lattice.transport import ConnectionPoolManager
 
         def _mock_get_client(_self: Any, _provider: str, _base_url: str) -> _MockClient:
             return _MockClient()
@@ -877,7 +877,7 @@ class TestMetricsIntegration:
     def test_request_increments_counter(
         self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from lattice.providers.transport import DirectHTTPProvider
+        from lattice.transport import DirectHTTPProvider
 
         async def _mock(*_args: Any, **_kwargs: Any) -> Response:
             return Response(content="Metrics!", model="gpt-4")

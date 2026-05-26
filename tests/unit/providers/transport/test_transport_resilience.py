@@ -1,4 +1,4 @@
-"""Tests for lattice.providers.transport resilience and stall detection.
+"""Tests for lattice.transport resilience and stall detection.
 
 LATTICE does NOT perform model fallback / routing. These tests verify:
 - configure_resilience sets stall timeout
@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lattice.core.errors import ProviderError, ProviderTimeoutError
-from lattice.providers.transport import (
+from lattice.transport import (
     ConnectionPoolManager,
     DirectHTTPProvider,
     ProviderRegistry,
@@ -109,7 +109,7 @@ class TestCompletionRetry:
                     return RateLimitResp()
                 return OkResp()
 
-        p.pool._clients = {("openai", "https://api.openai.com"): FakeClient()}
+        p.pool._clients = {"openai": FakeClient()}
 
         # Patch sleep so test runs instantly
         import asyncio
@@ -148,7 +148,7 @@ class TestCompletionRetry:
             async def post(self, *_args: Any, **_kwargs: Any) -> Any:
                 return AlwaysFail()
 
-        p.pool._clients = {("openai", "https://api.openai.com"): FakeClient()}
+        p.pool._clients = {"openai": FakeClient()}
 
         import asyncio
 
@@ -185,7 +185,7 @@ class TestCompletionRetry:
             async def post(self, *_args: Any, **_kwargs: Any) -> Any:
                 return BadRequest()
 
-        p.pool._clients = {("openai", "https://api.openai.com"): FakeClient()}
+        p.pool._clients = {"openai": FakeClient()}
 
         with pytest.raises(ProviderError):
             await p.completion(
@@ -223,7 +223,7 @@ class TestCompletionStreamWithStallDetect:
 
         fake_client = MagicMock()
         fake_client.stream = MagicMock(return_value=FakeResp())
-        p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
+        p.pool._clients = {"openai": fake_client}
 
         chunks: list[dict[str, Any]] = []
         async for chunk in p.completion_stream_with_stall_detect(
@@ -258,7 +258,7 @@ class TestCompletionStreamWithStallDetect:
 
         fake_client = MagicMock()
         fake_client.stream = MagicMock(return_value=FakeResp())
-        p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
+        p.pool._clients = {"openai": fake_client}
 
         chunks = [
             c
@@ -291,7 +291,7 @@ class TestCompletionStreamWithStallDetect:
 
         fake_client = MagicMock()
         fake_client.stream = MagicMock(return_value=FakeResp())
-        p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
+        p.pool._clients = {"openai": fake_client}
 
         with pytest.raises(ProviderTimeoutError):
             _ = [
@@ -328,7 +328,7 @@ class TestCompletionStreamWithStallDetect:
 
         fake_client = MagicMock()
         fake_client.stream = MagicMock(return_value=FakeResp())
-        p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
+        p.pool._clients = {"openai": fake_client}
 
         _ = [
             c
@@ -374,7 +374,7 @@ class TestCompletionStream:
 
         fake_client = MagicMock()
         fake_client.stream = MagicMock(return_value=FakeResp())
-        p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
+        p.pool._clients = {"openai": fake_client}
 
         chunks = [
             c
@@ -420,7 +420,7 @@ class TestCompletionStream:
 
         fake_client = MagicMock()
         fake_client.stream = MagicMock(return_value=FakeResp())
-        p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
+        p.pool._clients = {"openai": fake_client}
 
         with pytest.raises(TimeoutError):
             async with asyncio.timeout(0.01):
@@ -457,7 +457,7 @@ class TestCompletionStream:
 
         fake_client = MagicMock()
         fake_client.stream = MagicMock(return_value=FakeResp())
-        p.pool._clients = {("openai", "https://api.openai.com"): fake_client}
+        p.pool._clients = {"openai": fake_client}
 
         async for chunk in p.completion_stream(
             model="openai/gpt-4",

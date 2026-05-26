@@ -12,11 +12,11 @@ from lattice.providers.capabilities import (
     Capability,
     CapabilityRegistry,
 )
-from lattice.providers.transport import DirectHTTPProvider
 from lattice.runtime.tier_classifier import TierClassifier
 from lattice.state.session import MemorySessionStore, SessionManager
 from lattice.transforms.batching import BatchedRequest, BatchingEngine
 from lattice.transforms.speculative import SpeculativeExecutor
+from lattice.transport import DirectHTTPProvider
 from lattice.transport.types import Message, Request
 
 # =============================================================================

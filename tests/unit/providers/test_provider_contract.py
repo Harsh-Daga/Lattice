@@ -14,7 +14,7 @@ from lattice.providers.capabilities import (
     Capability,
     get_capability_registry,
 )
-from lattice.providers.transport import (
+from lattice.transport import (
     DirectHTTPProvider,
     _resolve_provider_name,
 )

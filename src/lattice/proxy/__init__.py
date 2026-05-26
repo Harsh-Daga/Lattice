@@ -13,8 +13,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lattice.core.config import LatticeConfig
-from lattice.providers.transport import DirectHTTPProvider
 from lattice.proxy.health import HealthManager
+from lattice.transport import DirectHTTPProvider
 
 if TYPE_CHECKING:
     from fastapi import FastAPI

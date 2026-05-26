@@ -29,7 +29,7 @@ def test_client() -> TestClient:
 
 def _patch_provider(monkeypatch):
     """Patch provider completion to avoid real network calls."""
-    from lattice.providers.transport import DirectHTTPProvider
+    from lattice.transport import DirectHTTPProvider
 
     async def _fake_completion(*_args, **_kwargs):
         return Response(

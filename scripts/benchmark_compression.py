@@ -10,7 +10,7 @@ from lattice.core.context import TransformContext
 from lattice.core.result import unwrap
 from lattice.pipeline.factory import build_default_pipeline
 from lattice.transport.types import Message, Request, Response
-from lattice.providers.transport import DirectHTTPProvider
+from lattice.transport import DirectHTTPProvider
 from lattice.utils.token_count import TiktokenCounter
 
 MODEL = "ollama/glm-5.1:cloud"

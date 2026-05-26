@@ -76,6 +76,9 @@ class LatticeHeaderMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         pending: dict[str, str] = dict(getattr(request.state, "lattice_response_headers", {}) or {})
+        transport_headers = getattr(request.state, "lattice_transport_headers", None)
+        if isinstance(transport_headers, dict):
+            pending.update({str(k): str(v) for k, v in transport_headers.items()})
 
         ctx = getattr(request.state, "transform_context", None)
         if ctx is not None:

@@ -17,7 +17,7 @@ from lattice.core.result import is_err, unwrap, unwrap_err
 from lattice.pipeline.factory import build_benchmark_pipeline
 from lattice.pipeline.runner import Pipeline
 from lattice.providers.credentials import CredentialResolver
-from lattice.providers.transport import DirectHTTPProvider, ProviderRegistry
+from lattice.transport import DirectHTTPProvider, ProviderRegistry
 from lattice.safety.risk_scoring import (
     lossy_transform_allowed,
     request_safety_profile,

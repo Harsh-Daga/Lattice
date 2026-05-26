@@ -6,7 +6,7 @@ import re
 import subprocess
 import sys
 
-EXPECTED_TEST_COUNT = 2042
+EXPECTED_TEST_COUNT = 2070
 
 
 def test_test_count_matches_expected() -> None:

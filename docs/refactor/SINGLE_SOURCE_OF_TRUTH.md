@@ -126,10 +126,15 @@
 | Backpressure / queue | `src/lattice/transport/backpressure.py` | **Phase 14**. Bounded queue with explicit overflow strategy. |
 | Stream resumption | `src/lattice/transport/stream_resume.py` | **Phase 14**. |
 | Transport metrics | `src/lattice/transport/metrics.py` | **Phase 14**. RTT / queue depth / breaker state / in-flight. Feeds §10 OTel + §11 receipts. |
-| TACC congestion control | `src/lattice/transport/tacc.py` | Pre-existing; consolidated under transport in Phase 20. |
+| TACC congestion control | `src/lattice/transport/tacc.py` | Re-export of `transport/congestion.py`; canonical under transport. |
+| Rate-limit header parsing | `src/lattice/transport/rate_limit.py` | **Phase 14**. |
+| Provider registry / routing | `src/lattice/transport/registry.py` | **Phase 14**. |
+| Stall detector (streaming) | `src/lattice/transport/stall_detector.py` | **Phase 14**. |
 | Binary framing (LATT) | `src/lattice/protocol/framing.py` (Python fallback) + `crates/lattice-core/src/framing/` (canonical Rust) | Phase 31 Rust port. |
 | Delta wire | `src/lattice/transport/delta_wire.py` | Pre-existing (Phase 2a). |
-| Provider adapter base | `src/lattice/providers/adapters/base.py` | **Post-Phase-27**: adapters are pure protocol shaping (request body / response parsing) — **no transport code**, no retry code, no httpx clients. |
+| Provider adapter base | `src/lattice/providers/adapters/base.py` | **Phase 14**: adapters are pure protocol shaping — **no transport code**, no httpx clients. |
+| Adapter retry policy declarations | `src/lattice/providers/adapters/retry_policies.py` | **Phase 14**. Per-provider ``RetryPolicy`` constants; ``RetryEngine`` is the sole runner. |
+| Transport per-request telemetry | `src/lattice/transport/telemetry.py` | **Phase 14**. RTT / attempt / pool utilization for response headers. |
 
 ## 8. Providers + cost estimation
 

@@ -21,7 +21,7 @@ planner=2496
 cache=1139
 safety=501
 agent=2100
-transport=1883
+transport=4300
 providers_adapters=3024
 proxy=1718
 # gateway/compat split: ~4571 actual; shrink target Phase 14 + Phase 21 — bump only with justification

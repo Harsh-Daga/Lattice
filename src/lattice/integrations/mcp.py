@@ -79,7 +79,7 @@ class LatticeMCPTools:
             Dict with compressed_messages, tokens_before, tokens_after,
             compression_ratio, transforms_applied, and content_profile.
         """
-        from lattice.providers.transport import _resolve_provider_name
+        from lattice.transport import _resolve_provider_name
 
         request = Request(
             messages=[message_from_dict(m) for m in messages],

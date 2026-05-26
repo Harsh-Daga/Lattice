@@ -20,8 +20,8 @@ from lattice.protocol.dictionary_codec import DictionaryCodec
 from lattice.protocol.framing import BinaryFramer, FrameFlags, FrameType, MessageAssembler
 from lattice.protocol.manifest import manifest_summary
 from lattice.protocol.resume import StreamManager
-from lattice.providers.transport import DirectHTTPProvider
 from lattice.state.session import SessionManager
+from lattice.transport.dispatcher import TransportDispatcher
 from lattice.transport.serialization import message_to_dict, request_from_dict, response_to_dict
 from lattice.transport.types import Response
 
@@ -42,7 +42,7 @@ class LLMTPGateway:
         self,
         session_manager: SessionManager,
         pipeline: Pipeline,
-        provider: DirectHTTPProvider,
+        provider: TransportDispatcher,
         framer: BinaryFramer,
         stream_manager: StreamManager,
         *,

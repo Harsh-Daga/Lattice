@@ -191,7 +191,7 @@ class TestProviderExecutionLayer:
     """Layer 4 — route, call model, stream safely, observe metrics."""
 
     def test_direct_http_provider_registry_has_all_adapters(self) -> None:
-        from lattice.providers.transport import ProviderRegistry
+        from lattice.transport import ProviderRegistry
 
         registry = ProviderRegistry()
         for name in ("openai", "anthropic", "ollama", "gemini", "azure", "bedrock"):
